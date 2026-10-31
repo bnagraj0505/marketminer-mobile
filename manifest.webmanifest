@@ -1,0 +1,15 @@
+{
+  "name": "MarketMiner Mobile",
+  "short_name": "MarketMiner",
+  "description": "Indian options analytics (FYERS) and crypto dashboards, running fully in your browser.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#06080f",
+  "theme_color": "#06080f",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

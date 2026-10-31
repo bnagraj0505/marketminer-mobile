@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/engine.js?v=2026.10.31-1"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06080f">
+<title>MarketMiner · Crypto</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg0:#06080f;--bg1:#0d1117;--bg2:#131a27;--bg3:#182030;--bdr:#1b2536;--bdr2:#263450;--t1:#e2e8f0;--t2:#8b9ab5;--t3:#5b6b85;--g:#00e676;--gb:rgba(0,230,118,.08);--r:#ff5252;--rb:rgba(255,82,82,.08);--a:#ffab00;--cy:#18ffff;--gd:#FFD700;--pu:#b388ff;--mono:'JetBrains Mono',ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg0);color:var(--t1);min-height:100vh;overflow-x:hidden}
+.header{position:sticky;top:0;z-index:50;background:rgba(6,8,15,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);padding:8px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-family:var(--mono);font-weight:800;font-size:1.45rem;letter-spacing:-.5px}.logo .m{color:var(--cy)}.logo .s{color:var(--gd)}
+.hl,.hr{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mst{display:flex;align-items:center;gap:6px;font:.72rem var(--mono);color:var(--t2)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--g);animation:bk 1.5s infinite}@keyframes bk{50%{opacity:.3}}
+.btn{background:var(--bg2);border:1px solid var(--bdr2);color:var(--t2);padding:6px 11px;border-radius:6px;cursor:pointer;font:600 .74rem var(--mono);text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:var(--cy);color:var(--cy)}
+.wrap{max-width:1400px;margin:0 auto;padding:14px 16px 60px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:14px}
+.tile{background:var(--bg1);border:1px solid var(--bdr);border-radius:9px;padding:10px 12px;border-left:3px solid var(--bdr2)}
+.tile.up{border-left-color:var(--g)}.tile.dn{border-left-color:var(--r)}
+.tile .n{font:700 .7rem var(--mono);color:var(--t3);letter-spacing:.4px}
+.tile .p{font:800 1.12rem var(--mono);margin:3px 0}
+.tile .c{font:700 .76rem var(--mono)}
+.tile .h{font:.62rem var(--mono);color:var(--t3);margin-top:3px}
+.grid{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-bottom:14px}
+.card{background:var(--bg1);border:1px solid var(--bdr);border-radius:10px;overflow:hidden;min-width:0}
+.cd-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bdr);flex-wrap:wrap}
+.cd-t{font:700 .78rem var(--mono);text-transform:uppercase;letter-spacing:.4px}
+.ts{font:.66rem var(--mono);color:var(--t3)}
+.cd-b{padding:12px 14px}
+.tabs{display:flex;gap:0;overflow-x:auto}
+.tab{padding:6px 11px;font:600 .72rem var(--mono);color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--cy);border-bottom-color:var(--cy)}
+table{width:100%;border-collapse:collapse;font-size:.76rem}
+th{text-align:left;padding:6px 8px;font:700 .6rem var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--bdr);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid rgba(27,37,54,.6);font-family:var(--mono);white-space:nowrap}
+.rt{text-align:right}
+.pos{color:var(--g)}.neg{color:var(--r)}.amb{color:var(--a)}.gold{color:var(--gd)}.mut{color:var(--t3)}
+.tw{overflow-x:auto}
+.err{background:var(--rb);border:1px solid rgba(255,82,82,.25);color:#ffb3b3;border-radius:7px;padding:9px 11px;font-size:.76rem}
+.lsbar{display:flex;height:8px;border-radius:4px;overflow:hidden;width:110px;background:var(--bg3)}
+.lsbar i{display:block;height:100%}
+/* fear & greed */
+.fng{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.fng .big{font:800 2.4rem var(--mono)}
+.fng .lab{font:700 .8rem var(--mono);text-transform:uppercase}
+.gauge{flex:1;min-width:160px;height:10px;border-radius:5px;background:linear-gradient(90deg,#ff5252,#ffab00 45%,#00e676);position:relative}
+.gauge b{position:absolute;top:-4px;width:4px;height:18px;background:#fff;border-radius:2px;transform:translateX(-50%)}
+.breadth{display:flex;height:12px;border-radius:6px;overflow:hidden;margin-top:12px}
+.breadth i{display:block;height:100%}
+/* option heatmap */
+.ol-t{width:100%;border-collapse:collapse;font:.68rem var(--mono);text-align:center}
+.ol-t th{color:var(--t3);font-size:.58rem;padding:4px;border-bottom:1px solid var(--bdr)}.ol-t th.ce{color:var(--g)}.ol-t th.pe{color:var(--r)}
+.ol-t td{padding:4px;border-bottom:1px solid rgba(27,37,54,.5);white-space:nowrap}
+.ol-t td.k{font-weight:700;background:var(--bg2)}.ol-t tr.atm td{background:rgba(24,255,255,.05)}.ol-t tr.atm td.k{color:var(--cy)}.ol-t tr.ix td{background:rgba(41,98,255,.08);font-weight:700}
+.sw{display:inline-block;min-width:46px;font:800 .58rem var(--mono);padding:2px 4px;border-radius:4px;cursor:help}
+.sw.ssl{background:var(--gb);color:var(--g)}.sw.bsl{background:var(--rb);color:var(--r)}.sw.up{border:1px solid var(--g);color:var(--g)}.sw.dn{border:1px solid var(--r);color:var(--r)}.sw.na,.sw.no{color:var(--t3)}
+.dc{font:800 .58rem var(--mono);padding:2px 6px;border-radius:8px}.dc.fast{background:var(--rb);color:var(--r)}.dc.decaying{background:rgba(255,171,0,.15);color:var(--a)}.dc.done{background:rgba(139,154,181,.15);color:var(--t2)}.dc.beating{background:var(--gb);color:var(--g)}.dc.holding{background:rgba(24,255,255,.1);color:var(--cy)}
+.lean{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}.lean>div{background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;padding:5px 9px;font:.64rem var(--mono);text-align:center}.lean .lbl{font-size:.55rem;color:var(--t3);font-weight:700}
+.cf-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}.cf-bias{font:800 1rem var(--mono);padding:4px 12px;border-radius:6px;border:1px solid currentColor}
+.cf-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:900px){.cf-grid{grid-template-columns:1fr}}
+.cf-h{font:700 .58rem var(--mono);color:var(--t3);margin:8px 0 3px;text-transform:uppercase}
+.cf-z{font:.66rem var(--mono);padding:5px 7px;border-bottom:1px solid rgba(27,37,54,.5)}.cf-z.r{border-left:3px solid var(--r)}.cf-z.s{border-left:3px solid var(--g)}.cf-z.px{border-left:3px solid var(--cy);color:var(--cy);font-weight:700}.cf-z .st{color:var(--a)}.cf-z .ds{float:right;color:var(--t3)}
+.ol-bar{display:inline-block;width:46px;height:6px;background:var(--bg2);border-radius:3px;position:relative;vertical-align:middle}.ol-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--a)}
+.oit-t{width:100%;border-collapse:collapse;font:.68rem var(--mono);text-align:center}
+.oit-t th{color:var(--t3);font-size:.58rem;padding:4px;border-bottom:1px solid var(--bdr)}
+.oit-t td{padding:4px;border-bottom:1px solid rgba(27,37,54,.5);white-space:nowrap}
+.oit-t td.k{font-weight:700;background:var(--bg2)}.oit-t tr.atm td{background:rgba(24,255,255,.05)}.oit-t tr.atm td.k{color:var(--cy)}
+.oit-bar{display:inline-block;height:8px;border-radius:2px;vertical-align:middle}
+.oit-tag{font:700 .56rem var(--mono);padding:1px 5px;border-radius:8px}.oit-tag.bull{background:var(--gb);color:var(--g)}.oit-tag.bear{background:var(--rb);color:var(--r)}
+.oit-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin:8px 0}
+.oit-top>div{background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;padding:7px 9px;font:.66rem var(--mono);line-height:1.6}
+.oit-top .h{font:700 .58rem var(--mono);color:var(--t3);text-transform:uppercase}
+.oit-read{font-size:.72rem;line-height:1.5;margin:6px 0}
+.oc-mp{display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:8px;margin-bottom:12px}
+.oc-mp .item{background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;padding:8px 10px;text-align:center}
+.oc-mp .lbl{font:700 .58rem var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
+.oc-mp .val{font:800 .98rem var(--mono);margin-top:2px}
+.oc{display:grid;grid-template-columns:1fr auto 1fr;gap:0;font-family:var(--mono);font-size:.72rem}
+.oc .hd{padding:6px;font:700 .6rem var(--mono);color:var(--t3);text-transform:uppercase;text-align:center;border-bottom:1px solid var(--bdr)}
+.oc .ce,.oc .pe{display:flex;align-items:center;gap:6px;padding:5px 6px;border-bottom:1px solid rgba(27,37,54,.5);min-width:0}
+.oc .ce{justify-content:flex-end}
+.oc .bar{height:14px;border-radius:3px;min-width:2px}
+.oc .bc{flex:1;min-width:40px;display:flex;flex-direction:column;gap:2px}
+.oc .bw{position:relative;height:18px;min-width:24px}
+.oc .cap{position:absolute;top:0;bottom:0;left:4px;right:4px;display:flex;align-items:center;font:800 .6rem var(--mono);white-space:nowrap;color:#fff;text-shadow:0 0 3px #000,0 0 2px #000,0 1px 2px #000;pointer-events:none;z-index:2}
+.oc .cap.add{color:#b9ffd9}.oc .cap.cut{color:#ffd8a8}
+.oc .bw .b{position:absolute;top:0;bottom:0;border-radius:2px}.oc .bw .b.ce,.oc .bw .b.pe,.sw2.base{background:#5b6b85}
+.oc .bw .b.add,.sw2.add{background:#00e676;box-shadow:0 0 6px rgba(0,230,118,.45)}
+.oc .bw .b.cut,.sw2.cut{background:#ff9100;box-shadow:0 0 6px rgba(255,145,0,.45)}
+.sw2{display:inline-block;width:14px;height:8px;border-radius:2px;vertical-align:middle}
+.oc .ce .bar{background:rgba(0,230,118,.6)}.oc .pe .bar{background:rgba(255,82,82,.6)}
+.oc .k{padding:5px 14px;text-align:center;font-weight:800;border-bottom:1px solid rgba(27,37,54,.5);background:var(--bg2)}
+.oc .k.atm{background:rgba(255,215,0,.12);color:var(--gd)}
+.oc .v{min-width:62px;text-align:right}.oc .pe .v{text-align:left}
+.oc .x{font-size:.62rem;color:var(--t3);min-width:62px}
+select{background:var(--bg2);border:1px solid var(--bdr2);color:var(--t1);border-radius:6px;padding:5px 8px;font:500 .74rem var(--mono)}
+.trad{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.note{font-size:.7rem;color:var(--t3);line-height:1.5;margin-top:10px}
+@media (max-width:980px){.grid{grid-template-columns:1fr}}
+@media (max-width:520px){.wrap{padding:12px}.oc .x{display:none}.oc .k{padding:5px 8px}.logo{font-size:1.2rem}}
+/* assessment */
+.assess{display:grid;grid-template-columns:240px 1fr 1fr;gap:14px;margin-bottom:14px}
+.vcard{background:var(--bg1);border:1px solid var(--bdr);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.vbadge{font:800 1.05rem var(--mono);padding:6px 10px;border-radius:6px;text-align:center}
+.vbadge.bull{background:var(--gb);color:var(--g);border:1px solid rgba(0,230,118,.3)}.vbadge.bear{background:var(--rb);color:var(--r);border:1px solid rgba(255,82,82,.3)}.vbadge.ntl{background:rgba(255,171,0,.08);color:var(--a);border:1px solid rgba(255,171,0,.3)}
+.score{position:relative;height:10px;border-radius:5px;background:linear-gradient(90deg,#ff5252,#ffab00 50%,#00e676)}
+.score b{position:absolute;top:-4px;width:4px;height:18px;background:#fff;border-radius:2px;transform:translateX(-50%)}
+.list{list-style:none;display:grid;gap:7px}
+.list li{font-size:.78rem;line-height:1.45;color:var(--t2);padding-left:14px;position:relative}
+.list li::before{content:'›';position:absolute;left:0;color:var(--cy);font-weight:800}
+.list.risk li::before{content:'!';color:var(--a)}
+.aitext{white-space:pre-wrap;font-size:.78rem;color:var(--t2);line-height:1.5;margin-top:8px}
+@media (max-width:1100px){.assess{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="hl">
+    <div class="logo"><span class="m">CRYPTO</span><span class="s">MINER</span></div>
+    <div class="mst"><span class="dot"></span><span id="clock">24/7</span></div>
+  </div>
+  <div class="hr">
+    <a class="btn" href="index.html">← MarketMiner</a>
+    
+    <a class="btn" href="fyers.html">Connections</a>
+    
+    <button class="btn" id="rb" onclick="loadAll()">↻ Refresh</button>
+    <span class="ts" id="ts">—</span>
+  </div>
+</header>
+<main class="wrap">
+  <div class="assess">
+    <div class="vcard">
+      <div class="cd-t">Market view</div>
+      <div class="vbadge ntl" id="vBadge">—</div>
+      <div class="score"><b id="vDot" style="left:50%"></b></div>
+      <div class="ts" style="display:flex;justify-content:space-between"><span>Bearish</span><span id="vScore">score —</span><span>Bullish</span></div>
+      <ul class="list" id="vWhy"></ul>
+    </div>
+    <section class="card"><div class="cd-h"><span class="cd-t">Strategy</span><span class="ts">rule-based · not advice</span></div><div class="cd-b"><ul class="list" id="vStrat"><li>Loading…</li></ul><div class="aitext" id="aiOut"></div></div></section>
+    <section class="card"><div class="cd-h"><span class="cd-t">Risk factors</span><span class="ts" id="vAsOf"></span></div><div class="cd-b"><ul class="list risk" id="vRisk"><li>Loading…</li></ul></div></section>
+  </div>
+
+  <div class="tiles" id="majors"><div class="tile"><div class="n">Loading…</div></div></div>
+
+  <div class="grid">
+    <section class="card">
+      <div class="cd-h"><span class="cd-t">24h movers · Binance spot</span>
+        <div class="tabs" id="mvT"><div class="tab on" data-t="gainers">Gainers</div><div class="tab" data-t="losers">Losers</div></div></div>
+      <div class="cd-b tw" id="movers"></div>
+    </section>
+    <section class="card">
+      <div class="cd-h"><span class="cd-t">Sentiment &amp; breadth</span></div>
+      <div class="cd-b" id="sent"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-bottom:14px">
+    <div class="cd-h"><span class="cd-t">Perpetuals · funding, open interest, positioning (Binance USD-M)</span></div>
+    <div class="cd-b tw" id="perps"></div>
+  </section>
+
+  <section class="card" style="margin-bottom:14px">
+    <div class="cd-h"><span class="cd-t">Options OI heatmap · Delta Exchange India · ATM ±3</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="tabs" id="ocT"><div class="tab on" data-t="BTC">BTC</div><div class="tab" data-t="ETH">ETH</div><div class="tab" data-t="XAUT">XAUT (gold)</div></div>
+        <select id="ocE"></select>
+      </div></div>
+    <div class="cd-b" id="oc"></div>
+  </section>
+
+  <section class="card" style="margin-bottom:14px">
+    <div class="cd-h"><span class="cd-t">🧩 Confluence · 🧲 Liquidity sweeps · ⏳ Time decay · ATM ±3 options</span>
+      <div style="display:flex;gap:8px;align-items:center"><span class="note" id="labH" style="margin:0"></span>
+      <div class="tabs" id="labV"><div class="tab on" data-t="cf">🧩 Confluence</div><div class="tab" data-t="sw">Sweeps</div><div class="tab" data-t="dc">Time decay</div></div></div></div>
+    <div class="cd-b" id="lab"><div class="mut" style="font-size:.75rem">Loading… (about 30 Delta + Binance candle calls, cached for 4 minutes)</div></div>
+  </section>
+
+  <section class="card" style="margin-bottom:14px">
+    <div class="cd-h"><span class="cd-t">OI change tracker · additions &amp; unwinding by strike · Delta Exchange India</span><span class="note" id="oitH" style="margin:0"></span></div>
+    <div class="cd-b" id="oit"></div>
+  </section>
+
+  <section class="card">
+    <div class="cd-h"><span class="cd-t">TradFi perpetuals · Binance</span></div>
+    <div class="cd-b"><div class="trad" id="tradfi"></div></div>
+  </section>
+  <p class="note" style="text-align:center">Public data: Binance spot &amp; USD-M futures, Delta Exchange India options, alternative.me Fear &amp; Greed. Refreshes every minute. Educational tool, not investment advice.</p>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const px=n=>{if(n==null||isNaN(n))return '—';const a=Math.abs(n),d=a>=1000?2:a>=1?3:a>=0.01?5:8;return Number(n).toLocaleString('en-US',{minimumFractionDigits:Math.min(d,2),maximumFractionDigits:d});};
+const big=n=>n==null||isNaN(n)?'—':n>=1e9?'$'+(n/1e9).toFixed(2)+'B':n>=1e6?'$'+(n/1e6).toFixed(1)+'M':n>=1e3?'$'+(n/1e3).toFixed(0)+'K':'$'+n.toFixed(0);
+const pc=n=>n==null||isNaN(n)?'—':(n>0?'+':'')+Number(n).toFixed(2)+'%';
+const cls=n=>n>0?'pos':n<0?'neg':'';
+async function api(p){const r=await fetch(p);let j=null;try{j=await r.json();}catch(e){}if(!r.ok)throw new Error((j&&j.detail)||('HTTP '+r.status));return j;}
+const err=m=>`<div class="err">${esc(m)}</div>`;
+let OV=null,mv='gainers',ocCoin='BTC',ocExp=null,ASSESS=null;
+
+async function loadAssessment(){try{const a=await api('/api/crypto/assessment');ASSESS=a;
+  $('vBadge').textContent=a.view;$('vBadge').className='vbadge '+a.tone;$('vDot').style.left=((a.score+100)/2)+'%';$('vScore').textContent='score '+(a.score>0?'+':'')+a.score;
+  $('vWhy').innerHTML=a.why.map(x=>`<li>${esc(x)}</li>`).join('')||'<li>Not enough data yet.</li>';
+  $('vStrat').innerHTML=a.strategy.map(x=>`<li>${esc(x)}</li>`).join('');
+  $('vRisk').innerHTML=a.risks.map(x=>`<li>${esc(x)}</li>`).join('');
+  $('vAsOf').textContent='as of '+a.as_of.slice(11,16)+' IST';}
+  catch(e){$('vStrat').innerHTML=`<li>${esc(e.message)}</li>`;}}
+
+async function runAI(){if(!ASSESS){await loadAssessment();}const b=$('aiBtn');b.disabled=true;b.textContent='🤖 Thinking…';
+  const prompt='You are a crypto market analyst. Using ONLY this JSON of live market data and rule-based signals, write a short market view (bias + 2 reasons), a strategy section (3 bullets with levels) and a risk section (3 bullets). Plain text, no hype, mention it is not investment advice. Respond as JSON {"view":"...","strategy":["..."],"risks":["..."]}. DATA: '+JSON.stringify({assessment:ASSESS,coins:OV&&OV.coins.slice(0,6)});
+  try{const r=await fetch('/api/ai/analysis',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:prompt.slice(0,11900)})});const j=await r.json();
+    if(!r.ok)throw new Error(j.detail||'AI not available');let t=j.text;try{const o=JSON.parse(t);t='AI view: '+o.view+'\n\nStrategy:\n• '+(o.strategy||[]).join('\n• ')+'\n\nRisks:\n• '+(o.risks||[]).join('\n• ');}catch(e){}
+    $('aiOut').textContent=t+'\n('+j.provider+' · '+j.model+')';}
+  catch(e){$('aiOut').textContent='AI view unavailable: '+e.message+' (set AI_PROVIDER / AI_API_KEY / AI_MODEL in .env).';}
+  finally{b.disabled=false;b.textContent='🤖 AI view';}}
+
+async function loadOverview(){try{OV=await api('/api/crypto/overview');
+  $('majors').innerHTML=OV.coins.map(c=>`<div class="tile ${c.chg>=0?'up':'dn'}"><div class="n">${esc(c.coin)}</div><div class="p">$${px(c.price)}</div><div class="c ${cls(c.chg)}">${pc(c.chg)}</div><div class="h">H ${px(c.high)} · L ${px(c.low)} · ${big(c.vol_usd)}</div></div>`).join('');
+  renderMovers();renderSent();}catch(e){$('majors').innerHTML=err('Prices unavailable: '+e.message);}}
+function renderMovers(){if(!OV)return;const rows=OV[mv]||[];
+  $('movers').innerHTML=`<table><thead><tr><th>Coin</th><th class="rt">Price</th><th class="rt">24h</th><th class="rt">Volume</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${esc(r.coin)}</b></td><td class="rt">${px(r.price)}</td><td class="rt ${cls(r.chg)}">${pc(r.chg)}</td><td class="rt mut">${big(r.vol_usd)}</td></tr>`).join('')}</tbody></table>`;}
+document.querySelectorAll('#mvT .tab').forEach(t=>t.onclick=()=>{mv=t.dataset.t;document.querySelectorAll('#mvT .tab').forEach(x=>x.classList.toggle('on',x===t));renderMovers();});
+
+let FNG=null;
+async function loadFng(){try{FNG=await api('/api/crypto/fng');}catch(e){FNG={error:e.message};}renderSent();}
+function renderSent(){let h='';
+  if(FNG&&!FNG.error){const c=FNG.now>=55?'pos':FNG.now<=45?'neg':'amb';h+=`<div class="fng"><div><div class="big ${c}">${FNG.now}</div><div class="lab ${c}">${esc(FNG.label)}</div></div><div class="gauge"><b style="left:${FNG.now}%"></b></div></div><div class="note">Fear &amp; Greed · yesterday ${FNG.yesterday??'—'} · a week ago ${FNG.week_ago??'—'} (alternative.me)</div>`;}
+  else if(FNG&&FNG.error)h+=err(FNG.error);
+  if(OV){const b=OV.breadth,t=(b.advances+b.declines+b.unchanged)||1;
+    h+=`<div class="breadth"><i style="width:${b.advances/t*100}%;background:var(--g)"></i><i style="width:${b.unchanged/t*100}%;background:var(--t3)"></i><i style="width:${b.declines/t*100}%;background:var(--r)"></i></div>
+    <div class="note"><span class="pos">▲ ${b.advances} up</span> · <span class="neg">▼ ${b.declines} down</span> · ${b.unchanged} flat — ${esc(b.rule)} · total ${big(OV.volume_usd)} traded</div>`;}
+  $('sent').innerHTML=h||'Loading…';}
+
+async function loadPerps(){try{const d=await api('/api/crypto/derivs');
+  $('perps').innerHTML=`<table><thead><tr><th>Perp</th><th class="rt">Mark</th><th class="rt">24h</th><th class="rt">Funding /8h</th><th class="rt">Open interest</th><th class="rt">OI 24h</th><th>Long / short accounts</th><th>Read</th></tr></thead><tbody>${d.items.map(p=>{const lp=p.long_pct??50;
+    return `<tr><td><b>${esc(p.coin)}</b></td><td class="rt">${px(p.mark)}</td><td class="rt ${cls(p.chg24)}">${pc(p.chg24)}</td><td class="rt ${p.funding_pct>0.03?'amb':cls(p.funding_pct)}">${p.funding_pct==null?'—':p.funding_pct.toFixed(4)+'%'}</td><td class="rt">${big(p.oi_usd)}</td><td class="rt ${cls(p.oi_chg24_pct)}">${pc(p.oi_chg24_pct)}</td>
+    <td><div style="display:flex;align-items:center;gap:8px"><div class="lsbar"><i style="width:${lp}%;background:var(--g)"></i><i style="width:${100-lp}%;background:var(--r)"></i></div><span class="mut">${p.long_short?p.long_short.toFixed(2):'—'}</span></div></td><td class="mut" style="white-space:normal;min-width:220px">${esc(p.read||'')}</td></tr>`;}).join('')}</tbody></table>`;}
+  catch(e){$('perps').innerHTML=err('Derivatives data unavailable: '+e.message);}}
+
+async function loadOC(){try{const d=await api(`/api/crypto/options?coin=${ocCoin}${ocExp?'&expiry='+ocExp:''}`);ocExp=d.expiry;
+  $('ocE').innerHTML=d.expiries.map(e=>`<option value="${e.date}" ${e.date===d.expiry?'selected':''}>${e.date} · ${big(e.oi_usd)} OI</option>`).join('');
+  // 6h OI change converted from USD to coins, so it sits on the same scale as the OI bar
+  const dC=o=>{o=o||{};const v=o.oi_chg6h_usd||0,per=o.oi&&o.oi_usd?o.oi_usd/o.oi:d.spot;return per?v/per:0;};
+  const mx=Math.max(1e-9,...d.strikes.flatMap(s=>[(s.ce||{}).oi||0,(s.pe||{}).oi||0,((s.ce||{}).oi||0)-dC(s.ce),((s.pe||{}).oi||0)-dC(s.pe)]));
+  const bar=(o,k)=>{const oi=o.oi||0,ch=dC(o),cur=oi/mx*100,a=k==='ce'?'right':'left';
+    let h=`<div class="bw" title="OI ${oi.toFixed(2)} ${esc(d.coin)} · 6h change ${ch>0?'+':''}${ch.toFixed(2)} ${esc(d.coin)} (${sUsd(o.oi_chg6h_usd||0)}) · 6h ago ${(oi-ch).toFixed(2)}"><i class="b ${k}" style="${a}:0;width:${cur.toFixed(1)}%"></i>`;
+    if(ch>0){const w=Math.min(cur,ch/mx*100);h+=`<i class="b add" style="${a}:${(cur-w).toFixed(1)}%;width:${w.toFixed(1)}%"></i>`;}
+    else if(ch<0)h+=`<i class="b cut" style="${a}:${cur.toFixed(1)}%;width:${(-ch/mx*100).toFixed(1)}%"></i>`;
+    const pc=oi-ch>0?ch/(oi-ch)*100:null,al=k==='ce'?'flex-end':'flex-start';
+    const cap=Math.abs(ch)>1e-9?`<div class="cap ${ch>0?'add':'cut'}" style="justify-content:${al}">${ch>0?'▲ +':'▼ −'}${Math.abs(ch).toFixed(2)} ${esc(d.coin)} · ${sUsd(o.oi_chg6h_usd||0)}${pc!=null&&isFinite(pc)?` (${ch>0?'+':'−'}${Math.abs(pc).toFixed(0)}%)`:''}</div>`:`<div class="cap" style="justify-content:${al};color:var(--t2)">no change</div>`;
+    return `<div class="bc">${h}${cap}</div></div>`;};
+  const side=(o,k)=>{o=o||{};return k==='ce'
+    ?`<div class="ce"><span class="x">${o.mark!=null?'$'+px(o.mark):''}</span>${bar(o,'ce')}<span class="v">${(o.oi||0).toFixed(2)}</span></div>`
+    :`<div class="pe"><span class="v">${(o.oi||0).toFixed(2)}</span>${bar(o,'pe')}<span class="x">${o.mark!=null?'$'+px(o.mark):''}</span></div>`;};
+  $('oc').innerHTML=`<div class="oc-mp"><div class="item"><div class="lbl">Spot</div><div class="val">$${px(d.spot)}</div></div><div class="item"><div class="lbl">Max pain</div><div class="val" style="color:var(--cy)">${px(d.max_pain)}</div></div>
+    <div class="item"><div class="lbl">PCR (OI)</div><div class="val ${d.pcr>1.2?'neg':d.pcr<0.7?'pos':'amb'}">${d.pcr?d.pcr.toFixed(2):'—'}</div></div><div class="item"><div class="lbl">ATM IV</div><div class="val">${d.atm_iv?d.atm_iv.toFixed(0)+'%':'—'}</div></div>
+    <div class="item"><div class="lbl">Expected move</div><div class="val">${d.expected_move?'±'+px(d.expected_move):'—'}</div></div><div class="item"><div class="lbl">Expiry OI</div><div class="val">${big(d.expiry_oi_usd)}</div></div></div>
+    <div class="oc"><div class="hd" style="color:var(--g)">Calls · OI (${esc(d.coin)})</div><div class="hd">Strike</div><div class="hd" style="color:var(--r)">Puts · OI (${esc(d.coin)})</div>
+    ${d.strikes.map(s=>side(s.ce,'ce')+`<div class="k ${s.strike===d.atm?'atm':''}">${px(s.strike)}${s.strike===d.max_pain?' ★':''}</div>`+side(s.pe,'pe')).join('')}</div>
+    <div class="note"><span class="sw2 base"></span> OI held from 6h ago · <span class="sw2 add"></span> <span style="color:#00e676">▲ OI added</span> in the last 6h · <span class="sw2 cut"></span> <span style="color:#ff9100">▼ OI cut</span> (contracts closed in 6h) · number inside each bar = 6h change in coins and USD (% vs 6h ago). ATM ±3 strikes for ${esc(d.expiry)} (${d.days<1?Math.round(d.days*24)+' h':d.days.toFixed(1)+' days'} left). Bars = open interest in ${esc(d.coin)}; small figure = mark premium. PCR and max pain use the whole expiry. ★ = max pain. Source: ${esc(d.source)}.</div>`;}
+  catch(e){$('oc').innerHTML=err('Options data unavailable: '+e.message);}
+  loadOIT();loadLab();}
+
+
+// ===== Confluence · liquidity sweeps · time decay (backend /api/crypto/lab) =====
+let labView='cf',LAB=null;const TFS=['M','W','D','1H','15m'],TFN={M:'Monthly',W:'Weekly',D:'Daily','1H':'Hourly','15m':'15 min'};
+const tUtc=t=>t?new Date(t*1000).toISOString().slice(5,16).replace('T',' ')+' UTC':'';
+const n0=v=>v==null||isNaN(v)?'—':Number(v).toLocaleString('en-US',{maximumFractionDigits:v>=100?0:2});
+function swCell(x,tf){
+  if(!x)return '<span class="sw na">—</span>';
+  if(x.state==='new')return `<span class="sw na" title="${esc(x.text||'')}">n/a</span>`;
+  const lv=`BSL ${n0(x.bsl)} · SSL ${n0(x.ssl)}`;
+  if(tf==='1H'||tf==='15m'){const L=x.latest;
+    if(!L)return `<span class="sw no" title="No sweep in the ${x.session} UTC day. Open liquidity: ${lv}">·</span>`;
+    return `<span class="sw ${L.side}" title="${L.side==='bsl'?'Buy-side':'Sell-side'} liquidity at ${n0(L.level)} swept ${tUtc(L.at)} (wick ${n0(L.extreme)}). Today: ${x.count_bsl} BSL / ${x.count_ssl} SSL. Open: ${lv}">${L.side==='bsl'?'▼ BSL':'▲ SSL'}${(x.count_bsl+x.count_ssl)>1?' ×'+(x.count_bsl+x.count_ssl):''}</span>`;}
+  const P={M:'month',W:'week',D:'day'}[tf],tip=`Previous ${P}: high ${n0(x.bsl)} · low ${n0(x.ssl)}. This ${P}: ${n0(x.lo)} – ${n0(x.hi)}, last ${n0(x.close)}.`;
+  return x.state==='bsl_swept'?`<span class="sw bsl" title="${tip}">▼ BSL</span>`:x.state==='ssl_swept'?`<span class="sw ssl" title="${tip}">▲ SSL</span>`
+    :x.state==='bsl_taken'?`<span class="sw up" title="${tip}">⇑ broke</span>`:x.state==='ssl_taken'?`<span class="sw dn" title="${tip}">⇓ broke</span>`:`<span class="sw no" title="${tip}">inside</span>`;
+}
+async function loadLab(){try{LAB=await api(`/api/crypto/lab?coin=${ocCoin}${ocExp?'&expiry='+ocExp:''}`);
+  $('labH').textContent=`${LAB.coin} · exp ${LAB.expiry} · ${LAB.dte<1?Math.round(LAB.dte*24)+'h':LAB.dte.toFixed(1)+'d'} left`;renderLab();}
+  catch(e){$('lab').innerHTML=err('Lab unavailable: '+e.message);}}
+function renderLab(){if(!LAB)return;const d=LAB,by={};d.rows.forEach(r=>{(by[r.strike]=by[r.strike]||{})[r.side]=r;});
+  const ks=Object.keys(by).map(Number).sort((a,b)=>a-b);$('lab').innerHTML=labView==='cf'?labConf(d):labView==='sw'?labSweeps(d,by,ks):labDecay(d,by,ks);}
+function zTxt(z){return `<b>${z.lo===z.hi?n0(z.mid):n0(z.lo)+'–'+n0(z.hi)}</b> <span class="mut">${z.labels.map(esc).join(' · ')}</span>`;}
+function labConf(d){const c=d.confluence,sp=d.spot,pc=x=>(x/sp*100).toFixed(2)+'%',st=z=>'★'.repeat(z.stars);
+  const cl=c.bias==='BULLISH'?'pos':c.bias==='BEARISH'?'neg':'amb';
+  return `<div class="cf-top"><div class="cf-bias ${cl}">${c.bias==='RANGE'?'RANGE / NO EDGE':c.bias}</div><div class="note" style="margin:0">Confidence <b>${c.confidence}%</b> · ${c.agree} of ${c.signals.length} signals agree · ${d.coin} $${n0(sp)} · 24/7, day = 00:00 UTC (05:30 IST)</div></div>
+  <div class="cf-grid"><div><div class="cf-h">What each signal says</div><table class="ol-t">${c.signals.map(x=>`<tr><td style="text-align:left">${x.name}</td><td class="${x.v>0.15?'pos':x.v<-0.15?'neg':'amb'}">${x.v>0.15?'▲':x.v<-0.15?'▼':'●'}</td><td style="text-align:left;white-space:normal">${esc(x.txt)}</td></tr>`).join('')}</table></div>
+  <div><div class="cf-h">Key zones (levels within ${n0(c.tol)} merged)</div>
+    ${c.res.slice().reverse().map(z=>`<div class="cf-z r"><span class="st">${st(z)}</span> R ${zTxt(z)} <span class="ds">+${n0(z.mid-sp)} (${pc(z.mid-sp)})</span></div>`).join('')}
+    <div class="cf-z px">● ${d.coin} $${n0(sp)}${c.at.length?' — on '+c.at.map(zTxt).join('; '):''}</div>
+    ${c.sup.map(z=>`<div class="cf-z s"><span class="st">${st(z)}</span> S ${zTxt(z)} <span class="ds">−${n0(sp-z.mid)} (${pc(sp-z.mid)})</span></div>`).join('')}</div></div>
+  <div class="cf-h">Sweeps that lined up with OI / CPR</div><div class="oit-read">${c.events.length?c.events.map(e=>`• <span class="${e.dir>0?'pos':'neg'}">${e.dir>0?'▲ Sell-side':'▼ Buy-side'} liquidity swept</span> on <b>${e.tf}</b> at ${n0(e.px)}${e.at?' ('+tUtc(e.at)+')':''}, inside the ${zTxt(e.zone)} zone → ${e.dir>0?'bullish':'bearish'} reversal confluence`).join('<br>'):'None yet: the latest sweeps did not happen at an OI or CPR level, so treat them as noise.'}</div>
+  <div class="cf-h">Time decay</div><div class="oit-read">${c.decay}</div>
+  <div class="cf-h">How to play it</div><div class="oit-read">${c.plan.map(p=>'• '+p).join('<br>')||'• No clear setup: stand aside until price reaches a zone.'}</div>
+  ${d.cpr?`<div class="note">CPR from ${new Date(d.cpr.from.t*1000).toISOString().slice(0,10)} (UTC): TC ${n0(d.cpr.tc)} · P ${n0(d.cpr.pivot)} · BC ${n0(d.cpr.bc)} · width ${d.cpr.pct.toFixed(3)}%${d.cpr.rank!=null?' (narrower than '+(100-d.cpr.rank).toFixed(0)+'% of the last 20 days)':''}${d.cpr.open_side?' · opened '+d.cpr.open_side+' CPR':''}${d.cpr.setup?' · '+d.cpr.setup.title:''}. OI levels use Delta's 6h OI change (fresh writing near spot first). Underlying candles: Binance ${esc(d.pair)}.</div>`:''}
+  <div class="note">Every OI level (support, resistance, walls, max pain), CPR level (TC, pivot, BC, R1/S1, R2/S2) and liquidity level (previous month/week/day high-low, open 1H/15m swing liquidity) is merged into zones; ★★★ = three source families agree. A sweep counts as confluence only inside a zone backed by OI or CPR. Rule-based read for paper trading, not investment advice.</div>`;}
+function labSweeps(d,by,ks){
+  const lean=TFS.map(tf=>{let b=0,s=0;const add=(x,dir)=>{if(!x)return;const st=tf==='1H'||tf==='15m'?(x.latest?x.latest.side+'_swept':''):x.state;if(st==='ssl_swept')dir>0?b++:s++;if(st==='bsl_swept')dir>0?s++:b++;};
+    add(d.index_sweeps[tf],1);d.rows.forEach(r=>add(r.sweeps[tf],r.side==='CE'?1:-1));const v=b>s?['Bullish','pos']:s>b?['Bearish','neg']:['Mixed','amb'];
+    return `<div><div class="lbl">${TFN[tf].toUpperCase()}</div><b class="${v[1]}">${v[0]}</b> <span class="mut">${b}↑ ${s}↓</span></div>`;}).join('');
+  const rv=TFS.slice().reverse();
+  return `<div class="lean">${lean}</div><div style="overflow-x:auto"><table class="ol-t"><thead><tr><th colspan="5" class="ce">Calls · liquidity sweeps</th><th></th><th colspan="5" class="pe">Puts · liquidity sweeps</th></tr><tr>${TFS.map(t=>`<th>${t}</th>`).join('')}<th>Strike</th>${rv.map(t=>`<th>${t}</th>`).join('')}</tr></thead><tbody>
+  <tr class="ix">${TFS.map(t=>`<td>${swCell(d.index_sweeps[t],t)}</td>`).join('')}<td class="k">${d.coin} $${n0(d.spot)}</td>${rv.map(t=>`<td>${swCell(d.index_sweeps[t],t)}</td>`).join('')}</tr>
+  ${ks.map(k=>{const c=by[k].CE,p=by[k].PE,a=k===d.atm;return `<tr class="${a?'atm':''}">${TFS.map(t=>`<td>${c?swCell(c.sweeps[t],t):''}</td>`).join('')}<td class="k">${n0(k)}${a?' ATM':''}</td>${rv.map(t=>`<td>${p?swCell(p.sweeps[t],t):''}</td>`).join('')}</tr>`;}).join('')}</tbody></table></div>
+  <div class="note"><b>▲ SSL</b> sell-side liquidity swept (wick below a low, close back above: bullish for that contract) · <b>▼ BSL</b> buy-side liquidity swept (bearish for that contract) · <b>⇑/⇓ broke</b> closed beyond the level. M/W/D use the previous UTC month/week/day high-low; 1H/15m use untouched swing highs/lows (SmartEntry's rule) and show sweeps in the current UTC day. A call's SSL sweep or a put's BSL sweep leans bullish for ${d.coin}. Option candles are Delta's mark price; short-dated options show n/a on longer timeframes. Hover a cell for levels and times.</div>`;}
+function labDecay(d,by,ks){const rows=[];ks.forEach(k=>['CE','PE'].forEach(s=>{if(by[k][s])rows.push(by[k][s]);}));
+  const st={fast:'Decaying fast',decaying:'Decaying',done:'Decay done',beating:'Beating decay',holding:'Holding'},cnt={};rows.forEach(r=>cnt[r.decay.status]=(cnt[r.decay.status]||0)+1);
+  return `<div class="lean">${Object.keys(st).filter(k=>cnt[k]).map(k=>`<div><div class="lbl">${st[k].toUpperCase()}</div><span class="dc ${k}">${cnt[k]} of ${rows.length}</span></div>`).join('')}<div><div class="lbl">TIME TO EXPIRY</div><b>${d.dte<1?Math.round(d.dte*24)+' h':d.dte.toFixed(1)+' d'}</b></div></div>
+  <div style="overflow-x:auto"><table class="ol-t"><thead><tr><th>Option</th><th>Mark $</th><th>Intrinsic</th><th>Time value</th><th>θ / day</th><th>TV lasts</th><th>TV lost today</th><th>Day O · H · L</th><th>15m trend</th><th>Status</th></tr></thead><tbody>
+  ${rows.map(r=>{const z=r.decay,a=r.strike===d.atm;return `<tr class="${a?'atm':''}"><td class="k" style="color:${r.side==='CE'?'var(--g)':'var(--r)'}">${n0(r.strike)} ${r.side==='CE'?'C':'P'}${a?' ATM':''}</td>
+    <td>${px(r.ltp)} <span class="${cls(r.chg_pct)}" style="font-size:.55rem">${r.chg_pct?(r.chg_pct>0?'+':'')+r.chg_pct.toFixed(0)+'%':''}</span></td><td>${n0(z.intrinsic)}</td>
+    <td>${n0(z.tv)} <span class="ol-bar"><i style="width:${Math.min(100,z.tv_pct||0).toFixed(0)}%"></i></span> <span class="mut">${(z.tv_pct||0).toFixed(0)}%</span></td>
+    <td class="neg">−${n0(z.theta)} <span class="mut">(${(z.theta_pct||0).toFixed(1)}%)</span></td><td>${z.tv_days!=null?(z.tv_days<1?'<1 day':z.tv_days.toFixed(1)+' d'):'—'}</td>
+    <td>${z.tv_lost!=null?`<span class="${z.tv_lost>0?'neg':'pos'}">${z.tv_lost>0?'−':'+'}${n0(Math.abs(z.tv_lost))}</span>${z.tv_lost_pct!=null?` <span class="mut">(${Math.abs(z.tv_lost_pct).toFixed(0)}%)</span>`:''}`:'—'}</td>
+    <td>${z.day_open!=null?n0(z.day_open)+' · '+n0(z.day_hi)+' · '+n0(z.day_lo):'—'}</td>
+    <td class="${z.trend==='falling'?'neg':z.trend==='rising'?'pos':''}">${z.trend==='falling'?'↘ falling':z.trend==='rising'?'↗ rising':z.trend==='sideways'?'→ sideways':'—'}</td>
+    <td><span class="dc ${z.status}" title="${esc(z.status_text)}">${st[z.status]}</span></td></tr>`;}).join('')}</tbody></table></div>
+  <div class="note">Time value = mark − intrinsic (from ${d.coin} spot). θ/day = Delta's theta (premium lost per day if nothing else changes). TV lost today = time value at 00:00 UTC minus now, so ${d.coin}'s own move is taken out. Decay done = premium near zero, or ITM trading at intrinsic. Option buyers want "beating decay"; sellers want "decaying".</div>`;}
+document.querySelectorAll('#labV .tab').forEach(t=>t.onclick=()=>{labView=t.dataset.t;document.querySelectorAll('#labV .tab').forEach(x=>x.classList.toggle('on',x===t));renderLab();});
+
+// OI change tracker: Delta's 6h OI change (USD) per option, typed by the option's 24h mark move
+function oiBuild(side,dOI,dPx){if(!dOI)return null;const up=dPx>0;
+  if(dOI>0&&up)return {t:'Long build-up',dir:side==='ce'?1:-1};
+  if(dOI>0)return {t:side==='ce'?'Call writing':'Put writing',dir:side==='ce'?-1:1};
+  if(up)return {t:'Short covering',dir:side==='ce'?1:-1};
+  return {t:'Long unwinding',dir:side==='ce'?-1:1};}
+const sUsd=v=>v?(v>0?'+':'−')+big(Math.abs(v)):'0';
+async function loadOIT(){try{const d=await api(`/api/crypto/options?coin=${ocCoin}${ocExp?'&expiry='+ocExp:''}&width=10`);
+  $('oitH').textContent=`${d.coin} · ${d.expiry} · ATM ±10 · 6h OI change`;
+  const all=[];let bull=0,bear=0,ceA=0,ceC=0,peA=0,peC=0;
+  d.strikes.forEach(s=>['ce','pe'].forEach(sd=>{const o=s[sd];if(!o)return;const v=o.oi_chg6h_usd||0;
+    if(sd==='ce'){v>0?ceA+=v:ceC+=v;}else{v>0?peA+=v:peC+=v;}
+    const b=oiBuild(sd,v,o.mark_chg24h);if(!b)return;all.push({k:s.strike,sd,v,b,pc:o.mark_chg24h});if(b.dir>0)bull+=Math.abs(v);else bear+=Math.abs(v);}));
+  const score=Math.round((bull-bear)/((bull+bear)||1)*100),view=score>25?['Bullish','pos']:score<-25?['Bearish','neg']:['Neutral / range','amb'];
+  const ceN=ceA+ceC,peN=peA+peC;
+  const adds=all.filter(a=>a.v>0).sort((a,b)=>b.v-a.v).slice(0,4),cuts=all.filter(a=>a.v<0).sort((a,b)=>a.v-b.v).slice(0,4);
+  const ln=a=>`<div>${px(a.k)} ${a.sd.toUpperCase()} <b class="${cls(a.v)}">${sUsd(a.v)}</b> · <span class="oit-tag ${a.b.dir>0?'bull':'bear'}">${a.b.t}</span></div>`;
+  const reads=[];
+  if(!all.length)reads.push('No OI changed at these strikes in the last 6 hours: the book is quiet.');
+  else if(ceN<0&&peN>0)reads.push('Calls are being cut while puts are added: bullish lean.');
+  else if(ceN>0&&peN<0)reads.push('Calls are being added while puts are cut: bearish lean.');
+  else if(ceN>0&&peN>0)reads.push(peN>ceN?`Puts added faster than calls (${sUsd(peN)} vs ${sUsd(ceN)}).`:`Calls added faster than puts (${sUsd(ceN)} vs ${sUsd(peN)}).`);
+  else if(ceN<0&&peN<0)reads.push('Both sides are shedding OI: positions closing.');
+  const mx=Math.max(1,...d.strikes.flatMap(s=>[Math.abs((s.ce||{}).oi_chg6h_usd||0),Math.abs((s.pe||{}).oi_chg6h_usd||0)]));
+  const bar=v=>`<span class="oit-bar" style="width:${Math.round(Math.abs(v||0)/mx*60)}px;background:${v>0?'var(--g)':'var(--r)'}"></span>`;
+  const tag=(sd,o)=>{const b=o&&oiBuild(sd,o.oi_chg6h_usd||0,o.mark_chg24h);return b?`<span class="oit-tag ${b.dir>0?'bull':'bear'}">${b.t}</span>`:'';};
+  const cell=(sd,o)=>{o=o||{};const v=o.oi_chg6h_usd||0;return [`<td>${tag(sd,o)}</td>`,`<td class="${cls(v)}">${sUsd(v)}</td>`,`<td style="text-align:${sd==='ce'?'right':'left'}">${bar(v)}</td>`,`<td>${(o.oi||0).toFixed(2)}</td>`];};
+  $('oit').innerHTML=`<div class="oc-mp">
+    <div class="item"><div class="lbl">CE OI added</div><div class="val pos">${sUsd(ceA)}</div></div><div class="item"><div class="lbl">CE OI cut</div><div class="val neg">${sUsd(ceC)}</div></div>
+    <div class="item"><div class="lbl">PE OI added</div><div class="val pos">${sUsd(peA)}</div></div><div class="item"><div class="lbl">PE OI cut</div><div class="val neg">${sUsd(peC)}</div></div>
+    <div class="item"><div class="lbl">OI flow</div><div class="val ${view[1]}">${view[0]} (${score>0?'+':''}${score})</div></div></div>
+    <div class="oit-read">${reads.map(r=>'• '+r).join('<br>')}</div>
+    <div class="oit-top"><div><div class="h">Biggest additions</div>${adds.map(ln).join('')||'—'}</div><div><div class="h">Biggest unwinding</div>${cuts.map(ln).join('')||'—'}</div></div>
+    <div style="overflow-x:auto"><table class="oit-t"><thead><tr><th>CE build-up</th><th>CE ΔOI 6h</th><th></th><th>CE OI (${esc(d.coin)})</th><th>Strike</th><th>PE OI (${esc(d.coin)})</th><th></th><th>PE ΔOI 6h</th><th>PE build-up</th></tr></thead><tbody>
+    ${d.strikes.map(s=>{const c=cell('ce',s.ce),p=cell('pe',s.pe);return `<tr class="${s.strike===d.atm?'atm':''}">${c.join('')}<td class="k">${px(s.strike)}${s.strike===d.atm?' ATM':''}${s.strike===d.max_pain?' ★':''}</td>${p.reverse().join('')}</tr>`;}).join('')}
+    </tbody></table></div>
+    <div class="note">ΔOI = Delta Exchange's 6-hour change in open interest, in USD. Build-up type uses the option's 24h mark-price move: OI↑ price↑ long build-up · OI↑ price↓ writing · OI↓ price↑ short covering · OI↓ price↓ long unwinding. Green tags lean bullish for ${esc(d.coin)}, red bearish. Follows the coin and expiry picked in the heatmap above.</div>`;
+}catch(e){$('oit').innerHTML=err('OI change data unavailable: '+e.message);}}
+document.querySelectorAll('#ocT .tab').forEach(t=>t.onclick=()=>{ocCoin=t.dataset.t;ocExp=null;document.querySelectorAll('#ocT .tab').forEach(x=>x.classList.toggle('on',x===t));loadOC();});
+$('ocE').onchange=()=>{ocExp=$('ocE').value;loadOC();};
+
+async function loadTradfi(){try{const d=await api('/api/crypto/tradfi');
+  $('tradfi').innerHTML=d.items.map(t=>`<div class="tile ${t.chg>=0?'up':'dn'}"><div class="n">${esc(t.name)} · ${esc(t.symbol)}</div><div class="p">$${px(t.price)}</div><div class="c ${cls(t.chg)}">${pc(t.chg)}</div><div class="h">24h volume ${big(t.vol_usd)}</div></div>`).join('')||'<span class="mut">No TradFi perpetuals returned.</span>';}
+  catch(e){$('tradfi').innerHTML=err('TradFi perpetuals unavailable: '+e.message);}}
+
+async function loadAll(){const b=$('rb');b.disabled=true;
+  await Promise.allSettled([loadOverview(),loadFng(),loadPerps(),loadOC(),loadTradfi()]);
+  await loadAssessment();
+  $('ts').textContent='updated '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'})+' IST';b.disabled=false;}
+setInterval(()=>{$('clock').textContent='24/7 · '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'})+' IST';},1000);
+loadAll();setInterval(()=>{if(!document.hidden)loadAll();},60000);
+</script>
+</body>
+</html>
