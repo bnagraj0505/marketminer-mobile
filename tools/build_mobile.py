@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = Path(sys.argv[1] if len(sys.argv) > 1 else "../MarketMiner-FYERS/static")
 ENGINE = '<script src="js/engine.js?v=__V__"></script>'
-VERSION = "2026.10.31-1"
+VERSION = "2026.11.01-1"
 
 # Panels the phone can't feed (they need NSE's website or Moneycontrol through the PC's proxy)
 DROP_CARDS = ["🌐 Global Indices", "🔔 Pre-Open", "⚡ F&amp;O Pre-Open", "⚡ F&O Pre-Open", "💰 Large Deals", "📈 OI Spurts Analysis",
@@ -52,7 +52,7 @@ def common(html: str) -> str:
         raise SystemExit("no <meta charset> to put the engine after")
     html = html.replace('href="/manifest.webmanifest"', 'href="manifest.webmanifest"').replace('href="/icons/', 'href="icons/')
     html = html.replace('href="/fyers.html"', 'href="fyers.html"').replace('href="/crypto.html"', 'href="crypto.html"').replace('href="/"', 'href="index.html"')
-    html = re.sub(r'<a class="(?:rbtn|btn|nav)" href="/desk.html"[^>]*>.*?</a>', "", html)
+    html = html.replace('href="/desk.html"', 'href="desk.html"')
     html = html.replace("register('/sw.js')", "register('sw.js')")
     return html
 
@@ -116,12 +116,21 @@ $('pasteCode').onclick=async()=>{let x=null;try{x=await navigator.clipboard.read
     return html
 
 
+def build_desk(src: str) -> str:
+    html = common(src)
+    html = html.replace(ENGINE.replace("__V__", VERSION), ENGINE.replace("__V__", VERSION) + '\n<script src="js/desk.js?v=' + VERSION + '"></script>', 1)
+    # Shark Exchange does not answer phone browsers: drop its market button
+    html = re.sub(r'\s*<button data-m="SHARK">.*?</button>', "", html, count=1, flags=re.S)
+    return html
+
+
 def main() -> None:
     out = ROOT
     (out / "icons").mkdir(exist_ok=True)
     (out / "index.html").write_text(build_index((SRC / "index.html").read_text(encoding="utf-8")), encoding="utf-8")
     (out / "crypto.html").write_text(build_crypto((SRC / "crypto.html").read_text(encoding="utf-8")), encoding="utf-8")
     (out / "fyers.html").write_text(build_fyers((SRC / "fyers.html").read_text(encoding="utf-8")), encoding="utf-8")
+    (out / "desk.html").write_text(build_desk((SRC / "desk.html").read_text(encoding="utf-8")), encoding="utf-8")
     for icon in ("icon-192.png", "icon-512.png", "apple-touch-icon.png"):
         if (SRC / "icons" / icon).exists():
             shutil.copy(SRC / "icons" / icon, out / "icons" / icon)

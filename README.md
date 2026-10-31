@@ -10,9 +10,10 @@ Your FYERS app ID, secret key and login stay in the browser on each device. The 
 |---|---|---|
 | **Dashboard** (`index.html`) | NIFTY/BANK/VIX and sector indices, MCX commodities, options-chain heatmap with OI change in each bar, option greeks and gamma-blast picks, OI support/resistance, OI change tracker, CPR and intraday range, confluence / liquidity sweeps / time decay, India and global news | FYERS, news via rss2json |
 | **Crypto** (`crypto.html`) | Market view and strategy, Fear & Greed, perps and funding, TradFi perps, Delta options heatmap, OI change tracker, confluence / sweeps / time decay | Binance, Delta Exchange India, alternative.me |
+| **Day Desk** (`desk.html`) | The 7-step paper-trading desk: scan, entry timer, exit plan, Time Machine, sizing, risk check, paper orders. Covers NSE, index F&O, MCX, Binance spot and futures, and Delta options. Paper trades and limits are kept on each device | FYERS, Binance, Delta |
 | **Connections** (`fyers.html`) | FYERS app details, login, daily PIN renewal, quotes and option-chain test | FYERS |
 
-These stay on the PC version, because they need NSE's website, Moneycontrol or the PC server: pre-open, FII/DII, large deals, OI spurts, volume shockers, events, seasonal and broker picks, the screener and holdings tabs, the Day Desk, and AI analysis.
+These stay on the PC version, because they need NSE's website, Moneycontrol or the PC server: pre-open, FII/DII, large deals, OI spurts, volume shockers, events, seasonal and broker picks, the screener and holdings tabs, Shark Exchange, and AI analysis.
 
 ## One-time setup
 
@@ -45,6 +46,6 @@ The pages are generated from the desktop MarketMiner pages:
 python tools/build_mobile.py C:\MarketMiner-FYERS\static
 ```
 
-`js/engine.js` stands in for the desktop Python server. It ports `backend/brokers/fyers/client.py`, `backend/markets/opt_lab.py`, `crypto_dash.py` and `crypto_lab.py` to JavaScript. If those Python files change, update `engine.js` to match.
+`js/engine.js` and `js/desk.js` stand in for the desktop Python server. It ports `backend/brokers/fyers/client.py`, `backend/markets/opt_lab.py`, `crypto_dash.py`, `crypto_lab.py`, `desk/engine.py`, `desk/routes.py` and `fyers_master.py` to JavaScript. The Day Desk maths gives the same entries, exits, sizes, risk checks and history replays as the PC. Time Machine odds differ by a point or so, because the browser uses a different random-number generator. If those Python files change, update `engine.js` to match.
 
 Educational tool. Not investment advice. MarketMiner Mobile never places orders.

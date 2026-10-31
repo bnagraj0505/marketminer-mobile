@@ -641,7 +641,8 @@
     if (p === "/api/crypto/lab") return cryptoLab(q.get("coin") || "BTC", q.get("expiry"));
     if (p === "/api/crypto/assessment") return assessment();
     // crypto feeds on the Connections page
-    if (p === "/api/markets/status") return Object.fromEntries(Object.entries(FEEDS).map(([m, u]) => [m, { enabled: m !== "SHARK", url: u, last_error: m === "SHARK" ? "PC only" : null }]));
+    if (p === "/api/markets/status") { const st = FY.status();
+      return { FYERS: { connected: st.connected, message: st.message }, ...Object.fromEntries(Object.entries(FEEDS).map(([m, u]) => [m, { enabled: m !== "SHARK", url: u, last_error: m === "SHARK" ? "PC only" : null }])) }; }
     let m = p.match(/^\/api\/markets\/(\w+)\/test$/); if (m) return feedTest(m[1]);
     m = p.match(/^\/api\/markets\/(\w+)\/enable$/); if (m) return { ok: true };
     // NSE / Moneycontrol through the PC's proxy: rebuilt from FYERS where possible
@@ -654,7 +655,7 @@
     }
     if (p === "/api/health") return { ok: true, mode: "mobile" };
     if (p === "/api/nse/status") return { engine: "FYERS (phone)", paused_for_s: 0 };
-    if (p.startsWith("/api/desk/")) throw new HE(503, "The Day Desk runs on the PC version only for now.");
+    if (p.startsWith("/api/desk/")) { if (!window.MM.desk) throw new HE(503, "Open the Day Desk page to use it."); return window.MM.desk(p, q, method, body()); }
     if (p.startsWith("/api/ai/")) throw new HE(503, "AI analysis needs the PC server (it holds the API key).");
     throw new HE(404, "Not available in the phone version: " + p);
   }
@@ -667,5 +668,5 @@
     catch (e) { const st = e.status || 502; return json({ detail: e.message || String(e) }, st); }
   };
 
-  window.MM = { FY, LS, version: "2026.10.31-1" };
+  window.MM = { FY, LS, HE, getJ, cached, version: "2026.11.01-1" };
 })();
