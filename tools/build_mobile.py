@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = Path(sys.argv[1] if len(sys.argv) > 1 else "../MarketMiner-FYERS/static")
 ENGINE = '<script src="js/engine.js?v=__V__"></script>'
-VERSION = "2026.11.01-4"
+VERSION = "2026.11.01-5"
 
 # Panels the phone can't feed (they need NSE's website or Moneycontrol through the PC's proxy)
 DROP_CARDS = ["🌐 Global Indices", "🔔 Pre-Open", "⚡ F&amp;O Pre-Open", "⚡ F&O Pre-Open", "💰 Large Deals", "📈 OI Spurts Analysis",

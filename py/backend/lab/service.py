@@ -59,6 +59,10 @@ async def analyze(symbol: str, tf: str = "15m", bars: int = 600) -> dict:
     return await A.analyze(_sym(symbol), _tf(tf), max(200, min(2000, int(bars))))
 
 
+async def live(symbol: str, tf: str = "15m") -> dict:
+    return await D.live(_sym(symbol), _tf(tf))
+
+
 async def mtf(symbol: str) -> dict:
     return await A.mtf_matrix(_sym(symbol))
 

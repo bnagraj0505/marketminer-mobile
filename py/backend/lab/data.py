@@ -72,7 +72,8 @@ async def _cached(key, ttl, fn):
 
 
 def _ttl(tf: str) -> float:
-    return min(600.0, max(20.0, TF_SECONDS.get(tf, 300) / 3))
+    """How long fetched candles are reused: short, so a candle that has just closed is picked up within seconds."""
+    return min(120.0, max(10.0, TF_SECONDS.get(tf, 300) / 15))
 
 
 # ---------------------------------------------------------------- FYERS
@@ -187,14 +188,10 @@ async def _yahoo(sym: str, tf: str, bars: int) -> list[list]:
 
 
 # ---------------------------------------------------------------- public
-async def candles(symbol: str, tf: str, bars: int = 400) -> tuple[list[Candle], dict]:
-    """Closed, validated candles for `symbol` on `tf`, newest last, plus the quality report."""
-    symbol = symbol.strip().upper() if not symbol.upper().startswith("YF:") else "YF:" + symbol.split(":", 1)[1].strip()
-    if tf not in TF_SECONDS:
-        raise HTTPException(400, f"timeframe must be one of {', '.join(TF_SECONDS)}")
+async def _load(symbol: str, tf: str, bars: int) -> tuple[list[list], str]:
+    """Raw rows (closed and forming) from the right source for `symbol`, and the source description."""
     m = market_of(symbol)
     src, note = m, None
-    step = TF_SECONDS[tf]
 
     async def load():
         nonlocal src, note
@@ -231,9 +228,20 @@ async def candles(symbol: str, tf: str, bars: int = 400) -> tuple[list[Candle], 
             return await _yahoo(symbol.split(":", 1)[1], tf, bars)
         raise HTTPException(400, f"unknown market for {symbol}")
 
+    rows = await load()
+    return rows, src
+
+
+async def candles(symbol: str, tf: str, bars: int = 400) -> tuple[list[Candle], dict]:
+    """Closed, validated candles for `symbol` on `tf`, newest last, plus the quality report."""
+    symbol = symbol.strip().upper() if not symbol.upper().startswith("YF:") else "YF:" + symbol.split(":", 1)[1].strip()
+    if tf not in TF_SECONDS:
+        raise HTTPException(400, f"timeframe must be one of {', '.join(TF_SECONDS)}")
+    m = market_of(symbol)
+    step = TF_SECONDS[tf]
+
     async def load_with_source():
-        rows = await load()
-        return rows, src
+        return await _load(symbol, tf, bars)
 
     try:
         rows, src = await _cached((symbol, tf, bars), _ttl(tf), load_with_source)
@@ -265,3 +273,32 @@ def _india_stale(last_t: int, step: int, now: float, m: str) -> bool:
     if t.weekday() >= 5 or not open_[0] + step // 60 <= mins <= open_[1]:
         return False
     return now - (last_t + step) > 3 * step
+
+
+async def live(symbol: str, tf: str) -> dict:
+    """The candle still forming plus the last price, for display only. Signals never use it (they wait for the close)."""
+    symbol = symbol.strip().upper() if not symbol.upper().startswith("YF:") else "YF:" + symbol.split(":", 1)[1].strip()
+    if tf not in TF_SECONDS:
+        raise HTTPException(400, f"timeframe must be one of {', '.join(TF_SECONDS)}")
+    step = TF_SECONDS[tf]
+    poll = 3.0 if market_of(symbol) not in ("NSE", "FNO", "MCX", "YF") else 8.0
+    try:
+        rows, src = await _cached(("live", symbol, tf), poll, lambda: _load(symbol, tf, 5))
+    except HTTPException as exc:
+        if exc.status_code in (401, 403):
+            raise
+        raise DataUnavailable(str(exc.detail))
+    except DataUnavailable:
+        raise
+    except Exception as exc:                          # noqa: BLE001
+        raise DataUnavailable(f"{type(exc).__name__}: {exc}")
+    bars = from_rows(rows)
+    if not bars:
+        raise DataUnavailable(f"No live {tf} data for {symbol}")
+    now = time.time()
+    last = bars[-1]
+    forming = last.time + step > now
+    return {"symbol": symbol, "tf": tf, "source": src, "server_time": int(now), "price": last.close,
+            "candle": {"time": last.time, "open": last.open, "high": last.high, "low": last.low, "close": last.close, "volume": last.volume},
+            "forming": forming, "closes_at": last.time + step, "last_closed": (bars[-2].time if forming and len(bars) > 1 else last.time),
+            "poll_s": poll}

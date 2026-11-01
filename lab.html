@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.01-4"></script>
-<script src="js/desk.js?v=2026.11.01-4"></script>
-<script src="js/lab.js?v=2026.11.01-4"></script>
+<script src="js/engine.js?v=2026.11.01-5"></script>
+<script src="js/desk.js?v=2026.11.01-5"></script>
+<script src="js/lab.js?v=2026.11.01-5"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>MarketMiner · Signal Lab</title>
@@ -53,6 +53,9 @@ a{color:inherit}.mono{font-family:var(--mono)}
 #chartBox[data-theme=dark] #sigWm .wm-up{color:var(--g)}#chartBox[data-theme=dark] #sigWm .wm-dn{color:var(--r)}
 #legend{position:absolute;top:10px;right:72px;z-index:3;pointer-events:none;display:flex;gap:9px;font:600 .62rem var(--mono);color:#64748b;background:rgba(255,255,255,.55);padding:3px 7px;border-radius:5px}
 #chartBox[data-theme=dark] #legend{background:rgba(13,17,23,.55);color:#8b9ab5}
+.live{font:700 .66rem var(--mono);padding:2px 7px;border-radius:4px;border:1px solid rgba(0,230,118,.4);color:var(--g);margin-right:6px;white-space:nowrap}
+.live.off{color:var(--t3);border-color:var(--bdr2)}.live.err{color:var(--a);border-color:rgba(255,171,0,.4)}
+.live b{color:var(--t1)}
 #legend i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
 @media(max-width:700px){#legend{display:none}#sigWm{font-size:.62rem;max-width:calc(100% - 70px)}}
 .layers{display:flex;gap:10px;flex-wrap:wrap;font:500 .68rem var(--mono);color:var(--t2);margin-top:6px}
@@ -126,7 +129,7 @@ td.r,th.r{text-align:right}
   <div id="una"></div>
   <div class="grid" id="top">
     <div class="cd">
-      <h3><span>Chart · <span id="chTitle">—</span></span><span><span id="regTag"></span> <button class="btn sm" id="thBtn" onclick="toggleTheme()">☾ Dark chart</button></span></h3>
+      <h3><span>Chart · <span id="chTitle">—</span></span><span><span id="liveTag" class="live off">LIVE —</span> <span id="regTag"></span> <button class="btn sm" id="thBtn" onclick="toggleTheme()">☾ Dark chart</button></span></h3>
       <div id="chartBox" data-theme="light"><div id="chart"></div><div id="sigWm"></div><div id="legend"></div><div id="rsiP"></div></div>
       <div class="layers" id="layers"></div>
     </div>
@@ -316,6 +319,38 @@ function rChart(d,keep){
     text:m.kind==="sweep"?"":m.kind,size:m.kind==="sweep"?0.6:0.8})):[]);
   sigWatermark(d);
   if(!keep)chart.timeScale().fitContent();
+  startLive(d);
+}
+/* ---------------- live feed: the forming candle (display only) + last price; signals still use closed candles */
+let LIVE={timer:null,key:null,req:null,reqAt:0};
+function startLive(d){
+  const key=d.symbol+"|"+d.tf;
+  if(LIVE.key===key&&LIVE.timer)return;
+  clearTimeout(LIVE.timer);LIVE.key=key;liveTick();
+}
+async function liveTick(){
+  clearTimeout(LIVE.timer);
+  const d=CUR;if(!d)return;
+  const key=d.symbol+"|"+d.tf;let wait=5000;
+  if(document.visibilityState==="hidden"){LIVE.timer=setTimeout(liveTick,wait);return}
+  try{
+    const L=await api(`/api/lab/live?symbol=${encodeURIComponent(d.symbol)}&tf=${d.tf}`);
+    if(LIVE.key!==key||!CUR)return;
+    wait=Math.max(3,L.poll_s||5)*1000;
+    const tz=(d.market==="NSE"||d.market==="FNO"||d.market==="MCX")?19800:0,t=TH(),c=L.candle;
+    const lastClosed=d.candles[d.candles.length-1].time;
+    if(L.forming&&c.time>lastClosed){
+      const up=c.close>=c.open,col=up?t.up:t.dn;
+      cs.update({time:c.time+tz,open:c.open,high:c.high,low:c.low,close:c.close,color:col+"99",wickColor:col+"99",borderColor:col});
+    }
+    const left=Math.max(0,L.closes_at-L.server_time),mm=Math.floor(left/60),ss=String(left%60).padStart(2,"0");
+    const tag=$("liveTag");tag.className="live";
+    tag.innerHTML=`● LIVE <b>${f(L.price)}</b> · ${new Date(L.server_time*1000).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"})}`+(L.forming?` · closes in ${mm}:${ss}`:" · market idle");
+    tag.title=`Source: ${L.source}. The forming candle is drawn faded and is display only: setups and scores use closed candles, and the analysis refreshes by itself when this candle closes.`;
+    // a new candle has closed since the last analysis: re-analyse once
+    if(L.last_closed>lastClosed&&(LIVE.req!==L.last_closed||Date.now()-LIVE.reqAt>20000)){LIVE.req=L.last_closed;LIVE.reqAt=Date.now();LIVE.key=null;run();return}
+  }catch(e){const tag=$("liveTag");tag.className="live err";tag.textContent="LIVE paused: "+String(e.message).slice(0,60);wait=15000}
+  if(LIVE.key===key)LIVE.timer=setTimeout(liveTick,wait);
 }
 function showSetup(i){SEL=i;rChart(CUR,true);window.scrollTo({top:0,behavior:"smooth"})}
 async function paperOpen(i){
