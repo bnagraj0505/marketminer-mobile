@@ -115,6 +115,7 @@ td.r,th.r{text-align:right}
     <a class="btn" href="desk.html">Day Desk</a>
     <a class="btn" href="crypto.html">₿ Crypto</a>
     <a class="btn" href="tv.html">📈 TradingView</a>
+    <a class="btn gold" href="#bot" onclick="goBot();return false">🤖 Auto bot</a>
     <a class="btn" href="fyers.html">Connections</a>
     <button class="btn" id="alBtn" onclick="tab('alerts')">🔔 Alerts <span id="alN"></span></button>
   </div>
@@ -174,6 +175,7 @@ function toast(m,ms=3500){const t=$("toast");t.innerHTML=m;t.style.display="bloc
 async function api(p,o){const r=await fetch(p,o);const j=await r.json().catch(()=>({detail:r.statusText}));if(!r.ok){const d=j.detail;throw new Error(Array.isArray(d)?d.map(x=>x.msg).join("; "):(d||r.statusText))}return j}
 const post=(p,b)=>api(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});
 
+function goBot(){tab("bot");setTimeout(()=>$("tabs").scrollIntoView({behavior:"smooth",block:"start"}),50)}
 function tab(k){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.k===k));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id==="p-"+k));
   try{localStorage.setItem("lab.tab",k)}catch(e){}
   if(k==="mtf")ldMTF();if(k==="bt")rBT();if(k==="paper")ldPaper();if(k==="journal")ldJournal();if(k==="alerts")ldAlerts();if(k==="settings")rSettings();if(k==="bot"&&window.MMBOT)MMBOT.render();if(k==="deriv"&&CUR)rDeriv(CUR.derivatives)}
@@ -185,7 +187,7 @@ async function init(){
   const groups={...META.watch};if(META.user_watch.length)groups["My watch-list"]=META.user_watch;
   $("grp").innerHTML=Object.keys(groups).map(g=>`<option>${esc(g)}</option>`).join("");META._groups=groups;
   let s=null,t=null,tb="intel";try{s=localStorage.getItem("lab.sym");t=localStorage.getItem("lab.tf");tb=localStorage.getItem("lab.tab")||"intel"}catch(e){}
-  fillWatch();$("sym").value=s||"NSE:NIFTY50-INDEX";setTF(t||"15m",true);tab(tb);
+  fillWatch();$("sym").value=s||"NSE:NIFTY50-INDEX";setTF(t||"15m",true);tab(location.hash==="#bot"?"bot":tb);if(location.hash==="#bot")setTimeout(goBot,600);
   $("minS").textContent=`signal ≥ ${META.protection.min_score}`;
   $("sym").addEventListener("keydown",e=>{if(e.key==="Enter")run()});
   try{$("liveMode").checked=localStorage.getItem("lab.live")!=="0"}catch(e){}
