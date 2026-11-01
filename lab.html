@@ -192,6 +192,7 @@ async function init(){
   $("tfs").innerHTML=TFS.map(t=>`<button data-t="${t}" onclick="setTF('${t}')">${t}</button>`).join("");
   META=await api("/api/lab/meta");
   const groups={...META.watch};if(META.user_watch.length)groups["My watch-list"]=META.user_watch;
+  loadAllCrypto();
   $("grp").innerHTML=Object.keys(groups).map(g=>`<option>${esc(g)}</option>`).join("");META._groups=groups;
   let s=null,t=null,tb="intel";try{s=localStorage.getItem("lab.sym");t=localStorage.getItem("lab.tf");tb=localStorage.getItem("lab.tab")||"intel"}catch(e){}
   fillWatch();$("sym").value=s||"NSE:NIFTY50-INDEX";setTF(t||"15m",true);tab(location.hash==="#bot"?"bot":tb);if(location.hash==="#bot")setTimeout(goBot,600);
@@ -207,6 +208,13 @@ function fillWatch(go){const l=META._groups[$("grp").value]||[],cur=$("sym").val
   $("symList").innerHTML=Object.values(META._groups).flat().map(s=>`<option value="${esc(s)}">`).join("");
   $("symSel").innerHTML=(l.includes(cur)?"":`<option value="">— pick a market (${l.length}) —</option>`)+l.map(s=>`<option value="${esc(s)}" ${s===cur?"selected":""}>${esc(s.split(":").pop())} · ${esc(s.split(":")[0])}</option>`).join("");
   if(go&&l.length){$("sym").value=l[0];$("symSel").value=l[0];run()}}
+// every live Delta Exchange perpetual as its own group (the phone's crypto data comes from Delta)
+async function loadAllCrypto(){
+  try{const r=await fetch("https://api.india.delta.exchange/v2/products?contract_types=perpetual_futures&states=live&page_size=500");const j=await r.json();
+    const l=[...new Set((j.result||[]).map(p=>p.symbol).filter(x=>/^[A-Z0-9]+USD$/.test(x)))].sort().map(x=>"DELTAF:"+x);
+    if(!l.length)return;META._groups["Crypto · all (Delta perps)"]=l;
+    const g=$("grp").value;$("grp").innerHTML=Object.keys(META._groups).map(k=>`<option ${k===g?"selected":""}>${esc(k)}</option>`).join("");syncPicker();
+  }catch(e){console.warn("Delta products",e)}}
 function pickSym(v){if(!v)return;$("sym").value=v;run()}
 function syncPicker(){if(!META)return;const cur=$("sym").value.trim().toUpperCase(),g=Object.keys(META._groups).find(k=>META._groups[k].includes(cur));
   if(g&&$("grp").value!==g)$("grp").value=g;fillWatch(false)}
