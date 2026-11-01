@@ -326,7 +326,8 @@ function sigWatermark(d){
   const s=d.setups[SEL],sc=d.score,bias=sc.bias,min=META.protection.min_score,W=$("sigWm");
   W.onclick=toggleWm;W.title=WMOPEN?"Tap to collapse":"Tap for full setup";W.classList.toggle("mini",!WMOPEN);
   if(!WMOPEN){const car=`<span class="wm-car">▾</span>`;
-    if(s){const L=s.direction==="LONG";W.innerHTML=`<div class="wm-mini ${L?"wm-up":"wm-dn"}">${L?"▲":"▼"} ${s.direction} ${s.score.toFixed(0)}${s.signal?"":" (watch)"} · Entry ${f(s.entry,Math.abs(s.entry)>=1000?0:undefined)} ${car}</div>`}
+    if(s&&s.locked){const L=s.direction==="LONG";W.innerHTML=`<div class="wm-mini ${L?"wm-up":"wm-dn"}">🔒 ${L?"▲":"▼"} ${s.direction} ${s.score.toFixed(0)} · Entry ${f(s.entry,Math.abs(s.entry)>=1000?0:undefined)} · SL ${f(s.stop,Math.abs(s.stop)>=1000?0:undefined)} ${car}</div>`}
+    else if(s){const L=s.direction==="LONG";W.innerHTML=`<div class="wm-mini" style="opacity:.75">${L?"▲":"▼"} ${s.direction} ${s.score.toFixed(0)} · forming · not a signal yet ${car}</div>`}
     else W.innerHTML=`<div class="wm-mini"><span class="${bias==="bullish"?"wm-up":bias==="bearish"?"wm-dn":""}">${bias.toUpperCase()}</span> · no setup ${car}</div>`;
     return}
   let h=`<div class="wm-sym">${esc(d.symbol)} · ${esc(d.tf)} <span class="wm-car">▴</span></div><div class="wm-row"><span class="${bias==="bullish"?"wm-up":bias==="bearish"?"wm-dn":""}">${bias.toUpperCase()}</span> · bull ${sc.bull.toFixed(0)} / bear ${sc.bear.toFixed(0)} · ${esc(d.regime.label)}</div>`;
@@ -491,15 +492,20 @@ function drawTV(){
 }
 /* ---------------- Long/Short position box (TradingView-style) over the chart: the selected setup + the bot's open trades */
 const TFS_SEC={"1m":60,"3m":180,"5m":300,"15m":900,"30m":1800,"1h":3600,"4h":14400,"1d":86400,"1w":604800};
-let POSKEY="";
+let POSKEY="",PICKED="";
+const PREVIEW_WAIT=()=>"";
 function posList(d){
   const out=[],H=[],s=d.setups[SEL];
   // every tracked signal stays marked: box from its signal candle to where it ended, with the result
   if(layerOn("hist"))(d.signal_marks||[]).forEach(m=>{if(s&&s.active_id===m.id&&layerOn("pos"))return;
     H.push({...m,compact:m.status!=="active",faded:m.status!=="active",endTime:m.status==="active"?null:m.closed_at,exit:m.status==="active"?null:m.exit,
       badge:MMPOS.result(m),title:m.status==="active"?`${(+m.score||0).toFixed(0)} · tracking`:""})});
-  if(s&&layerOn("pos"))out.push({...s,title:`${s.score.toFixed(0)}${s.signal?"":" watch"}${s.provisional?" · live":""}`,
-    badge:s.locked?MMPOS.result({status:s.status||"active",outcome:s.outcome,hits:s.hits,r_result:s.r_result}):null});
+  // only a CONFIRMED (locked) signal gets a position box: its levels are frozen until T3 / stop / expiry / exit signal.
+  // A setup still forming changes every tick, so it is drawn only as a faint preview when picked with "Show on chart".
+  if(s&&layerOn("pos")&&s.locked)out.push({...s,title:`${(+s.score).toFixed(0)} · confirmed${PREVIEW_WAIT(d,s)}`,
+    badge:MMPOS.result({status:s.status||"active",outcome:s.outcome,hits:s.hits,r_result:s.r_result})});
+  else if(s&&layerOn("pos")&&PICKED===s.strategy+"|"+s.direction)out.push({...s,faded:true,compact:true,preview:true,
+    badge:{text:`preview · ${s.provisional?"forming":"watch"} ${(+s.score).toFixed(0)} (not a signal)`,color:"rgba(100,116,139,.9)"}});
   try{const b=window.MMBOT&&MMBOT.state();if(b&&layerOn("pos"))Object.entries(b.trades).forEach(([id,t])=>{if(t.sym===d.symbol&&t.status!=="closed")
     out.push({direction:t.dir,entry:t.entry,stop:t.stop,targets:t.targets,time:t.opened,title:`bot #${id}${t.hit.length?" "+t.hit.join(" "):""}`,faded:!!s})})}catch(e){}
   return out.concat(H);                               // history last = painted underneath
@@ -515,7 +521,7 @@ function posDraw(force){
   G.slice().reverse().forEach(g=>MMPOS.paint(ctx,g));
 }
 (function posLoop(){try{if(document.visibilityState==="visible")posDraw()}catch(e){}requestAnimationFrame(posLoop)})();
-function showSetup(i){SEL=i;rChart(CUR,true);window.scrollTo({top:0,behavior:"smooth"})}
+function showSetup(i){SEL=i;try{const x=CUR.setups[i];PICKED=x.strategy+"|"+x.direction}catch(e){PICKED=""};rChart(CUR,true);window.scrollTo({top:0,behavior:"smooth"})}
 async function paperOpen(i){
   const s=CUR.setups[i];
   if(!confirm(`Open a PAPER ${s.direction} on ${CUR.symbol}?\nEntry ≈ ${f(s.entry)}  Stop ${f(s.stop)}  T1 ${f(s.targets[0])}\n\nNo real order is placed.`))return;
@@ -737,7 +743,7 @@ async function recNow(){toast("Recorder running… this can take a minute",60000
 init().catch(e=>{$("qual").innerHTML=`<span class="dn">Signal Lab engine could not start: ${esc(e.message)}</span>`});
 </script>
 <script>window.addEventListener('mm-lab-status',e=>{const q=document.getElementById('qual');if(q&&e.detail)q.innerHTML='<span class="spin"></span> '+e.detail});</script>
-<script src="js/position.js?v=2026.11.01-13"></script>
+<script src="js/position.js?v=2026.11.01-14"></script>
 <script src="js/bot.js?v=2026.11.01-13"></script>
 </body>
 </html>

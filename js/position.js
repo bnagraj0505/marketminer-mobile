@@ -29,8 +29,9 @@
   function paint(ctx, p) {
     if (p.yE == null || p.yS == null || !p.yT || p.yT.some((v) => v == null)) return;
     const L = p.dir === "LONG", x0 = Math.max(0, p.x0), x1 = Math.max(x0 + (p.compact ? 14 : 40), p.x1), w = x1 - x0;
-    const yT = p.yT[2], a = p.faded ? 0.1 : 0.2, b = p.faded ? 0.45 : 0.85;
+    const yT = p.yT[2], a = p.preview ? 0.05 : p.faded ? 0.1 : 0.2, b = p.faded ? 0.45 : 0.85;
     ctx.save();
+    if (p.preview) ctx.setLineDash([5, 4]);           // not a signal yet: dashed outline only
     // zones
     ctx.fillStyle = `rgba(8,153,129,${a})`; ctx.fillRect(x0, Math.min(p.yE, yT), w, Math.abs(yT - p.yE));
     ctx.fillStyle = `rgba(242,54,69,${a})`; ctx.fillRect(x0, Math.min(p.yE, p.yS), w, Math.abs(p.yS - p.yE));
@@ -78,7 +79,7 @@
       x0 = first ? 0 : 0;
     }
     const y = (v) => series.priceToCoordinate(v);
-    return { x0, x1: xEnd, yE: y(pos.entry), yX: pos.exit != null ? y(pos.exit) : null, compact: !!pos.compact, badge: pos.badge, yS: y(pos.stop), yT: pos.targets.map(y), dir: pos.direction, entry: pos.entry,
+    return { x0, x1: xEnd, yE: y(pos.entry), yX: pos.exit != null ? y(pos.exit) : null, compact: !!pos.compact, badge: pos.badge, preview: !!pos.preview, yS: y(pos.stop), yT: pos.targets.map(y), dir: pos.direction, entry: pos.entry,
       stop: pos.stop, targets: pos.targets, rr: pos.rr, title: pos.title, faded: pos.faded };
   }
   window.MMPOS = { paint, geometry, result };
