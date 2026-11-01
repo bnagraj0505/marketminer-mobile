@@ -1,0 +1,7 @@
+.env
+.lab/
+.venv/
+bot.log
+run.sh
+.fyers_*.json
+__pycache__/
