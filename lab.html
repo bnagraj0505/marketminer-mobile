@@ -43,12 +43,15 @@ a{color:inherit}.mono{font-family:var(--mono)}
 #chartBox{position:relative;border-radius:8px;overflow:hidden;border:1px solid #d7dee8;background:#fff}
 #chartBox[data-theme=dark]{border-color:var(--bdr);background:#0d1117}
 #chart{height:470px}#rsiP{height:110px;border-top:1px solid #e5e9f0}#chartBox[data-theme=dark] #rsiP{border-top-color:var(--bdr)}
-#sigWm{position:absolute;top:10px;left:12px;z-index:3;pointer-events:none;max-width:min(560px,calc(100% - 90px));padding:8px 11px;border-radius:8px;
+#sigWm{position:absolute;top:10px;left:12px;z-index:3;pointer-events:auto;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;max-width:min(560px,calc(100% - 90px));padding:8px 11px;border-radius:8px;
   background:rgba(255,255,255,.62);border:1px solid rgba(15,23,42,.08);backdrop-filter:blur(2px);font:500 .7rem var(--mono);color:#334155;line-height:1.5}
 #chartBox[data-theme=dark] #sigWm{background:rgba(13,17,23,.6);border-color:rgba(226,232,240,.08);color:#cbd5e1}
 #sigWm .wm-sym{font:800 .95rem var(--mono);opacity:.75;letter-spacing:.3px}
 #sigWm .wm-sig{font:800 .8rem var(--mono);margin-top:3px}
 #sigWm .wm-row{opacity:.85}
+#sigWm .wm-mini{font:800 .78rem var(--mono);white-space:nowrap}
+#sigWm .wm-car{opacity:.6;margin-left:4px}
+#sigWm.mini{padding:5px 10px}
 #sigWm .wm-up{color:#15803d}#sigWm .wm-dn{color:#b91c1c}
 #chartBox[data-theme=dark] #sigWm .wm-up{color:var(--g)}#chartBox[data-theme=dark] #sigWm .wm-dn{color:var(--r)}
 #legend{position:absolute;top:10px;right:72px;z-index:3;pointer-events:none;display:flex;gap:9px;font:600 .62rem var(--mono);color:#64748b;background:rgba(255,255,255,.55);padding:3px 7px;border-radius:5px}
@@ -308,9 +311,16 @@ function mkChart(){
 function rsiCalc(c,n=14){const o=Array(c.length).fill(null);let g=0,l=0;for(let i=1;i<c.length;i++){const d=c[i]-c[i-1],G=Math.max(d,0),Ls=Math.max(-d,0);if(i<=n){g+=G;l+=Ls;if(i===n){g/=n;l/=n;o[i]=l===0?100:100-100/(1+g/l)}}else{g=(g*(n-1)+G)/n;l=(l*(n-1)+Ls)/n;o[i]=l===0?100:100-100/(1+g/l)}}return o}
 let WMON=(()=>{try{return localStorage.getItem("lab.setupBox")!=="hide"}catch(e){return true}})();
 function setWm(on){WMON=on;try{localStorage.setItem("lab.setupBox",on?"show":"hide")}catch(e){}const w=$("sigWm");if(w)w.style.display=on?"":"none"}
+let WMOPEN=(()=>{try{return localStorage.getItem("lab.setupOpen")==="1"}catch(e){return false}})();
+function toggleWm(){WMOPEN=!WMOPEN;try{localStorage.setItem("lab.setupOpen",WMOPEN?"1":"0")}catch(e){}if(CUR)sigWatermark(CUR)}
 function sigWatermark(d){
-  const s=d.setups[SEL],sc=d.score,bias=sc.bias,min=META.protection.min_score;
-  let h=`<div class="wm-sym">${esc(d.symbol)} · ${esc(d.tf)}</div><div class="wm-row"><span class="${bias==="bullish"?"wm-up":bias==="bearish"?"wm-dn":""}">${bias.toUpperCase()}</span> · bull ${sc.bull.toFixed(0)} / bear ${sc.bear.toFixed(0)} · ${esc(d.regime.label)}</div>`;
+  const s=d.setups[SEL],sc=d.score,bias=sc.bias,min=META.protection.min_score,W=$("sigWm");
+  W.onclick=toggleWm;W.title=WMOPEN?"Tap to collapse":"Tap for full setup";W.classList.toggle("mini",!WMOPEN);
+  if(!WMOPEN){const car=`<span class="wm-car">▾</span>`;
+    if(s){const L=s.direction==="LONG";W.innerHTML=`<div class="wm-mini ${L?"wm-up":"wm-dn"}">${L?"▲":"▼"} ${s.direction} ${s.score.toFixed(0)}${s.signal?"":" (watch)"} · Entry ${f(s.entry,Math.abs(s.entry)>=1000?0:undefined)} ${car}</div>`}
+    else W.innerHTML=`<div class="wm-mini"><span class="${bias==="bullish"?"wm-up":bias==="bearish"?"wm-dn":""}">${bias.toUpperCase()}</span> · no setup ${car}</div>`;
+    return}
+  let h=`<div class="wm-sym">${esc(d.symbol)} · ${esc(d.tf)} <span class="wm-car">▴</span></div><div class="wm-row"><span class="${bias==="bullish"?"wm-up":bias==="bearish"?"wm-dn":""}">${bias.toUpperCase()}</span> · bull ${sc.bull.toFixed(0)} / bear ${sc.bear.toFixed(0)} · ${esc(d.regime.label)}</div>`;
   if(s){const L=s.direction==="LONG";
     h+=`<div class="wm-sig ${L?"wm-up":"wm-dn"}">${L?"▲":"▼"} ${s.direction} · ${esc(s.name)} · ${s.score.toFixed(0)} ${esc(s.grade)}${s.signal?"":" (watch)"}${s.provisional?" · live, candle forming":""}${s.locked?" · 🔒 active, T"+(s.hits||0)+"/3 hit":""}</div>
       <div class="wm-row">Entry ${f(s.entry)} · SL ${f(s.stop)} · T1 ${f(s.targets[0])} · T2 ${f(s.targets[1])} · T3 ${f(s.targets[2])} · ${s.rr.toFixed(1)}R</div>`;}
