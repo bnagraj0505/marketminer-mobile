@@ -656,6 +656,7 @@
     }
     if (p === "/api/health") return { ok: true, mode: "mobile" };
     if (p === "/api/nse/status") return { engine: "FYERS (phone)", paused_for_s: 0 };
+    if (p.startsWith("/api/lab/")) { if (!window.MM.lab) throw new HE(503, "Open the Signal Lab page to use it."); return window.MM.lab(p, q, method, body()); }
     if (p.startsWith("/api/desk/")) { if (!window.MM.desk) throw new HE(503, "Open the Day Desk page to use it."); return window.MM.desk(p, q, method, body()); }
     if (p.startsWith("/api/ai/")) throw new HE(503, "AI analysis needs the PC server (it holds the API key).");
     throw new HE(404, "Not available in the phone version: " + p);
@@ -669,5 +670,5 @@
     catch (e) { const st = e.status || 502; return json({ detail: e.message || String(e) }, st); }
   };
 
-  window.MM = { FY, LS, HE, getJ, cached, version: "2026.11.01-1" };
+  window.MM = { FY, LS, HE, getJ, cached, cryptoOptions: options, version: "2026.11.01-3" };
 })();

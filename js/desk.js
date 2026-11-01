@@ -726,5 +726,6 @@
     throw new HE(404, "Unknown Day Desk request: " + p);
   }
   MM.desk = route;
+  MM.deskResolve = resolve;
   MM.deskEngine = { Session, NSE, CRYPTO, MCX, parseCandles, entryStatus, planExit, timeMachine, sizePosition, riskCheck, findSetups, dailyFromCandles, orbScanRow, historyReplay, simulate, buildPool, fullSessions, splitSessions, tickRound, tickAway };
 })();

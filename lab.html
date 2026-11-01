@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/engine.js?v=2026.11.01-3"></script>
+<script src="js/desk.js?v=2026.11.01-3"></script>
+<script src="js/lab.js?v=2026.11.01-3"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06080f">
+<title>MarketMiner · Signal Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg0:#06080f;--bg1:#0d1117;--bg2:#131a27;--bg3:#182030;--bdr:#1b2536;--bdr2:#263450;--t1:#e2e8f0;--t2:#8b9ab5;--t3:#5b6b85;--g:#00e676;--gb:rgba(0,230,118,.08);--r:#ff5252;--rb:rgba(255,82,82,.08);--a:#ffab00;--ab:rgba(255,171,0,.08);--b:#448aff;--cy:#18ffff;--gd:#FFD700;--o:#ff9100;--mono:'JetBrains Mono',ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg0);color:var(--t1);min-height:100vh;overflow-x:hidden}
+a{color:inherit}.mono{font-family:var(--mono)}
+.header{position:sticky;top:0;z-index:50;background:rgba(6,8,15,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);padding:8px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-family:var(--mono);font-weight:800;font-size:1.45rem;letter-spacing:-.5px}.logo .m{color:var(--cy)}.logo .s{color:var(--gd)}
+.logo small{font:600 .7rem var(--mono);color:var(--t3);margin-left:8px;letter-spacing:.5px}
+.hr{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--bg2);border:1px solid var(--bdr2);color:var(--t2);padding:6px 11px;border-radius:6px;cursor:pointer;font:600 .74rem var(--mono);text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--cy);color:var(--cy)}
+.btn.pri{background:rgba(24,255,255,.08);border-color:rgba(24,255,255,.35);color:var(--cy)}
+.btn.gold{background:rgba(255,215,0,.1);border-color:rgba(255,215,0,.45);color:var(--gd)}
+.btn.sm{padding:3px 8px;font-size:.68rem}.btn:disabled{opacity:.4;cursor:not-allowed}
+.paper{font:700 .62rem var(--mono);color:var(--a);border:1px solid rgba(255,171,0,.4);background:var(--ab);padding:3px 7px;border-radius:4px;letter-spacing:.5px}
+.wrap{max-width:1500px;margin:0 auto;padding:12px 16px 80px}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.ctl input,.ctl select,.set input,.set select{background:var(--bg1);border:1px solid var(--bdr2);color:var(--t1);padding:6px 9px;border-radius:6px;font:600 .8rem var(--mono)}
+.ctl input{width:230px}
+.seg{display:inline-flex;border:1px solid var(--bdr2);border-radius:6px;overflow:hidden}
+.seg button{background:var(--bg1);border:0;border-right:1px solid var(--bdr2);color:var(--t2);padding:6px 9px;font:600 .72rem var(--mono);cursor:pointer}
+.seg button:last-child{border-right:0}.seg button.on{background:rgba(255,215,0,.12);color:var(--gd)}
+.qual{display:flex;gap:14px;flex-wrap:wrap;font:500 .7rem var(--mono);color:var(--t3);padding:6px 10px;border:1px solid var(--bdr);border-radius:7px;background:var(--bg1);margin-bottom:10px}
+.qual b{color:var(--t2);font-weight:600}
+.una{padding:22px;border:1px solid rgba(255,82,82,.4);background:var(--rb);border-radius:9px;text-align:center;font:800 1.1rem var(--mono);color:var(--r);margin-bottom:10px}
+.una small{display:block;font:500 .75rem var(--mono);color:var(--t2);margin-top:6px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:10px;align-items:start}
+@media(max-width:1100px){.grid{grid-template-columns:1fr}}
+.cd{background:var(--bg1);border:1px solid var(--bdr);border-radius:9px;padding:12px;min-width:0}
+.cd h3{font:700 .7rem var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+#chart{height:470px}#rsiP{height:110px;margin-top:4px}
+.layers{display:flex;gap:10px;flex-wrap:wrap;font:500 .68rem var(--mono);color:var(--t2);margin-top:6px}
+.layers label{display:flex;gap:4px;align-items:center;cursor:pointer}
+.scorebar{display:flex;height:22px;border-radius:5px;overflow:hidden;font:700 .66rem var(--mono)}
+.scorebar div{display:flex;align-items:center;justify-content:center;color:#06080f;min-width:0;overflow:hidden}
+.sb-b{background:var(--g)}.sb-n{background:#3a4660;color:var(--t1)!important}.sb-r{background:var(--r)}
+.fx{display:grid;grid-template-columns:1fr auto auto;gap:3px 8px;font:500 .7rem var(--mono);margin-top:8px}
+.fx .na{color:var(--t3)}
+.up{color:var(--g)}.dn{color:var(--r)}.nt{color:var(--t3)}.am{color:var(--a)}.cy{color:var(--cy)}.gd{color:var(--gd)}
+.setup{border:1px solid var(--bdr2);border-radius:8px;padding:10px;margin-bottom:8px;background:var(--bg2)}
+.setup.L{border-left:3px solid var(--g)}.setup.S{border-left:3px solid var(--r)}
+.setup.watch{opacity:.8}
+.st-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.st-h b{font:700 .82rem var(--mono)}
+.badge{font:800 .7rem var(--mono);padding:3px 7px;border-radius:4px;border:1px solid}
+.gA{color:var(--g);border-color:rgba(0,230,118,.5);background:var(--gb)}.gB{color:var(--cy);border-color:rgba(24,255,255,.4)}
+.gC{color:var(--a);border-color:rgba(255,171,0,.4)}.gN{color:var(--t3);border-color:var(--bdr2)}
+.lv{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 10px;font:500 .72rem var(--mono);margin:6px 0}
+.lv span{color:var(--t3);font-size:.62rem;text-transform:uppercase;display:block}
+.why{font-size:.74rem;color:var(--t2);margin-top:5px;line-height:1.45}
+.why li{margin-left:15px}.why .ag li{color:#d9a0a0}
+.chip{display:inline-block;font:600 .62rem var(--mono);padding:2px 6px;border-radius:4px;border:1px solid var(--bdr2);color:var(--t2);margin:2px 3px 2px 0}
+.chip.ok{color:var(--g);border-color:rgba(0,230,118,.4)}.chip.no{color:var(--a);border-color:rgba(255,171,0,.35)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:12px 0 8px;border-bottom:1px solid var(--bdr)}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--t3);padding:8px 11px;font:700 .72rem var(--mono);text-transform:uppercase;letter-spacing:.4px;cursor:pointer}
+.tabs button.on{color:var(--gd);border-bottom-color:var(--gd)}
+.pane{display:none}.pane.on{display:block}
+.cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+table{width:100%;border-collapse:collapse;font:500 .72rem var(--mono)}
+th{color:var(--t3);font-weight:600;text-align:left;padding:5px 6px;border-bottom:1px solid var(--bdr);font-size:.64rem;text-transform:uppercase;white-space:nowrap}
+td{padding:5px 6px;border-bottom:1px solid var(--bdr);white-space:nowrap}
+td.r,th.r{text-align:right}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font:500 .72rem var(--mono)}
+.kv div:nth-child(odd){color:var(--t3)}
+.note{font-size:.7rem;color:var(--t3);margin-top:8px;line-height:1.45}
+.set{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.set label{display:flex;flex-direction:column;gap:3px;font:600 .64rem var(--mono);color:var(--t3);text-transform:uppercase}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--bdr2);border-top-color:var(--cy);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:18px;right:18px;background:var(--bg2);border:1px solid var(--bdr2);padding:10px 14px;border-radius:8px;font:600 .76rem var(--mono);z-index:99;max-width:420px;display:none}
+.scroll{max-height:440px;overflow:auto}
+.alert-new{color:var(--gd)}
+.mtfc{text-align:center;font-weight:800}
+.cd{overflow-x:auto}
+@media(max-width:700px){.header{position:static}.wrap{padding:10px 10px 60px}.cols{grid-template-columns:1fr}.ctl input{width:100%}.seg{flex-wrap:wrap}#chart{height:340px}.lv{grid-template-columns:repeat(2,1fr)}.header{padding:8px 10px}}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="hr"><div class="logo"><span class="m">MARKET</span><span class="s">MINER</span><small>SIGNAL LAB</small></div><span class="paper">PAPER TRADING ONLY</span><span class="paper" style="color:var(--cy);border-color:rgba(24,255,255,.4);background:rgba(24,255,255,.06)">📱 ON THIS DEVICE</span></div>
+  <div class="hr">
+    <a class="btn" href="index.html">← Dashboard</a>
+    <a class="btn" href="desk.html">Day Desk</a>
+    <a class="btn" href="crypto.html">₿ Crypto</a>
+    <a class="btn" href="fyers.html">Connections</a>
+    <button class="btn" id="alBtn" onclick="tab('alerts')">🔔 Alerts <span id="alN"></span></button>
+  </div>
+</header>
+<main class="wrap">
+  <div class="ctl">
+    <select id="grp" onchange="fillWatch()"></select>
+    <input id="sym" list="symList" placeholder="NSE:NIFTY50-INDEX, SHARK:BTCUSDT, YF:^GSPC" autocomplete="off">
+    <datalist id="symList"></datalist>
+    <div class="seg" id="tfs"></div>
+    <button class="btn pri" onclick="run()">▶ Analyse</button>
+    <label class="mono" style="font-size:.7rem;color:var(--t3);display:flex;gap:5px;align-items:center"><input type="checkbox" id="auto" style="width:auto"> auto-refresh</label>
+    <span id="busy"></span>
+  </div>
+  <div id="qual" class="qual">Pick a symbol and timeframe, then Analyse.</div>
+  <div id="una"></div>
+  <div class="grid" id="top">
+    <div class="cd">
+      <h3><span>Chart · <span id="chTitle">—</span></span><span id="regTag"></span></h3>
+      <div id="chart"></div><div id="rsiP"></div>
+      <div class="layers" id="layers"></div>
+    </div>
+    <div>
+      <div class="cd" style="margin-bottom:10px">
+        <h3><span>Directional score</span><span id="biasTag"></span></h3>
+        <div class="scorebar" id="sbar"></div>
+        <div class="fx" id="fx"></div>
+      </div>
+      <div class="cd"><h3><span>Trade setups</span><span id="minS" class="nt"></span></h3><div id="setups" class="scroll" style="max-height:620px"></div></div>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <section class="pane" id="p-intel"></section>
+  <section class="pane" id="p-deriv"></section>
+  <section class="pane" id="p-mtf"></section>
+  <section class="pane" id="p-bt"></section>
+  <section class="pane" id="p-paper"></section>
+  <section class="pane" id="p-journal"></section>
+  <section class="pane" id="p-alerts"></section>
+  <section class="pane" id="p-settings"></section>
+</main>
+<div class="toast" id="toast"></div>
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+const TABS=[["intel","Intelligence"],["deriv","Derivatives"],["mtf","Multi-timeframe"],["bt","Backtest"],["paper","Paper & risk"],["journal","Journal"],["alerts","Alerts"],["settings","Settings"]];
+const TFS=["1m","3m","5m","15m","30m","1h","4h","1d","1w"];
+let META=null,CUR=null,TF="15m",chart,cs,rsiC,rsiS,lines={},plines=[],SEL=0,autoT=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const f=(x,d)=>x==null||isNaN(x)?"—":Number(x).toLocaleString("en-IN",{maximumFractionDigits:d??(Math.abs(x)>=1000?2:Math.abs(x)>=1?2:6)});
+const pct=x=>x==null?"—":(x>0?"+":"")+Number(x).toFixed(2)+"%";
+const dir=v=>v>0?'<span class="up">▲ bull</span>':v<0?'<span class="dn">▼ bear</span>':'<span class="nt">● flat</span>';
+const ts=t=>t?new Date(t*1000).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—";
+function toast(m,ms=3500){const t=$("toast");t.innerHTML=m;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",ms)}
+async function api(p,o){const r=await fetch(p,o);const j=await r.json().catch(()=>({detail:r.statusText}));if(!r.ok){const d=j.detail;throw new Error(Array.isArray(d)?d.map(x=>x.msg).join("; "):(d||r.statusText))}return j}
+const post=(p,b)=>api(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});
+
+function tab(k){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.k===k));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id==="p-"+k));
+  try{localStorage.setItem("lab.tab",k)}catch(e){}
+  if(k==="mtf")ldMTF();if(k==="bt")rBT();if(k==="paper")ldPaper();if(k==="journal")ldJournal();if(k==="alerts")ldAlerts();if(k==="settings")rSettings();if(k==="deriv"&&CUR)rDeriv(CUR.derivatives)}
+
+async function init(){
+  $("tabs").innerHTML=TABS.map(([k,l])=>`<button data-k="${k}" onclick="tab('${k}')">${l}</button>`).join("");
+  $("tfs").innerHTML=TFS.map(t=>`<button data-t="${t}" onclick="setTF('${t}')">${t}</button>`).join("");
+  META=await api("/api/lab/meta");
+  const groups={...META.watch};if(META.user_watch.length)groups["My watch-list"]=META.user_watch;
+  $("grp").innerHTML=Object.keys(groups).map(g=>`<option>${esc(g)}</option>`).join("");META._groups=groups;
+  let s=null,t=null,tb="intel";try{s=localStorage.getItem("lab.sym");t=localStorage.getItem("lab.tf");tb=localStorage.getItem("lab.tab")||"intel"}catch(e){}
+  fillWatch();$("sym").value=s||"NSE:NIFTY50-INDEX";setTF(t||"15m",true);tab(tb);
+  $("minS").textContent=`signal ≥ ${META.protection.min_score}`;
+  $("sym").addEventListener("keydown",e=>{if(e.key==="Enter")run()});
+  $("auto").addEventListener("change",()=>{clearInterval(autoT);if($("auto").checked)autoT=setInterval(run,60000)});
+  ldAlertCount();setInterval(ldAlertCount,60000);
+  run();
+}
+function fillWatch(){const l=META._groups[$("grp").value]||[];$("symList").innerHTML=l.map(s=>`<option value="${esc(s)}">`).join("");if(l.length&&document.activeElement!==$("sym")&&CUR)$("sym").value=l[0]}
+function setTF(t,silent){TF=t;document.querySelectorAll("#tfs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));if(!silent)run()}
+
+async function run(){
+  const sym=$("sym").value.trim();if(!sym)return;
+  try{localStorage.setItem("lab.sym",sym);localStorage.setItem("lab.tf",TF)}catch(e){}
+  $("busy").innerHTML='<span class="spin"></span>';
+  try{
+    const d=await api(`/api/lab/analyze?symbol=${encodeURIComponent(sym)}&tf=${TF}`);
+    CUR=d;$("una").innerHTML="";$("top").style.display="";SEL=0;render(d);
+  }catch(e){
+    CUR=null;$("top").style.display="none";
+    $("una").innerHTML=`<div class="una">DATA UNAVAILABLE<small>${esc(e.message)}</small><small>Signals are suppressed until the data source returns validated candles.</small></div>`;
+    $("qual").innerHTML=`<span>${esc(sym)} · ${TF}</span>`;
+  }finally{$("busy").innerHTML=""}
+}
+
+function render(d){
+  const q=d.quality;
+  $("qual").innerHTML=`<span>Source <b>${esc(q.source)}</b></span><span>As of <b>${ts(q.as_of)}</b></span><span>Candles <b>${d.candles.length}</b></span>`+
+    `<span>Gaps <b>${q.gaps??0}</b>${q.missing_candles?` (${q.missing_candles} missing)`:""}</span><span>Duplicates removed <b>${q.duplicates_removed??0}</b></span>`+
+    (q.stale?`<span class="dn">STALE — signals scored down</span>`:`<span class="up">fresh</span>`)+`<span>Computed in ${d.elapsed_ms} ms</span>`;
+  $("chTitle").textContent=`${d.symbol} · ${d.tf}`;
+  $("regTag").innerHTML=`<span class="chip">${esc(d.regime.label)}</span><span class="chip">volatility ${esc(d.regime.volatility)}</span>`+(d.context.kill_zone?`<span class="chip ok">${esc(d.context.kill_zone)}</span>`:"");
+  rScore(d.score);rSetups(d);rChart(d);rIntel(d);rDeriv(d.derivatives);
+}
+
+function rScore(s){
+  $("sbar").innerHTML=`<div class="sb-b" style="width:${s.bull}%">${s.bull>12?"BULL "+s.bull.toFixed(0):""}</div><div class="sb-n" style="width:${s.neutral}%">${s.neutral>12?"NEUTRAL "+s.neutral.toFixed(0):""}</div><div class="sb-r" style="width:${s.bear}%">${s.bear>12?"BEAR "+s.bear.toFixed(0):""}</div>`;
+  $("biasTag").innerHTML=`<span class="${s.bias==="bullish"?"up":s.bias==="bearish"?"dn":"nt"}">${s.bias.toUpperCase()}</span>`;
+  $("fx").innerHTML=s.factors.map(x=>`<div class="${x.vote==null?"na":""}">${esc(x.label)}</div><div class="nt">${x.weight}</div><div>${x.vote==null?'<span class="na">n/a</span>':dir(x.vote)}</div>`).join("")+
+    (s.unavailable.length?`<div class="note" style="grid-column:1/-1">Not available (left out, weights re-normalised): ${esc(s.unavailable.join(", "))}</div>`:"");
+}
+
+function rSetups(d){
+  const min=META.protection.min_score;
+  if(!d.setups.length){$("setups").innerHTML=`<div class="note">No strategy qualifies on the last closed candle. ${d.rejected.length?"Ideas rejected:":""}</div>`+
+    d.rejected.slice(0,8).map(r=>`<div class="note">· ${esc(r.name)} ${r.direction}: ${esc(r.rejected)}</div>`).join("");return}
+  $("setups").innerHTML=d.setups.map((s,i)=>{
+    const L=s.direction==="LONG",g=s.grade==="A"?"gA":s.grade==="B"?"gB":s.grade==="C"?"gC":"gN";
+    const v=s.validation?.status||"not backtested";
+    return `<div class="setup ${L?"L":"S"} ${s.signal?"":"watch"}">
+      <div class="st-h"><b class="${L?"up":"dn"}">${s.direction} · ${esc(s.name)}</b><span class="badge ${g}">${s.score.toFixed(0)} · ${esc(s.grade)}</span></div>
+      <div>${s.signal?'<span class="chip ok">SIGNAL</span>':'<span class="chip no">WATCH ONLY (below '+min+')</span>'}<span class="chip ${v==="validated"?"ok":"no"}">${esc(v)}</span><span class="chip">${esc(s.regime)}</span></div>
+      <div class="lv"><div><span>Entry</span>${f(s.entry)}</div><div><span>Zone</span>${f(s.entry_zone[0])}–${f(s.entry_zone[1])}</div><div><span>Stop</span><b class="dn">${f(s.stop)}</b></div>
+      <div><span>T1 · ${s.rr_t1.toFixed(1)}R</span><b class="up">${f(s.targets[0])}</b></div><div><span>T2 · ${s.rr.toFixed(1)}R</span><b class="up">${f(s.targets[1])}</b></div><div><span>T3 · ${s.rr_t3.toFixed(1)}R</span><b class="up">${f(s.targets[2])}</b></div>
+      <div><span>Stop / ATR</span>${s.stop_atr.toFixed(2)}×</div><div><span>Size</span>${s.size?.qty?f(s.size.qty,4)+" ("+f(s.size.risk_amount,0)+" "+s.size.currency+")":esc(s.size?.why||"—")}</div><div><span>Max spread</span>${f(s.max_spread)}</div></div>
+      <div class="why"><b>Hold:</b> ${esc(s.expected_hold)} · <b>Invalidation:</b> ${esc(s.invalidation)}<br><b>Trailing:</b> ${esc(s.trailing)}</div>
+      <div class="why"><b class="up">For</b><ul>${s.reasons_for.map(r=>`<li>${esc(r)}</li>`).join("")}</ul>
+      ${s.reasons_against.length?`<b class="dn">Against</b><ul class="ag">${s.reasons_against.map(r=>`<li>${esc(r)}</li>`).join("")}</ul>`:""}
+      <div class="nt" style="font-size:.66rem">${esc(s.adjustments.join(" · "))}</div></div>
+      <div class="hr" style="margin-top:7px"><button class="btn sm" onclick="showSetup(${i})">Show on chart</button>${s.signal?`<button class="btn sm gold" onclick="paperOpen(${i})">Paper trade</button>`:""}</div>
+    </div>`}).join("")+(d.rejected.length?`<details class="note"><summary>${d.rejected.length} ideas rejected on this candle</summary>${d.rejected.map(r=>`· ${esc(r.name)} ${r.direction}: ${esc(r.rejected)}`).join("<br>")}</details>`:"");
+}
+
+/* ---------------- chart */
+const LAYERS=[["ema","EMA 20/50/200",1],["vwap","VWAP",1],["bb","Bollinger",0],["st","Supertrend",0],["ob","Order blocks",1],["fvg","FVGs",1],["liq","Liquidity",1],["lvl","PDH/PDL · OI S/R",1],["mk","BOS/CHoCH/sweeps",1],["setup","Setup levels",1]];
+function layerOn(k){const e=$("ly-"+k);return e?e.checked:true}
+function mkChart(){
+  const opt={layout:{background:{color:"#0d1117"},textColor:"#8b9ab5",fontFamily:"JetBrains Mono"},grid:{vertLines:{color:"#131a27"},horzLines:{color:"#131a27"}},
+    rightPriceScale:{borderColor:"#1b2536"},timeScale:{borderColor:"#1b2536",timeVisible:true,secondsVisible:false},crosshair:{mode:0}};
+  chart=LightweightCharts.createChart($("chart"),{...opt,height:470});
+  cs=chart.addCandlestickSeries({upColor:"#00e676",downColor:"#ff5252",borderVisible:false,wickUpColor:"#00e676",wickDownColor:"#ff5252"});
+  lines.vol=chart.addHistogramSeries({priceScaleId:"v",priceFormat:{type:"volume"},color:"#263450"});chart.priceScale("v").applyOptions({scaleMargins:{top:.82,bottom:0}});
+  const L=(c,w=1,s=0)=>chart.addLineSeries({color:c,lineWidth:w,lineStyle:s,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+  lines.ema20=L("#18ffff");lines.ema50=L("#FFD700");lines.ema200=L("#ff9100",2);lines.vwap=L("#b388ff",2,2);lines.bbu=L("#5b6b85",1,1);lines.bbl=L("#5b6b85",1,1);lines.st=L("#448aff",1,3);
+  rsiC=LightweightCharts.createChart($("rsiP"),{...opt,height:110,timeScale:{visible:false}});rsiS=rsiC.addLineSeries({color:"#18ffff",lineWidth:1,priceLineVisible:false});
+  [70,30].forEach(v=>rsiS.createPriceLine({price:v,color:"#263450",lineWidth:1,lineStyle:2,axisLabelVisible:false}));
+  chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{if(r)rsiC.timeScale().setVisibleLogicalRange(r)});
+  new ResizeObserver(()=>{chart.applyOptions({width:$("chart").clientWidth});rsiC.applyOptions({width:$("rsiP").clientWidth})}).observe($("chart"));
+  $("layers").innerHTML=LAYERS.map(([k,l,on])=>`<label><input type="checkbox" id="ly-${k}" ${on?"checked":""} onchange="CUR&&rChart(CUR,true)">${l}</label>`).join("");
+}
+function rsiCalc(c,n=14){const o=Array(c.length).fill(null);let g=0,l=0;for(let i=1;i<c.length;i++){const d=c[i]-c[i-1],G=Math.max(d,0),Ls=Math.max(-d,0);if(i<=n){g+=G;l+=Ls;if(i===n){g/=n;l/=n;o[i]=l===0?100:100-100/(1+g/l)}}else{g=(g*(n-1)+G)/n;l=(l*(n-1)+Ls)/n;o[i]=l===0?100:100-100/(1+g/l)}}return o}
+function rChart(d,keep){
+  if(!chart)mkChart();
+  const tz=(d.market==="NSE"||d.market==="FNO"||d.market==="MCX")?19800:0;const T=t=>t+tz;  // show exchange-local time on the axis
+  cs.setData(d.candles.map(c=>({time:T(c.time),open:c.open,high:c.high,low:c.low,close:c.close})));
+  lines.vol.setData(d.indicators.has_volume?d.candles.map(c=>({time:T(c.time),value:c.volume,color:c.close>=c.open?"rgba(0,230,118,.25)":"rgba(255,82,82,.25)"})):[]);
+  const o=d.overlays,S=(k,a,on)=>lines[k].setData(on?a.map(p=>({time:T(p.time),value:p.value})):[]);
+  S("ema20",o.ema20,layerOn("ema"));S("ema50",o.ema50,layerOn("ema"));S("ema200",o.ema200,layerOn("ema"));S("vwap",o.vwap,layerOn("vwap"));
+  S("bbu",o.bb_up,layerOn("bb"));S("bbl",o.bb_lo,layerOn("bb"));S("st",o.supertrend,layerOn("st"));
+  const r=rsiCalc(d.candles.map(c=>c.close));rsiS.setData(d.candles.map((c,i)=>r[i]==null?null:{time:T(c.time),value:r[i]}).filter(Boolean));
+  plines.forEach(p=>cs.removePriceLine(p));plines=[];
+  const PL=(price,color,title,style=2,w=1)=>{if(price==null)return;plines.push(cs.createPriceLine({price,color,lineWidth:w,lineStyle:style,axisLabelVisible:true,title}))};
+  if(layerOn("ob"))o.order_blocks.filter(x=>x.state!=="breaker").slice(-4).forEach(x=>{const c=x.direction==="bullish"?"rgba(0,230,118,.55)":"rgba(255,82,82,.55)";PL(x.top,c,`${x.direction==="bullish"?"Bull":"Bear"} OB`,0);PL(x.bottom,c,"",0)});
+  if(layerOn("fvg"))o.fvgs.slice(-4).forEach(x=>{const c=x.direction==="bullish"?"rgba(24,255,255,.5)":"rgba(255,145,0,.55)";PL(x.top,c,`FVG ${x.quality}`,1);PL(x.bottom,c,"",1)});
+  if(layerOn("liq")){o.liquidity_above.slice(0,3).forEach(p=>PL(p,"rgba(255,215,0,.6)","BSL",3));o.liquidity_below.slice(0,3).forEach(p=>PL(p,"rgba(255,215,0,.6)","SSL",3))}
+  if(layerOn("lvl")){const pl=d.ict.period_levels||{};PL(pl.pdh,"#8b9ab5","PDH");PL(pl.pdl,"#8b9ab5","PDL");PL(pl.pwh,"#5b6b85","PWH");PL(pl.pwl,"#5b6b85","PWL");
+    const lv=d.levels||{};PL(lv.oi_support,"#00e676","OI support",0,2);PL(lv.oi_resistance,"#ff5252","OI resistance",0,2);PL(lv.max_pain,"#b388ff","Max pain",2)}
+  const s=d.setups[SEL];
+  if(s&&layerOn("setup")){PL(s.entry,"#e2e8f0","Entry",0,2);PL(s.stop,"#ff5252","SL",0,2);s.targets.forEach((t,i)=>PL(t,"#00e676","T"+(i+1),0,1))}
+  cs.setMarkers(layerOn("mk")?o.markers.map(m=>({time:T(m.time),position:m.direction==="bullish"?"belowBar":"aboveBar",color:m.kind==="sweep"?"#FFD700":m.direction==="bullish"?"#00e676":"#ff5252",
+    shape:m.kind==="sweep"?"circle":m.direction==="bullish"?"arrowUp":"arrowDown",text:m.kind==="sweep"?"sweep":m.kind})):[]);
+  if(!keep)chart.timeScale().fitContent();
+}
+function showSetup(i){SEL=i;rChart(CUR,true);window.scrollTo({top:0,behavior:"smooth"})}
+async function paperOpen(i){
+  const s=CUR.setups[i];
+  if(!confirm(`Open a PAPER ${s.direction} on ${CUR.symbol}?\nEntry ≈ ${f(s.entry)}  Stop ${f(s.stop)}  T1 ${f(s.targets[0])}\n\nNo real order is placed.`))return;
+  try{const r=await post("/api/lab/paper/open",{symbol:CUR.symbol,tf:CUR.tf,strategy:s.strategy,direction:s.direction,entry:s.entry,stop:s.stop,targets:s.targets,score:s.score});
+    toast(r.ok?`Paper trade #${r.id} filled at ${f(r.fill)} · qty ${f(r.qty,4)} · risk ${f(r.risk,0)} ${r.currency}`:`<span class="dn">Refused:</span> ${esc(r.blocks.join(" · "))}`,6000)}catch(e){toast(`<span class="dn">${esc(e.message)}</span>`)}
+}
+
+/* ---------------- intelligence */
+function kv(o,skip=[]){if(!o||!Object.keys(o).length)return'<div class="nt">—</div>';return`<div class="kv">${Object.entries(o).filter(([k,v])=>!skip.includes(k)&&(typeof v!=="object"||v===null)).map(([k,v])=>`<div>${esc(k.replace(/_/g," "))}</div><div>${typeof v==="number"?(k.includes("time")?ts(v):f(v)):esc(v??"—")}</div>`).join("")}</div>`}
+function card(t,b){return`<div class="cd"><h3>${t}</h3>${b}</div>`}
+function rIntel(d){
+  const I=d.ict,X=I.external,P=d.price_action,ind=d.indicators,rg=d.regime;
+  const brk=(X.structure||[]).slice(-6).reverse().map(s=>`<tr><td>${ts(s.time)}</td><td>${s.type}</td><td class="${s.direction==="bullish"?"up":"dn"}">${s.direction}</td><td class="r">${f(s.level)}</td></tr>`).join("");
+  const sw=(X.sweeps||[]).slice(-6).reverse().map(s=>`<tr><td>${ts(s.time)}</td><td>${s.side==="buy"?"buy-side":"sell-side"}</td><td class="r">${f(s.level)}</td><td class="r">${f(s.extreme)}</td></tr>`).join("");
+  const obs=(I.order_blocks||[]).slice(-8).reverse().map(o=>`<tr><td class="${o.direction==="bullish"?"up":"dn"}">${o.direction}</td><td>${o.state}</td><td class="r">${f(o.bottom)}–${f(o.top)}</td><td>${o.break_type}${o.volume_confirmed?" · vol":""}</td></tr>`).join("");
+  const fv=(I.fvgs||[]).filter(g=>!g.filled_time).slice(-8).reverse().map(g=>`<tr><td class="${g.direction==="bullish"?"up":"dn"}">${g.direction}${g.inverse_time?" (inverted)":""}</td><td class="r">${f(g.bottom)}–${f(g.top)}</td><td class="r">CE ${f(g.ce)}</td><td class="r">${g.quality}</td></tr>`).join("");
+  const S=I.session||{};
+  const pat=(P.patterns||[]).slice(-8).reverse().map(p=>`<tr><td>${ts(p.time)}</td><td>${esc(p.pattern)}</td><td class="${p.direction==="bullish"?"up":p.direction==="bearish"?"dn":"nt"}">${p.direction}</td></tr>`).join("");
+  const zones=(P.zones||[]).map(z=>`<span class="chip">${f(z.bottom)}–${f(z.top)} ×${z.touches}</span>`).join("");
+  const sd=(P.supply_demand||[]).slice(-6).map(z=>`<span class="chip ${z.kind==="demand"||z.direction==="bullish"?"ok":"no"}">${esc(z.kind||z.direction)} ${f(z.bottom)}–${f(z.top)}</span>`).join("");
+  const em=ind.ema,ix=`<table>
+    <tr><td>EMA 9/20/50/100/200</td><td class="r">${[9,20,50,100,200].map(n=>f(em[n])).join(" · ")}</td></tr>
+    <tr><td>RSI 14 · Stoch RSI K/D</td><td class="r">${f(ind.rsi,1)} · ${f(ind.stoch_rsi.k,1)}/${f(ind.stoch_rsi.d,1)}</td></tr>
+    <tr><td>MACD · signal · hist</td><td class="r">${f(ind.macd.macd)} · ${f(ind.macd.signal)} · ${f(ind.macd.hist)}</td></tr>
+    <tr><td>ADX · +DI · −DI</td><td class="r">${f(ind.adx.adx,1)} · ${f(ind.adx.plus_di,1)} · ${f(ind.adx.minus_di,1)}</td></tr>
+    <tr><td>Bollinger (bandwidth %)</td><td class="r">${f(ind.bollinger.lo)} – ${f(ind.bollinger.up)} (${f(ind.bollinger.bandwidth_pct,2)})</td></tr>
+    <tr><td>Keltner · squeeze</td><td class="r">${f(ind.keltner.lo)} – ${f(ind.keltner.up)} · ${ind.squeeze?'<span class="am">ON</span>':"off"}</td></tr>
+    <tr><td>Supertrend</td><td class="r">${f(ind.supertrend.line)} ${dir(ind.supertrend.dir)}</td></tr>
+    <tr><td>ATR (% of price)</td><td class="r">${f(ind.atr)} (${f(ind.atr_pct,2)}%)</td></tr>
+    <tr><td>Session VWAP</td><td class="r">${f(ind.vwap)}</td></tr>
+    <tr><td>MFI · OBV slope 10 · RVOL</td><td class="r">${ind.has_volume?`${f(ind.mfi,1)} · ${f(ind.obv_slope_10,0)} · ${f(ind.rvol,2)}×`:'<span class="nt">no volume data</span>'}</td></tr>
+    <tr><td>ROC 10 · hist vol · Parkinson</td><td class="r">${f(ind.roc,2)}% · ${f(ind.hist_vol_pct,1)}% · ${f(ind.parkinson_vol_pct,1)}%</td></tr>
+    ${ind.volume_profile?`<tr><td>Volume profile POC · VAH · VAL</td><td class="r">${f(ind.volume_profile.poc)} · ${f(ind.volume_profile.vah)} · ${f(ind.volume_profile.val)}</td></tr>`:""}
+    ${ind.fib?`<tr><td>Fib ${ind.fib.direction} leg ${f(ind.fib.from)}→${f(ind.fib.to)}</td><td class="r">${["0.382","0.5","0.618","0.705","0.786"].map(k=>k+": "+f(ind.fib.levels.retracement[k])).join(" · ")}</td></tr>`:""}
+  </table>${(ind.divergences||[]).length?`<div class="note">Divergences: ${ind.divergences.map(x=>`${x.type} ${x.direction} ${x.name||""} (${ts(x.to)})`).map(esc).join(" · ")}</div>`:""}`;
+  $("p-intel").innerHTML=`<div class="cols">
+    ${card("Market regime",`<div class="kv"><div>Regime</div><div class="gd">${esc(rg.label)}</div><div>Volatility</div><div>${esc(rg.volatility)}</div>${Object.entries(rg.facts||{}).map(([k,v])=>`<div>${esc(k.replace(/_/g," "))}</div><div>${typeof v==="number"?f(v):esc(v)}</div>`).join("")}</div><div class="note">Strategies suited: ${esc((rg.suits||[]).map(k=>META.strategies[k]?.name||k).join(", ")||"none (stand aside)")}</div>`)}
+    ${card("Structure (external · internal)",`<div class="kv"><div>External trend</div><div>${esc(X.trend)}</div><div>Internal trend</div><div>${esc(I.internal.trend)}</div></div><div class="note">${esc(X.summary)}</div><table><tr><th>Time</th><th>Break</th><th>Dir</th><th class="r">Level</th></tr>${brk}</table>`)}
+    ${card("Liquidity",`<table><tr><th>Time</th><th>Sweep</th><th class="r">Level</th><th class="r">Wick</th></tr>${sw||"<tr><td colspan=4 class=nt>none</td></tr>"}</table>
+      <div class="note">Buy-side (above): ${(X.buy_side||[]).slice(0,5).map(x=>f(x.price)).join(" · ")||"—"}<br>Sell-side (below): ${(X.sell_side||[]).slice(0,5).map(x=>f(x.price)).join(" · ")||"—"}</div>
+      ${(I.equal_levels||[]).length?`<div class="note">Equal highs/lows: ${I.equal_levels.map(e=>esc(e.kind)+" "+f(e.price)).join(" · ")}</div>`:""}
+      ${I.inducement?`<div class="note">Inducement: ${f(I.inducement.inducement)} before ${esc(I.inducement.poi)} ${f(I.inducement.poi_bottom)}–${f(I.inducement.poi_top)} · ${I.inducement.taken?"taken":"not yet taken"}</div>`:""}`)}
+    ${card("Order blocks",`<table><tr><th>Dir</th><th>State</th><th class="r">Zone</th><th>From</th></tr>${obs||"<tr><td colspan=4 class=nt>none</td></tr>"}</table>`)}
+    ${card("Fair value gaps (open)",`<table><tr><th>Dir</th><th class="r">Gap</th><th class="r">CE</th><th class="r">Q</th></tr>${fv||"<tr><td colspan=4 class=nt>none</td></tr>"}</table>`)}
+    ${card("ICT context",`<div class="kv"><div>Dealing range</div><div>${f(I.dealing_range.low)} – ${f(I.dealing_range.high)} (${esc(I.dealing_range.zone||"—")} ${f(I.dealing_range.position_pct,1)}%)</div>
+      <div>Equilibrium</div><div>${f(I.dealing_range.equilibrium)}</div><div>OTE (${esc(I.ote.direction||"—")})</div><div>${f(I.ote.ote_bottom)} – ${f(I.ote.ote_top)} · sweet ${f(I.ote.sweet_spot)}</div>
+      <div>Protected</div><div>${f(I.protected.protected_low??I.protected.protected_high)} ${I.protected.protected_low?"low":I.protected.protected_high?"high":""}</div>
+      <div>MSS (latest)</div><div>${(I.mss||[]).slice(-1).map(m=>esc(m.direction)+" "+f(m.level)+" "+ts(m.time)).join("")||"—"}</div></div>`)}
+    ${card("Session model",`<div class="kv"><div>${esc(S.range_name||"Range")}</div><div>${f(S.range_low)} – ${f(S.range_high)}</div><div>AMD phase</div><div>${esc(S.amd_phase||"—")}</div>
+      <div>Manipulation</div><div>${S.manipulation?esc(S.manipulation.side)+" to "+f(S.manipulation.extreme):"—"}</div><div>Judas swing</div><div>${S.judas?esc(S.judas.fake_move+" fake, bias "+S.judas.bias):"—"}</div>
+      <div>Kill zone now</div><div>${esc(S.in_kill_zone||"—")}</div></div><div class="note">${(S.kill_zones||[]).map(z=>esc(z.name)+" "+new Date(z.start*1000).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})+"–"+new Date(z.end*1000).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})).join(" · ")} (your local time)</div>`)}
+    ${card("Period levels",kv(I.period_levels))}
+    ${card("Price action",`<table>${pat}</table><div class="note">Consecutive: ${P.consecutive?.count??"—"} ${esc(P.consecutive?.direction||"")} · Volatility: ${esc(P.volatility?.state||"—")}${P.range_bound?` · range ${f(P.range_low)}–${f(P.range_high)}`:""}${P.exhaustion?`<br>Exhaustion: ${esc(P.exhaustion)}`:""}</div>
+      <div class="note">S/R zones: ${zones||"—"}</div><div class="note">Supply/demand: ${sd||"—"}</div>
+      ${(P.breakout_retest||[]).length?`<div class="note">Breakout-retests: ${P.breakout_retest.map(b=>esc(b.direction)+" "+f(b.level)+" "+ts(b.retest_time)).join(" · ")}</div>`:""}
+      ${(P.false_breakouts||[]).length?`<div class="note">False breakouts: ${P.false_breakouts.map(t=>esc(t.kind.replace("_"," "))+" "+f(t.level)+" "+ts(t.time)).join(" · ")}</div>`:""}`)}
+    ${card("Indicators",ix)}
+  </div><div class="note">${esc(d.disclaimer)}</div>`;
+}
+
+/* ---------------- derivatives */
+function rDeriv(der){
+  const el=$("p-deriv");
+  if(!der){el.innerHTML=card("Derivatives",'<div class="nt">Not loaded for this timeframe.</div>');return}
+  let h="";const ch=der.chain;
+  if(der.note)h+=card("Options",`<div class="nt">${esc(der.note)}</div>`);
+  if(ch&&ch.error)h+=card("Option chain",`<div class="una" style="font-size:.9rem">DATA UNAVAILABLE<small>${esc(ch.error)}</small></div>`);
+  if(ch&&!ch.error){
+    const ivr=ch.iv_rank||{},tr=ch.trends||{};
+    h+=card(`Option chain · ${esc(ch.underlying)} · ${esc(ch.expiry)}`,`<div class="kv">
+      <div>Spot · ATM</div><div>${f(ch.spot)} · ${f(ch.atm)}</div><div>PCR (OI · volume)</div><div>${f(ch.pcr_oi,2)} · ${f(ch.pcr_vol,2)}</div>
+      <div>OI support · resistance</div><div><span class="up">${f(ch.oi_support)}</span> · <span class="dn">${f(ch.oi_resistance)}</span></div>
+      <div>Max pain</div><div>${f(ch.max_pain)}</div><div>OI flow</div><div class="${ch.oi_flow>0?"up":ch.oi_flow<0?"dn":"nt"}">${ch.oi_flow>0?"+":""}${ch.oi_flow} (${ch.oi_flow>=25?"put writing dominates":ch.oi_flow<=-25?"call writing dominates":"balanced"})</div>
+      <div>ATM IV</div><div>${f(ch.atm_iv,2)}% ${ch.vix?`· India VIX ${f(ch.vix,2)}`:""}</div>
+      <div>IV rank · percentile</div><div>${ivr.available?`${ivr.rank} · ${ivr.percentile} (${ivr.samples} snapshots)`:esc(ivr.note||"not enough history")}</div>
+      <div>IV trend (6h)</div><div>${tr.available?esc(tr.iv_state)+" ("+f(tr.iv_change,2)+")":"needs recorded snapshots"}</div>
+      <div>PCR divergence</div><div>${esc(tr.pcr_divergence||"—")}</div>
+      <div>ATM straddle</div><div>${f(ch.straddle)}</div><div>Expected move (IV · straddle)</div><div>±${f(ch.expected_move_iv)} · ±${f(ch.expected_move_straddle)}</div>
+      <div>Skew (put − call IV)</div><div>${f(ch.skew_put_minus_call,2)}</div>
+      <div>GEX (estimate)</div><div>${f(ch.gex_est,0)}</div><div>DEX</div><div>${f(ch.dex,0)}</div></div>
+      <div class="note">${esc(ch.gex_note)}<br>Max pain: ${esc(ch.max_pain_note)}<br>Source: ${esc(ch.source)} · ${ts(ch.as_of)}</div>`);
+    const rows=ch.strikes.filter(s=>Math.abs(s.strike-ch.atm)<=Math.abs((ch.strikes[1]?.strike||1)-(ch.strikes[0]?.strike||0))*8);
+    const cell=(o,k,d)=>o?f(o[k],d):"—",bu=o=>o&&o.build_up?`<span class="${/long build|short cover/.test(o.build_up)?"up":"dn"}">${esc(o.build_up)}</span>`:"";
+    h+=`<div class="cd" style="margin-top:10px"><h3>Strikes (ATM ±8)</h3><div class="scroll"><table><tr><th>CE build-up</th><th class="r">CE OI</th><th class="r">ΔOI</th><th class="r">IV</th><th class="r">Δ</th><th class="r">Γ</th><th class="r">Θ</th><th class="r">ρ</th><th class="r">LTP</th>
+      <th class="r gd">Strike</th><th class="r">LTP</th><th class="r">ρ</th><th class="r">Θ</th><th class="r">Γ</th><th class="r">Δ</th><th class="r">IV</th><th class="r">ΔOI</th><th class="r">PE OI</th><th>PE build-up</th></tr>
+      ${rows.map(s=>`<tr${s.strike===ch.atm?' style="background:rgba(255,215,0,.06)"':""}><td>${bu(s.ce)}</td><td class="r">${cell(s.ce,"oi",0)}</td><td class="r">${cell(s.ce,"oi_chg",0)}</td><td class="r">${cell(s.ce,"iv",1)}</td><td class="r">${cell(s.ce,"delta",2)}</td><td class="r">${cell(s.ce,"gamma",4)}</td><td class="r">${cell(s.ce,"theta",2)}</td><td class="r">${cell(s.ce,"rho",3)}</td><td class="r">${cell(s.ce,"ltp")}</td>
+      <td class="r gd"><b>${f(s.strike)}</b></td><td class="r">${cell(s.pe,"ltp")}</td><td class="r">${cell(s.pe,"rho",3)}</td><td class="r">${cell(s.pe,"theta",2)}</td><td class="r">${cell(s.pe,"gamma",4)}</td><td class="r">${cell(s.pe,"delta",2)}</td><td class="r">${cell(s.pe,"iv",1)}</td><td class="r">${cell(s.pe,"oi_chg",0)}</td><td class="r">${cell(s.pe,"oi",0)}</td><td>${bu(s.pe)}</td></tr>`).join("")}</table></div>
+      ${(ch.unusual_oi||[]).length?`<div class="note">Unusual OI change (≥3× median): ${ch.unusual_oi.map(u=>`${f(u.strike)} ${u.side} ${f(u.oi_chg,0)} (${u.times_median}×)`).join(" · ")}</div>`:""}
+      <div class="note">Build-up: OI↑ price↑ long build-up · OI↑ price↓ writing · OI↓ price↑ short covering · OI↓ price↓ long unwinding. Probabilistic labels, not knowledge of who holds what.</div></div>`;
+  }
+  if(der.perp){const p=der.perp;h+=card(`Perpetual · ${esc(p.pair)}`,p.error?`<div class="una" style="font-size:.9rem">DATA UNAVAILABLE<small>${esc(p.error)}</small></div>`:`<div class="kv"><div>Mark · spot</div><div>${f(p.mark)} · ${f(p.spot)}</div><div>Basis</div><div>${pct(p.basis_pct)}</div>
+    <div>Funding rate</div><div>${p.funding_rate_pct==null?"—":p.funding_rate_pct.toFixed(4)+"%"}</div><div>Open interest</div><div>${f(p.oi_contracts,0)} contracts${p.oi_usd?` · $${f(p.oi_usd,0)}`:""}</div><div>OI change 6h</div><div>${p.oi_change_usd_6h==null?"—":"$"+f(p.oi_change_usd_6h,0)}</div></div><div class="note">Source: ${esc(p.source)} (Shark does not publish funding/OI on its public API).</div>`);
+    if(der.liquidations){const l=der.liquidations;h+=card("Liquidation zones (estimate)",`<div class="kv">${[10,25,50].map(x=>`<div>${x}× longs · shorts</div><div><span class="dn">${f(l["long_"+x+"x"])}</span> · <span class="up">${f(l["short_"+x+"x"])}</span></div>`).join("")}</div><div class="note">${esc(l.note)}</div>`)}}
+  el.innerHTML=`<div class="cols">${h}</div>`;
+}
+
+/* ---------------- MTF */
+async function ldMTF(){
+  const sym=$("sym").value.trim();$("p-mtf").innerHTML=card("Multi-timeframe",'<span class="spin"></span> loading 9 timeframes…');
+  try{const m=await api(`/api/lab/mtf?symbol=${encodeURIComponent(sym)}`);
+    $("p-mtf").innerHTML=card(`Multi-timeframe · ${esc(sym)} · <span class="${m.alignment.includes("bull")?"up":m.alignment.includes("bear")?"dn":"am"}">${esc(m.alignment)}</span>`,
+      `<div class="hr" style="margin-bottom:8px">${Object.entries(m.groups).map(([k,v])=>`<span class="chip">${esc(k)}: ${v==null?"n/a":dir(v)}</span>`).join("")}</div>
+      <table><tr><th>TF</th><th class="mtfc">Bias</th><th>Structure</th><th>Regime</th><th class="r">RSI</th><th class="r">ADX</th><th class="r">Close</th><th class="r">EMA20</th><th class="r">EMA50</th><th>As of</th></tr>
+      ${m.rows.map(r=>r.error?`<tr><td>${r.tf}</td><td colspan=9 class="dn">${esc(r.error)}</td></tr>`:`<tr><td><b>${r.tf}</b></td><td class="mtfc">${dir(r.bias)}</td><td class="${r.structure==="bullish"?"up":r.structure==="bearish"?"dn":"nt"}">${r.structure}</td><td>${esc(r.regime)}</td><td class="r">${f(r.rsi,1)}</td><td class="r">${f(r.adx,1)}</td><td class="r">${f(r.close)}</td><td class="r">${f(r.ema20)}</td><td class="r">${f(r.ema50)}</td><td>${ts(r.as_of)}</td></tr>`).join("")}</table>
+      <div class="note">Bias per timeframe: structure trend, EMA20 vs EMA50, close vs EMA50 and Supertrend each vote; ≥2 bullish, ≤−2 bearish. Execution signals are capped at 55 when the higher timeframe opposes.</div>`)}
+  catch(e){$("p-mtf").innerHTML=card("Multi-timeframe",`<div class="una" style="font-size:.9rem">DATA UNAVAILABLE<small>${esc(e.message)}</small></div>`)}
+}
+
+/* ---------------- backtest */
+let BT=null;
+function rBT(){
+  if($("btForm"))return;
+  $("p-bt").innerHTML=`<div class="cd"><h3>Backtest — same engine as the live signals</h3><div class="set" id="btForm">
+    <label>Symbol<input id="btSym"></label><label>Timeframe<select id="btTf">${TFS.map(t=>`<option ${t===TF?"selected":""}>${t}</option>`).join("")}</select></label>
+    <label>Candles<input id="btBars" type="number" value="3000" min="400" max="20000"></label>
+    <label>Strategy<select id="btStr"><option value="">All strategies</option>${Object.entries(META.strategies).map(([k,v])=>`<option value="${k}">${esc(v.name)}</option>`).join("")}</select></label>
+    <label>Minimum score<input id="btMin" type="number" value="${META.protection.min_score}" min="0" max="100"></label>
+    <label>&nbsp;<button class="btn gold" onclick="runBT()">▶ Run backtest</button></label></div>
+    <div class="note">Signal on the candle close, entry at the next open with slippage + spread, Indian statutory charges / crypto fees, stop assumed before target inside a candle, 60/20/20 train/validation/untouched-test split, rolling walk-forward, parameter sensitivity and Monte Carlo. Past results do not predict future results.</div></div>
+    <div id="btOut"></div><div class="cd" style="margin-top:10px"><h3>Previous backtests</h3><div id="btList"></div></div>`;
+  $("btSym").value=$("sym").value;ldBTList();
+}
+async function ldBTList(){try{const l=await api("/api/lab/backtests");$("btList").innerHTML=l.length?`<table><tr><th>#</th><th>When</th><th>Symbol</th><th>TF</th><th>Strategy</th><th class="r">Trades</th><th class="r">Exp R</th><th class="r">Test exp R</th><th></th></tr>${l.map(b=>`<tr><td>${b.id}</td><td>${ts(b.created)}</td><td>${esc(b.symbol)}</td><td>${b.tf}</td><td>${esc(b.params.strategy||"all")}</td><td class="r">${b.overall?.trades??0}</td><td class="r">${f(b.overall?.expectancy_r,3)}</td><td class="r">${f(b.test?.expectancy_r,3)}</td><td><button class="btn sm" onclick="openBT(${b.id})">open</button></td></tr>`).join("")}</table>`:'<div class="nt">None yet.</div>'}catch(e){}}
+async function openBT(id){try{BT=await api("/api/lab/backtests/"+id);rBTOut(BT)}catch(e){toast(esc(e.message))}}
+async function runBT(){
+  $("btOut").innerHTML=card("Running",'<span class="spin"></span> fetching history and simulating… (on a phone the screen may freeze for up to a minute while it calculates)');
+  try{BT=await post("/api/lab/backtest",{symbol:$("btSym").value.trim(),tf:$("btTf").value,bars:+$("btBars").value,strategy:$("btStr").value||null,min_score:+$("btMin").value});rBTOut(BT);ldBTList()}
+  catch(e){$("btOut").innerHTML=card("Backtest",`<div class="una" style="font-size:.9rem">${/DATA UNAVAILABLE/.test(e.message)?"DATA UNAVAILABLE":"Could not run"}<small>${esc(e.message)}</small></div>`)}
+}
+function statRow(n,s){return`<tr><td><b>${esc(n)}</b></td><td class="r">${s.trades||0}</td><td class="r">${s.trades?f(s.win_rate,1)+"%":"—"}</td><td class="r ${s.expectancy_r>0?"up":s.expectancy_r<0?"dn":""}">${s.trades?f(s.expectancy_r,3):"—"}</td><td class="r">${s.trades?f(s.profit_factor,2):"—"}</td><td class="r">${s.trades?f(s.total_r,2):"—"}</td><td class="r">${s.trades?f(s.max_drawdown_r,2):"—"}</td><td class="r">${s.trades?f(s.avg_win_r,2)+" / "+f(s.avg_loss_r,2):"—"}</td><td class="r">${s.trades?f(s.sharpe_per_trade,3):"—"}</td><td class="r">${s.trades?s.max_losing_streak:"—"}</td><td class="r">${s.trades?f(s.pnl,0):"—"}</td><td class="r">${s.trades?f(s.costs,0):"—"}</td></tr>`}
+const SH=`<tr><th></th><th class="r">Trades</th><th class="r">Win%</th><th class="r">Exp R</th><th class="r">PF</th><th class="r">Total R</th><th class="r">Max DD R</th><th class="r">Avg W/L R</th><th class="r">Sharpe/trade</th><th class="r">Max L streak</th><th class="r">P&L</th><th class="r">Costs</th></tr>`;
+function rBTOut(r){
+  const tbl=(o,lab)=>`<table>${SH}${Object.entries(o).map(([k,v])=>statRow(lab?lab(k):k,v)).join("")}</table>`;
+  const mc=r.monte_carlo;
+  let eq=0;const curve=r.trades.map(t=>(eq+=t.r,{time:t.exit_time,value:+eq.toFixed(3)}));
+  $("btOut").innerHTML=`<div class="cd" style="margin-top:10px"><h3>${esc(r.symbol)} · ${r.tf} · ${ts(r.from)} → ${ts(r.to)} · ${r.candles} candles · params: stop buffer ${r.params.stop_buffer_atr}×ATR, min R:R ${r.params.min_rr}</h3>
+    <table>${SH}${statRow("Overall",r.overall)}${statRow("Train (60%)",r.train)}${statRow("Validation (20%)",r.validation)}${statRow("Untouched test (20%)",r.test)}</table>
+    <div id="eqc" style="height:200px;margin-top:10px"></div><div class="note">Equity curve in R (after costs). ${r.notes.map(esc).join(" ")}</div></div>
+    <div class="cols" style="margin-top:10px">
+    ${card("Validation status (per strategy)",`<table><tr><th>Strategy</th><th>Status</th><th class="r">Val n · exp</th><th class="r">Test n · exp</th></tr>${Object.entries(r.validation_status).map(([k,v])=>`<tr><td>${esc(META.strategies[k]?.name||k)}</td><td class="${v.status==="validated"?"up":"am"}">${v.status}</td><td class="r">${v.val_trades} · ${f(v.val_expectancy,3)}</td><td class="r">${v.test_trades} · ${f(v.test_expectancy,3)}</td></tr>`).join("")}</table><div class="note">Validated = validation and test expectancy both > 0 with ≥20 trades. Nothing is deployed automatically.</div>`)}
+    ${card("Monte Carlo",mc.available?`<div class="kv"><div>Runs × trades</div><div>${mc.runs} × ${mc.trades_per_run}</div><div>Total R p5 · p50 · p95</div><div>${mc.total_r_p5} · ${mc.total_r_p50} · ${mc.total_r_p95}</div><div>Max DD R p5 · p50</div><div>${mc.max_dd_r_p5} · ${mc.max_dd_r_p50}</div><div>Runs ending below 0</div><div>${mc.prob_negative}%</div></div>`:`<div class="nt">${esc(mc.note)}</div>`)}
+    ${card("Walk-forward (out-of-sample folds)",`<table><tr><th>Fold</th><th>Params</th><th class="r">Trades</th><th class="r">Exp R</th><th class="r">Win%</th></tr>${r.walk_forward.map(w=>`<tr><td>${w.fold}</td><td>${w.params.stop_buffer_atr} · ${w.params.min_rr}</td><td class="r">${w.trades}</td><td class="r">${w.trades?f(w.expectancy_r,3):"—"}</td><td class="r">${w.trades?f(w.win_rate,1):"—"}</td></tr>`).join("")}</table>`)}
+    ${card("Sensitivity (expectancy R)",`<table><tr><th>Stop buffer</th><th>Min R:R</th><th class="r">Train n · exp</th><th class="r">Validation n · exp</th></tr>${r.sensitivity.map(s=>`<tr${s.stop_buffer_atr===r.params.stop_buffer_atr&&s.min_rr===r.params.min_rr?' class="gd"':""}><td>${s.stop_buffer_atr}</td><td>${s.min_rr}</td><td class="r">${s.train.trades} · ${f(s.train.expectancy_r,3)}</td><td class="r">${s.validation.trades} · ${f(s.validation.expectancy_r,3)}</td></tr>`).join("")}</table><div class="note">A robust edge shows similar numbers across neighbouring cells; one bright cell is likely luck.</div>`)}
+    </div>
+    <div class="cd" style="margin-top:10px"><h3>By strategy</h3>${tbl(r.by_strategy,k=>META.strategies[k]?.name||k)}</div>
+    <div class="cols" style="margin-top:10px">${card("By regime",tbl(r.by_regime))}${card("By side",tbl(r.by_side))}${card("By score bucket (all ≥45)",tbl(r.by_score))}${card("By hour of signal",tbl(r.by_hour,k=>k+":00"))}</div>
+    <div class="cd" style="margin-top:10px"><h3>Trades (latest ${r.trades.length})</h3><div class="scroll"><table><tr><th>Signal</th><th>Strategy</th><th>Side</th><th class="r">Score</th><th class="r">Entry</th><th class="r">Stop</th><th class="r">Exit</th><th>Exit reason</th><th>Targets hit</th><th class="r">Bars</th><th class="r">Costs</th><th class="r">R</th></tr>
+    ${r.trades.slice().reverse().map(t=>`<tr><td>${ts(t.signal_time)}</td><td>${esc(META.strategies[t.strategy]?.name||t.strategy)}</td><td class="${t.side==="LONG"?"up":"dn"}">${t.side}</td><td class="r">${f(t.score,0)}</td><td class="r">${f(t.entry)}</td><td class="r">${f(t.stop)}</td><td class="r">${f(t.exit)}</td><td>${esc(t.exit_reason)}</td><td>${t.targets_hit.join(" ")||"—"}</td><td class="r">${t.bars_held}</td><td class="r">${f(t.costs,2)}</td><td class="r ${t.r>0?"up":"dn"}">${f(t.r,2)}</td></tr>`).join("")}</table></div></div>`;
+  if(curve.length){const c=LightweightCharts.createChart($("eqc"),{height:200,layout:{background:{color:"#0d1117"},textColor:"#8b9ab5"},grid:{vertLines:{color:"#131a27"},horzLines:{color:"#131a27"}},timeScale:{timeVisible:true}});
+    const uniq=[];curve.forEach(p=>{if(uniq.length&&uniq[uniq.length-1].time>=p.time)p.time=uniq[uniq.length-1].time+1;uniq.push(p)});
+    c.addLineSeries({color:"#FFD700",lineWidth:2}).setData(uniq);c.timeScale().fitContent()}
+}
+
+/* ---------------- paper */
+async function ldPaper(){
+  try{const p=await api("/api/lab/paper");const pr=await api("/api/lab/protection?symbol="+encodeURIComponent($("sym").value.trim()));
+    const st=pr.status;
+    $("p-paper").innerHTML=`<div class="cols">${card("Capital protection",`<div class="kv"><div>Can open now (${esc($("sym").value)})</div><div class="${st.ok?"up":"dn"}">${st.ok?"yes":"no"}</div>
+      <div>Open trades</div><div>${st.open} / ${pr.settings.max_open}</div><div>Today P&L (${st.currency})</div><div class="${st.daily_pnl>=0?"up":"dn"}">${f(st.daily_pnl,0)}</div><div>Week P&L</div><div class="${st.weekly_pnl>=0?"up":"dn"}">${f(st.weekly_pnl,0)}</div><div>Losing streak</div><div>${st.loss_streak}</div></div>
+      ${st.blocks.length?`<div class="note dn">${st.blocks.map(esc).join("<br>")}</div>`:""}<div class="note">Risk ${pr.settings.risk_pct}% per trade · daily stop ${pr.settings.daily_loss_pct}% · weekly ${pr.settings.weekly_loss_pct}% · ${pr.settings.loss_streak_lockout} losses lock the day · ${pr.settings.cooldown_min} min cooldown after a loss · no averaging · max ${pr.settings.max_correlated} per correlated group.</div>`)}
+      ${card("Paper results",Object.keys(p.summary).length?Object.entries(p.summary).map(([c,s])=>`<div class="kv"><div>${c} trades · win%</div><div>${s.trades} · ${s.win_rate}%</div><div>P&L (after costs)</div><div class="${s.pnl>=0?"up":"dn"}">${f(s.pnl,2)}</div><div>Avg R · costs</div><div>${s.avg_r} · ${f(s.costs,2)}</div></div>`).join("<hr style='border-color:#1b2536;margin:6px 0'>"):'<div class="nt">No closed paper trades yet.</div>')}</div>
+      <div class="cd" style="margin-top:10px"><h3>Paper trades</h3><div class="scroll"><table><tr><th>#</th><th>Opened</th><th>Symbol</th><th>Strategy</th><th>Side</th><th class="r">Qty</th><th class="r">Entry</th><th class="r">Stop now</th><th class="r">T1/T2/T3</th><th>Hit</th><th>Status</th><th class="r">Exit</th><th class="r">P&L</th><th class="r">R</th><th></th></tr>
+      ${p.trades.map(t=>`<tr><td>${t.id}</td><td>${ts(t.opened_at)}</td><td>${esc(t.symbol)}</td><td>${esc(META.strategies[t.strategy]?.name||t.strategy||"")}</td><td class="${t.side==="LONG"?"up":"dn"}">${t.side}</td><td class="r">${f(t.qty,4)}</td><td class="r">${f(t.entry)}</td><td class="r">${f(t.stop_now??t.stop)}</td><td class="r">${t.targets.map(x=>f(x)).join(" / ")}</td><td>${(t.hit||[]).join(" ")||"—"}</td><td>${t.status}${t.exit_reason?" · "+esc(t.exit_reason):""}</td><td class="r">${f(t.exit)}</td><td class="r ${t.pnl>0?"up":t.pnl<0?"dn":""}">${t.pnl==null?"—":f(t.pnl,2)+" "+t.currency}</td><td class="r">${f(t.r_result,2)}</td><td>${t.status==="open"?`<button class="btn sm" onclick="paperClose(${t.id})">close</button>`:""}</td></tr>`).join("")||"<tr><td colspan=15 class=nt>No paper trades.</td></tr>"}</table></div>
+      <div class="note">Paper fills use the latest closed 1-minute candle plus slippage and half the spread; exits follow the same thirds/breakeven/trailing rules as the backtest. No broker order is ever sent.</div></div>`}
+  catch(e){$("p-paper").innerHTML=card("Paper",`<div class="dn">${esc(e.message)}</div>`)}
+}
+async function paperClose(id){if(!confirm("Close paper trade #"+id+" at the latest price?"))return;try{const r=await post("/api/lab/paper/close/"+id);toast(r.ok?"Closed at "+f(r.exit):esc(r.error));ldPaper()}catch(e){toast(esc(e.message))}}
+
+/* ---------------- journal & alerts */
+async function ldJournal(){
+  try{const j=await api("/api/lab/journal");
+    $("p-journal").innerHTML=`${card("Measured signal outcomes (this app's own journal)",(Object.keys(j.measured).length?`<table><tr><th>Strategy</th><th class="r">Resolved</th><th class="r">T1 before stop</th><th class="r">Avg R (gross)</th></tr>${Object.entries(j.measured).map(([k,v])=>`<tr><td>${esc(META.strategies[k]?.name||k)}</td><td class="r">${v.resolved}</td><td class="r">${v.hit_rate}%</td><td class="r">${v.avg_r_gross}</td></tr>`).join("")}</table>`:'<div class="nt">No resolved signals yet. Signals ≥ the minimum score are journaled automatically and resolved by the recorder.</div>')+`<div class="note">${esc(j.note)}</div>`)}
+    <div class="cd" style="margin-top:10px"><h3>Signal journal</h3><div class="scroll"><table><tr><th>Candle</th><th>Symbol</th><th>TF</th><th>Strategy</th><th>Side</th><th class="r">Score</th><th class="r">Entry</th><th class="r">Stop</th><th class="r">T1</th><th class="r">T2</th><th>Status</th><th>Outcome</th><th class="r">R</th></tr>
+    ${j.signals.map(s=>`<tr><td>${ts(s.bar_time)}</td><td>${esc(s.symbol)}</td><td>${s.tf}</td><td>${esc(META.strategies[s.strategy]?.name||s.strategy)}</td><td class="${s.direction==="LONG"?"up":"dn"}">${s.direction}</td><td class="r">${f(s.score,0)}</td><td class="r">${f(s.entry)}</td><td class="r">${f(s.stop)}</td><td class="r">${f(s.t1)}</td><td class="r">${f(s.t2)}</td><td>${s.status}</td><td>${esc(s.outcome||"—")}</td><td class="r">${f(s.r_result,2)}</td></tr>`).join("")||"<tr><td colspan=13 class=nt>Empty.</td></tr>"}</table></div></div>`}
+  catch(e){$("p-journal").innerHTML=card("Journal",esc(e.message))}
+}
+async function ldAlertCount(){try{const a=await api("/api/lab/alerts?unseen=true");$("alN").innerHTML=a.length?`<b class="gd">${a.length}</b>`:""}catch(e){}}
+async function ldAlerts(){
+  try{const a=await api("/api/lab/alerts");
+    $("p-alerts").innerHTML=`<div class="cd"><h3><span>Alerts</span><button class="btn sm" onclick="seen()">Mark all read</button></h3><div class="scroll"><table><tr><th>When</th><th>Symbol</th><th>TF</th><th>Kind</th><th>Alert</th></tr>
+    ${a.map(x=>`<tr class="${x.seen?"":"alert-new"}"><td>${ts(x.t)}</td><td>${esc(x.symbol)}</td><td>${x.tf}</td><td>${esc(x.kind)}</td><td style="white-space:normal">${esc(x.text)}</td></tr>`).join("")||"<tr><td colspan=5 class=nt>No alerts yet.</td></tr>"}</table></div>
+    <div class="note">Raised when you analyse a symbol and by the recorder, which on the phone runs only while this page is open. Each event is raised once.</div></div>`}catch(e){}
+}
+async function seen(){await post("/api/lab/alerts/seen");ldAlerts();ldAlertCount()}
+
+/* ---------------- settings */
+async function rSettings(){
+  META=Object.assign(META,await api("/api/lab/meta"));
+  const p=META.protection,rc=META.recorder,cs_=META.costs;let rs={};try{rs=await api("/api/lab/recorder")}catch(e){}
+  const num=(id,v,step="any")=>`<input id="${id}" type="number" step="${step}" value="${v}">`;
+  $("p-settings").innerHTML=`<div class="cd"><h3>Capital protection (paper)</h3><div class="set">
+    <label>Paper capital INR${num("s_capital_inr",p.capital_inr)}</label><label>Paper capital USD${num("s_capital_usd",p.capital_usd)}</label>
+    <label>Risk per trade %${num("s_risk_pct",p.risk_pct)}</label><label>Daily loss limit %${num("s_daily_loss_pct",p.daily_loss_pct)}</label><label>Weekly loss limit %${num("s_weekly_loss_pct",p.weekly_loss_pct)}</label>
+    <label>Max open trades${num("s_max_open",p.max_open,1)}</label><label>Max per correlated group${num("s_max_correlated",p.max_correlated,1)}</label>
+    <label>Loss streak lockout${num("s_loss_streak_lockout",p.loss_streak_lockout,1)}</label><label>Cooldown after a loss (min)${num("s_cooldown_min",p.cooldown_min,1)}</label>
+    <label>Minimum signal score${num("s_min_score",p.min_score,1)}</label></div></div>
+    <div class="cd" style="margin-top:10px"><h3>Strategies</h3><table><tr><th>On</th><th>Strategy</th><th>Stop buffer × ATR</th><th>Min R:R</th><th>Min avg volume</th><th style="white-space:normal">Rule</th></tr>
+    ${Object.entries(META.strategies).map(([k,v])=>`<tr><td><input type="checkbox" id="e_${k}" ${v.params.enabled?"checked":""}></td><td><b>${esc(v.name)}</b></td><td><input id="b_${k}" type="number" step="0.05" value="${v.params.stop_buffer_atr}" style="width:70px"></td><td><input id="r_${k}" type="number" step="0.1" value="${v.params.min_rr}" style="width:70px"></td><td><input id="v_${k}" type="number" value="${v.params.min_avg_volume}" style="width:90px"></td><td style="white-space:normal;color:var(--t2)">${esc(v.description)}</td></tr>`).join("")}</table></div>
+    <div class="cd" style="margin-top:10px"><h3>Costs</h3><div class="set"><label>Brokerage per order (INR)${num("c_brokerage_inr",cs_.brokerage_inr)}</label><label>Crypto taker fee (bps)${num("c_crypto_fee_bps",cs_.crypto_fee_bps)}</label><label>US commission (bps)${num("c_us_comm_bps",cs_.us_comm_bps)}</label></div><div class="note">Statutory Indian charges (STT, exchange, SEBI, stamp, GST) are built in; slippage and spread per market are in backend/lab/costs.py.</div></div>
+    <div class="cd" style="margin-top:10px"><h3>Recorder & watch-list</h3><div class="set">
+    <label>Recorder on<select id="rc_en"><option value="1" ${rc.enabled?"selected":""}>on</option><option value="0" ${rc.enabled?"":"selected"}>off</option></select></label>
+    <label>Every (minutes)${num("rc_int",rc.interval_min,1)}</label><label>Scan timeframe<select id="rc_tf">${TFS.map(t=>`<option ${t===rc.scan_tf?"selected":""}>${t}</option>`).join("")}</select></label>
+    <label style="grid-column:1/-1">Recorded / scanned symbols (comma separated)<input id="rc_sym" value="${esc(rc.symbols.join(", "))}"></label>
+    <label>Timeframes recorded<input id="rc_tfs" value="${esc(rc.tfs.join(", "))}"></label><label>Option chains<input id="rc_ch" value="${esc(rc.chains.join(", "))}"></label>
+    <label style="grid-column:1/-1">My watch-list (comma separated)<input id="w_list" value="${esc((META.user_watch||[]).join(", "))}"></label></div>
+    <div class="note">Recorder: last run ${ts(rs.last_run)} · runs ${rs.runs??0} · candles in DB ${rs.db_candles??0} · chain snapshots ${rs.db_snapshots??0}${rs.last_error?` · <span class="dn">${esc(rs.last_error)}</span>`:""}</div>
+    <div class="hr" style="margin-top:10px"><button class="btn gold" onclick="saveSettings()">Save settings</button><button class="btn" onclick="recNow()">Run recorder now</button></div></div>`;
+}
+const csv=s=>s.split(",").map(x=>x.trim()).filter(Boolean);
+async function saveSettings(){
+  const g=id=>+$(id).value,prot={};["capital_inr","capital_usd","risk_pct","daily_loss_pct","weekly_loss_pct","max_open","max_correlated","loss_streak_lockout","cooldown_min","min_score"].forEach(k=>prot[k]=g("s_"+k));
+  const strat={};Object.keys(META.strategies).forEach(k=>strat[k]={enabled:$("e_"+k).checked,stop_buffer_atr:g("b_"+k),min_rr:g("r_"+k),min_avg_volume:g("v_"+k)});
+  try{META=Object.assign(META,await post("/api/lab/settings",{protection:prot,strategies:strat,costs:{brokerage_inr:g("c_brokerage_inr"),crypto_fee_bps:g("c_crypto_fee_bps"),us_comm_bps:g("c_us_comm_bps")},
+    recorder:{enabled:$("rc_en").value==="1",interval_min:g("rc_int"),scan_tf:$("rc_tf").value,symbols:csv($("rc_sym").value),tfs:csv($("rc_tfs").value),chains:csv($("rc_ch").value)},watch:csv($("w_list").value)}));
+    toast("Saved");$("minS").textContent=`signal ≥ ${META.protection.min_score}`;rSettings()}catch(e){toast(`<span class="dn">${esc(e.message)}</span>`)}
+}
+async function recNow(){toast("Recorder running… this can take a minute",60000);try{const r=await post("/api/lab/recorder/run");toast("Recorder done: "+esc(JSON.stringify(r.last_summary||{})),6000);rSettings()}catch(e){toast(`<span class="dn">${esc(e.message)}</span>`)}}
+
+init().catch(e=>{$("qual").innerHTML=`<span class="dn">Signal Lab engine could not start: ${esc(e.message)}</span>`});
+</script>
+<script>window.addEventListener('mm-lab-status',e=>{const q=document.getElementById('qual');if(q&&e.detail)q.innerHTML='<span class="spin"></span> '+e.detail});</script>
+</body>
+</html>

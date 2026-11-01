@@ -8,6 +8,7 @@ pages, Moneycontrol, Day Desk, server AI) and fixes links for GitHub Pages. Re-r
 """
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import sys
@@ -16,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = Path(sys.argv[1] if len(sys.argv) > 1 else "../MarketMiner-FYERS/static")
 ENGINE = '<script src="js/engine.js?v=__V__"></script>'
-VERSION = "2026.11.01-2"
+VERSION = "2026.11.01-3"
 
 # Panels the phone can't feed (they need NSE's website or Moneycontrol through the PC's proxy)
 DROP_CARDS = ["🌐 Global Indices", "🔔 Pre-Open", "⚡ F&amp;O Pre-Open", "⚡ F&O Pre-Open", "💰 Large Deals", "📈 OI Spurts Analysis",
@@ -52,7 +53,7 @@ def common(html: str) -> str:
         raise SystemExit("no <meta charset> to put the engine after")
     html = html.replace('href="/manifest.webmanifest"', 'href="manifest.webmanifest"').replace('href="/icons/', 'href="icons/')
     html = html.replace('href="/fyers.html"', 'href="fyers.html"').replace('href="/crypto.html"', 'href="crypto.html"').replace('href="/"', 'href="index.html"')
-    html = html.replace('href="/desk.html"', 'href="desk.html"')
+    html = html.replace('href="/desk.html"', 'href="desk.html"').replace('href="/lab.html"', 'href="lab.html"')
     html = html.replace("register('/sw.js')", "register('sw.js')")
     return html
 
@@ -139,6 +140,43 @@ def build_desk(src: str) -> str:
     return html
 
 
+def build_lab(src: str) -> str:
+    """Signal Lab: the page is the PC's; its /api/lab/* requests are answered by the PC's own Python package
+    (backend/lab) running in the browser with Pyodide (js/lab.js). desk.js is loaded for contract aliases."""
+    html = common(src)
+    eng = ENGINE.replace("__V__", VERSION)
+    html = html.replace(eng, eng + f'\n<script src="js/desk.js?v={VERSION}"></script>\n<script src="js/lab.js?v={VERSION}"></script>', 1)
+    reps = [
+        ('<span class="paper">PAPER TRADING ONLY</span>', '<span class="paper">PAPER TRADING ONLY</span><span class="paper" style="color:var(--cy);border-color:rgba(24,255,255,.4);background:rgba(24,255,255,.06)">📱 ON THIS DEVICE</span>'),
+        ("Raised when you analyse a symbol and by the background recorder (watch-list scan every interval). Each event is raised once.",
+         "Raised when you analyse a symbol and by the recorder, which on the phone runs only while this page is open. Each event is raised once."),
+        ("(large runs can take a minute)", "(on a phone the screen may freeze for up to a minute while it calculates)"),
+        ("Signal Lab backend not reachable: ${esc(e.message)} — restart MarketMiner.", "Signal Lab engine could not start: ${esc(e.message)}"),
+    ]
+    for a, b in reps:
+        if a not in html:
+            raise SystemExit("lab.html changed; update build_mobile.py: " + a[:60])
+        html = html.replace(a, b)
+    status_js = """<script>window.addEventListener('mm-lab-status',e=>{const q=document.getElementById('qual');if(q&&e.detail)q.innerHTML='<span class="spin"></span> '+e.detail});</script>"""
+    html = html.replace("</body>", status_js + "\n</body>", 1)
+    return html
+
+
+def copy_lab_python(lab_src: Path, out: Path) -> list[str]:
+    """Copy the PC's backend/lab/*.py (everything except the FastAPI routes) next to the phone shims; list all files."""
+    dst = out / "py" / "backend" / "lab"
+    dst.mkdir(parents=True, exist_ok=True)
+    for f in dst.glob("*.py"):
+        if f.name != "__init__.py":
+            f.unlink()
+    for f in sorted(lab_src.glob("*.py")):
+        if f.name not in ("routes.py", "__init__.py"):
+            shutil.copy(f, dst / f.name)
+    files = sorted(str(p.relative_to(out / "py")).replace("\\", "/") for p in (out / "py").rglob("*.py"))
+    (out / "py" / "files.json").write_text(json.dumps(files, indent=0), encoding="utf-8")
+    return files
+
+
 def main() -> None:
     out = ROOT
     (out / "icons").mkdir(exist_ok=True)
@@ -146,6 +184,8 @@ def main() -> None:
     (out / "crypto.html").write_text(build_crypto((SRC / "crypto.html").read_text(encoding="utf-8")), encoding="utf-8")
     (out / "fyers.html").write_text(build_fyers((SRC / "fyers.html").read_text(encoding="utf-8")), encoding="utf-8")
     (out / "desk.html").write_text(build_desk((SRC / "desk.html").read_text(encoding="utf-8")), encoding="utf-8")
+    (out / "lab.html").write_text(build_lab((SRC / "lab.html").read_text(encoding="utf-8")), encoding="utf-8")
+    print("lab: python files", len(copy_lab_python(SRC.parent / "backend" / "lab", out)))
     for icon in ("icon-192.png", "icon-512.png", "apple-touch-icon.png"):
         if (SRC / "icons" / icon).exists():
             shutil.copy(SRC / "icons" / icon, out / "icons" / icon)
