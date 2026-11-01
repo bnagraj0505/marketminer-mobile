@@ -51,7 +51,7 @@ async def _route(path: str, q: dict, method: str, body: dict):
     if p == "/meta":
         return SV.meta()
     if p == "/analyze":
-        return await SV.analyze(q.get("symbol", ""), q.get("tf", "15m"), int(q.get("bars") or 600))
+        return await SV.analyze(q.get("symbol", ""), q.get("tf", "15m"), int(q.get("bars") or 600), q.get("fresh") in ("1", "true"))
     if p == "/live":
         return await SV.live(q.get("symbol", ""), q.get("tf", "15m"))
     if p == "/mtf":

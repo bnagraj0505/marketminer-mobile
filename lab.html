@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.01-5"></script>
-<script src="js/desk.js?v=2026.11.01-5"></script>
-<script src="js/lab.js?v=2026.11.01-5"></script>
+<script src="js/engine.js?v=2026.11.01-6"></script>
+<script src="js/desk.js?v=2026.11.01-6"></script>
+<script src="js/lab.js?v=2026.11.01-6"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>MarketMiner · Signal Lab</title>
@@ -190,13 +190,15 @@ async function init(){
 function fillWatch(){const l=META._groups[$("grp").value]||[];$("symList").innerHTML=l.map(s=>`<option value="${esc(s)}">`).join("");if(l.length&&document.activeElement!==$("sym")&&CUR)$("sym").value=l[0]}
 function setTF(t,silent){TF=t;document.querySelectorAll("#tfs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));if(!silent)run()}
 
-async function run(){
+async function run(fresh){
   const sym=$("sym").value.trim();if(!sym)return;
+  if(!fresh)liveStop();
   try{localStorage.setItem("lab.sym",sym);localStorage.setItem("lab.tf",TF)}catch(e){}
   $("busy").innerHTML='<span class="spin"></span>';
   try{
-    const d=await api(`/api/lab/analyze?symbol=${encodeURIComponent(sym)}&tf=${TF}`);
-    CUR=d;$("una").innerHTML="";$("top").style.display="";SEL=0;render(d);
+    const d=await api(`/api/lab/analyze?symbol=${encodeURIComponent(sym)}&tf=${TF}${fresh===true?"&fresh=1":""}`);
+    const keepSel=fresh===true&&CUR&&CUR.symbol===d.symbol&&CUR.tf===d.tf;
+    CUR=d;$("una").innerHTML="";$("top").style.display="";if(!keepSel)SEL=0;if(SEL>=d.setups.length)SEL=0;render(d,keepSel);
   }catch(e){
     CUR=null;$("top").style.display="none";
     $("una").innerHTML=`<div class="una">DATA UNAVAILABLE<small>${esc(e.message)}</small><small>Signals are suppressed until the data source returns validated candles.</small></div>`;
@@ -204,14 +206,14 @@ async function run(){
   }finally{$("busy").innerHTML=""}
 }
 
-function render(d){
+function render(d,keep){
   const q=d.quality;
   $("qual").innerHTML=`<span>Source <b>${esc(q.source)}</b></span><span>As of <b>${ts(q.as_of)}</b></span><span>Candles <b>${d.candles.length}</b></span>`+
     `<span>Gaps <b>${q.gaps??0}</b>${q.missing_candles?` (${q.missing_candles} missing)`:""}</span><span>Duplicates removed <b>${q.duplicates_removed??0}</b></span>`+
     (q.stale?`<span class="dn">STALE — signals scored down</span>`:`<span class="up">fresh</span>`)+`<span>Computed in ${d.elapsed_ms} ms</span>`;
   $("chTitle").textContent=`${d.symbol} · ${d.tf}`;
   $("regTag").innerHTML=`<span class="chip">${esc(d.regime.label)}</span><span class="chip">volatility ${esc(d.regime.volatility)}</span>`+(d.context.kill_zone?`<span class="chip ok">${esc(d.context.kill_zone)}</span>`:"");
-  rScore(d.score);rSetups(d);rChart(d);rIntel(d);rDeriv(d.derivatives);
+  rScore(d.score);rSetups(d);rChart(d,keep);rIntel(d);rDeriv(d.derivatives);
 }
 
 function rScore(s){
@@ -321,36 +323,65 @@ function rChart(d,keep){
   if(!keep)chart.timeScale().fitContent();
   startLive(d);
 }
-/* ---------------- live feed: the forming candle (display only) + last price; signals still use closed candles */
-let LIVE={timer:null,key:null,req:null,reqAt:0};
-function startLive(d){
-  const key=d.symbol+"|"+d.tf;
-  if(LIVE.key===key&&LIVE.timer)return;
-  clearTimeout(LIVE.timer);LIVE.key=key;liveTick();
+/* ---------------- live feed
+   Fastest source per market, streamed straight from the exchange to this browser where the exchange allows it:
+   Binance -> Binance WebSocket kline stream; Delta Exchange (and Shark symbols served by Delta) -> Delta WebSocket mark
+   candlesticks; FYERS and Shark -> their REST data via MarketMiner every 2-3 s (FYERS' socket needs the login token,
+   which stays on the server). The forming candle is drawn faded and is display only: setups and scores use closed
+   candles, and the analysis re-runs on fresh data the moment a candle closes. */
+const STEP={"1m":60,"3m":180,"5m":300,"15m":900,"30m":1800,"1h":3600,"4h":14400,"1d":86400,"1w":604800};
+const LIVEF={ws:null,timer:null,key:null,req:null,reqAt:0,tries:0,src:"",retry:0};
+function liveStop(){clearTimeout(LIVEF.timer);LIVEF.timer=null;if(LIVEF.ws){LIVEF.ws.onclose=null;try{LIVEF.ws.close()}catch(e){}LIVEF.ws=null}LIVEF.key=null}
+function startLive(d){const key=d.symbol+"|"+d.tf;if(LIVEF.key===key&&(LIVEF.ws||LIVEF.timer))return;liveStop();LIVEF.key=key;LIVEF.retry=0;liveConnect(d)}
+function liveConnect(d){const plan=wsPlan(d);if(plan)openWs(d,plan);else pollTick()}
+function wsPlan(d){
+  const ex=d.symbol.split(":")[0].toUpperCase(),pair=d.symbol.split(":").slice(1).join(":").toUpperCase(),src=(d.quality&&d.quality.source)||"";
+  if(typeof WebSocket==="undefined")return null;
+  if(ex==="BINANCE")return{name:"Binance WebSocket",url:`wss://data-stream.binance.vision/ws/${pair.toLowerCase()}@kline_${d.tf}`,sub:null,
+    parse:m=>{const k=m&&m.k;return k?{time:Math.floor(k.t/1000),open:+k.o,high:+k.h,low:+k.l,close:+k.c,volume:+k.v,closed:!!k.x}:null}};
+  let dsym=null;
+  if(ex==="DELTAF")dsym=pair;else if(ex==="SHARK"&&/^Delta Exchange/.test(src))dsym=(src.match(/^Delta Exchange (\w+)/)||[])[1];
+  if(dsym)return{name:"Delta Exchange WebSocket",url:"wss://socket.india.delta.exchange",
+    sub:{type:"subscribe",payload:{channels:[{name:`candlestick_${d.tf}`,symbols:[`MARK:${dsym}`]}]}},
+    parse:m=>{if(!m||!String(m.type||"").startsWith("candlestick"))return null;let t=+m.candle_start_time;t=t>1e14?t/1e6:t>1e11?t/1e3:t;
+      return{time:Math.floor(t),open:+m.open,high:+m.high,low:+m.low,close:+m.close,volume:+(m.volume||0)}}};
+  return null;
 }
-async function liveTick(){
-  clearTimeout(LIVE.timer);
-  const d=CUR;if(!d)return;
-  const key=d.symbol+"|"+d.tf;let wait=5000;
-  if(document.visibilityState==="hidden"){LIVE.timer=setTimeout(liveTick,wait);return}
-  try{
-    const L=await api(`/api/lab/live?symbol=${encodeURIComponent(d.symbol)}&tf=${d.tf}`);
-    if(LIVE.key!==key||!CUR)return;
-    wait=Math.max(3,L.poll_s||5)*1000;
-    const tz=(d.market==="NSE"||d.market==="FNO"||d.market==="MCX")?19800:0,t=TH(),c=L.candle;
-    const lastClosed=d.candles[d.candles.length-1].time;
-    if(L.forming&&c.time>lastClosed){
-      const up=c.close>=c.open,col=up?t.up:t.dn;
-      cs.update({time:c.time+tz,open:c.open,high:c.high,low:c.low,close:c.close,color:col+"99",wickColor:col+"99",borderColor:col});
-    }
-    const left=Math.max(0,L.closes_at-L.server_time),mm=Math.floor(left/60),ss=String(left%60).padStart(2,"0");
-    const tag=$("liveTag");tag.className="live";
-    tag.innerHTML=`● LIVE <b>${f(L.price)}</b> · ${new Date(L.server_time*1000).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"})}`+(L.forming?` · closes in ${mm}:${ss}`:" · market idle");
-    tag.title=`Source: ${L.source}. The forming candle is drawn faded and is display only: setups and scores use closed candles, and the analysis refreshes by itself when this candle closes.`;
-    // a new candle has closed since the last analysis: re-analyse once
-    if(L.last_closed>lastClosed&&(LIVE.req!==L.last_closed||Date.now()-LIVE.reqAt>20000)){LIVE.req=L.last_closed;LIVE.reqAt=Date.now();LIVE.key=null;run();return}
-  }catch(e){const tag=$("liveTag");tag.className="live err";tag.textContent="LIVE paused: "+String(e.message).slice(0,60);wait=15000}
-  if(LIVE.key===key)LIVE.timer=setTimeout(liveTick,wait);
+function openWs(d,plan){
+  const key=d.symbol+"|"+d.tf;let ws,got=false;
+  try{ws=new WebSocket(plan.url)}catch(e){return pollTick()}
+  LIVEF.ws=ws;LIVEF.src=plan.name;liveBadge("off",`LIVE connecting to ${plan.name}…`);
+  const dog=setTimeout(()=>{if(!got&&LIVEF.ws===ws){ws.onclose=null;try{ws.close()}catch(e){}LIVEF.ws=null;pollTick(`${plan.name} silent, polling instead`)}},12000);
+  ws.onopen=()=>{if(plan.sub)ws.send(JSON.stringify(plan.sub))};
+  ws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(e){return}const c=plan.parse(m);if(!c||!isFinite(c.close)||!c.time)return;
+    got=true;clearTimeout(dog);LIVEF.retry=0;onLive(c,plan.name,Date.now()/1000,true)};
+  ws.onclose=()=>{clearTimeout(dog);if(LIVEF.ws!==ws)return;LIVEF.ws=null;if(LIVEF.key!==key)return;
+    const w=Math.min(30,2**(++LIVEF.retry));liveBadge("err",`LIVE reconnecting in ${w}s`);LIVEF.timer=setTimeout(()=>{LIVEF.timer=null;if(CUR&&LIVEF.key===key)liveConnect(CUR)},w*1000)};
+}
+async function pollTick(note){
+  clearTimeout(LIVEF.timer);const d=CUR;if(!d)return;const key=d.symbol+"|"+d.tf;let wait=3000;
+  if(document.visibilityState!=="hidden"){
+    try{const L=await api(`/api/lab/live?symbol=${encodeURIComponent(d.symbol)}&tf=${d.tf}`);if(LIVEF.key!==key)return;
+      wait=Math.max(2,L.poll_s||3)*1000;const name=(/^FYERS/.test(L.source)?"FYERS":L.source.split(" (")[0])+` · every ${wait/1000}s`;LIVEF.src=name;
+      onLive({...L.candle,closed:!L.forming},name,L.server_time,false,note)}
+    catch(e){liveBadge("err","LIVE paused: "+String(e.message).slice(0,70));wait=15000}}
+  if(LIVEF.key===key)LIVEF.timer=setTimeout(()=>pollTick(),wait);
+}
+function liveBadge(cls,html,title){const t=$("liveTag");t.className="live "+cls;t.innerHTML=html;if(title)t.title=title}
+function onLive(c,srcName,now,stream,note){
+  const d=CUR;if(!d)return;const step=STEP[d.tf],lastClosed=d.candles[d.candles.length-1].time,t=TH();
+  const tz=(d.market==="NSE"||d.market==="FNO"||d.market==="MCX")?19800:0;
+  if(c.time>lastClosed&&!c.closed){const col=c.close>=c.open?t.up:t.dn;
+    try{cs.update({time:c.time+tz,open:c.open,high:c.high,low:c.low,close:c.close,color:col+"99",wickColor:col+"99",borderColor:col})}catch(e){}}
+  const left=Math.max(0,Math.round(c.time+step-now)),mm=Math.floor(left/60),ss=String(left%60).padStart(2,"0");
+  liveBadge("",`${stream?"● LIVE":"◐ LIVE"} <b>${f(c.close)}</b> · ${esc(srcName)} · ${new Date(now*1000).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"})}`+
+    (c.time+step>now&&!c.closed?` · closes in ${mm}:${ss}`:" · market idle")+(note?` · ${esc(note)}`:""),
+    `${stream?"Streaming":"Polling"} from ${srcName}. The faded candle is still forming and is display only; setups use closed candles and refresh the moment a candle closes.`);
+  // a candle has closed since the last analysis -> re-analyse once on fresh data
+  const closedT=c.closed?c.time:c.time-step;
+  if(closedT>lastClosed){const nowMs=Date.now();
+    if(LIVEF.req!==closedT){LIVEF.req=closedT;LIVEF.tries=1;LIVEF.reqAt=nowMs;setTimeout(()=>run(true),stream?1500:0)}
+    else if(nowMs-LIVEF.reqAt>8000&&LIVEF.tries<4){LIVEF.tries++;LIVEF.reqAt=nowMs;run(true)}}  // the exchange can take a few seconds to publish the closed candle
 }
 function showSetup(i){SEL=i;rChart(CUR,true);window.scrollTo({top:0,behavior:"smooth"})}
 async function paperOpen(i){

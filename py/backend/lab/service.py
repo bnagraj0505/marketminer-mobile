@@ -55,8 +55,8 @@ def _tf(tf: str) -> str:
     return tf
 
 
-async def analyze(symbol: str, tf: str = "15m", bars: int = 600) -> dict:
-    return await A.analyze(_sym(symbol), _tf(tf), max(200, min(2000, int(bars))))
+async def analyze(symbol: str, tf: str = "15m", bars: int = 600, fresh: bool = False) -> dict:
+    return await A.analyze(_sym(symbol), _tf(tf), max(200, min(2000, int(bars))), bool(fresh))
 
 
 async def live(symbol: str, tf: str = "15m") -> dict:

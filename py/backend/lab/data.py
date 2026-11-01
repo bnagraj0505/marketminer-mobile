@@ -232,7 +232,7 @@ async def _load(symbol: str, tf: str, bars: int) -> tuple[list[list], str]:
     return rows, src
 
 
-async def candles(symbol: str, tf: str, bars: int = 400) -> tuple[list[Candle], dict]:
+async def candles(symbol: str, tf: str, bars: int = 400, fresh: bool = False) -> tuple[list[Candle], dict]:
     """Closed, validated candles for `symbol` on `tf`, newest last, plus the quality report."""
     symbol = symbol.strip().upper() if not symbol.upper().startswith("YF:") else "YF:" + symbol.split(":", 1)[1].strip()
     if tf not in TF_SECONDS:
@@ -244,6 +244,8 @@ async def candles(symbol: str, tf: str, bars: int = 400) -> tuple[list[Candle], 
         return await _load(symbol, tf, bars)
 
     try:
+        if fresh:                                     # a candle has just closed: do not reuse the cached copy
+            _cache.pop((symbol, tf, bars), None)
         rows, src = await _cached((symbol, tf, bars), _ttl(tf), load_with_source)
     except HTTPException as exc:
         if exc.status_code in (401, 403):
@@ -281,7 +283,7 @@ async def live(symbol: str, tf: str) -> dict:
     if tf not in TF_SECONDS:
         raise HTTPException(400, f"timeframe must be one of {', '.join(TF_SECONDS)}")
     step = TF_SECONDS[tf]
-    poll = 3.0 if market_of(symbol) not in ("NSE", "FNO", "MCX", "YF") else 8.0
+    poll = 2.0 if market_of(symbol) not in ("NSE", "FNO", "MCX", "YF") else 3.0
     try:
         rows, src = await _cached(("live", symbol, tf), poll, lambda: _load(symbol, tf, 5))
     except HTTPException as exc:

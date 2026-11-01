@@ -123,11 +123,11 @@ def _indicators(E: Engine) -> dict:
             "volume_profile": vp, "fib": fib, "divergences": div, "has_volume": F.has_volume}
 
 
-async def analyze(symbol: str, tf: str, bars: int = 600) -> dict:
+async def analyze(symbol: str, tf: str, bars: int = 600, fresh: bool = False) -> dict:
     t0 = time.time()
     itf, htf = MTF[tf]
     sess, anchor, market = D.session_key(symbol), D.anchor_minutes(symbol), D.market_of(symbol)
-    main, q = await D.candles(symbol, tf, bars)       # DataUnavailable propagates -> DATA UNAVAILABLE on screen
+    main, q = await D.candles(symbol, tf, bars, fresh)  # DataUnavailable propagates -> DATA UNAVAILABLE on screen
     q["recent_gaps"] = _quality_recent(main, TF_SECONDS[tf])
 
     async def opt(sym, t, n):
