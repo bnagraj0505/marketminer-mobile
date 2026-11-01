@@ -123,8 +123,9 @@ td.r,th.r{text-align:right}
 </header>
 <main class="wrap">
   <div class="ctl">
-    <select id="grp" onchange="fillWatch()"></select>
-    <input id="sym" list="symList" placeholder="NSE:NIFTY50-INDEX, SHARK:BTCUSDT, YF:^GSPC" autocomplete="off">
+    <select id="grp" onchange="fillWatch(true)"></select>
+    <select id="symSel" onchange="pickSym(this.value)" title="Markets in this group"></select>
+    <input id="sym" list="symList" placeholder="or type any symbol, e.g. SHARK:XRPUSDT" autocomplete="off" style="max-width:230px">
     <datalist id="symList"></datalist>
     <div class="seg" id="tfs"></div>
     <button class="btn pri" onclick="run()">▶ Analyse</button>
@@ -201,7 +202,14 @@ async function init(){
   ldAlertCount();setInterval(ldAlertCount,60000);
   run();
 }
-function fillWatch(){const l=META._groups[$("grp").value]||[];$("symList").innerHTML=l.map(s=>`<option value="${esc(s)}">`).join("");if(l.length&&document.activeElement!==$("sym")&&CUR)$("sym").value=l[0]}
+// market picker: a real drop-down with every market of the chosen group (the text box stays for any other symbol)
+function fillWatch(go){const l=META._groups[$("grp").value]||[],cur=$("sym").value.trim().toUpperCase();
+  $("symList").innerHTML=Object.values(META._groups).flat().map(s=>`<option value="${esc(s)}">`).join("");
+  $("symSel").innerHTML=(l.includes(cur)?"":`<option value="">— pick a market (${l.length}) —</option>`)+l.map(s=>`<option value="${esc(s)}" ${s===cur?"selected":""}>${esc(s.split(":").pop())} · ${esc(s.split(":")[0])}</option>`).join("");
+  if(go&&l.length){$("sym").value=l[0];$("symSel").value=l[0];run()}}
+function pickSym(v){if(!v)return;$("sym").value=v;run()}
+function syncPicker(){if(!META)return;const cur=$("sym").value.trim().toUpperCase(),g=Object.keys(META._groups).find(k=>META._groups[k].includes(cur));
+  if(g&&$("grp").value!==g)$("grp").value=g;fillWatch(false)}
 function setTF(t,silent){TF=t;document.querySelectorAll("#tfs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));if(!silent)run()}
 
 let RUNNING=false;
@@ -212,6 +220,7 @@ async function run(fresh){
   if(!fresh)liveStop();
   RUNNING=true;
   try{localStorage.setItem("lab.sym",sym);localStorage.setItem("lab.tf",TF)}catch(e){}
+  try{syncPicker()}catch(e){}
   $("busy").innerHTML='<span class="spin"></span>';
   try{
     const d=await api(`/api/lab/analyze?symbol=${encodeURIComponent(sym)}&tf=${TF}${fresh===true?"&fresh=1":""}${liveOn()?"&live=1":""}`);
