@@ -310,7 +310,7 @@ function rChart(d,keep){
   const s=d.setups[SEL];
   if(s&&layerOn("setup")){PL(s.entry,t.entry,"Entry",0,2);PL(s.stop,t.dn,"SL",0,2);s.targets.forEach((x,i)=>PL(x,t.up,"T"+(i+1),i?2:0,i?1:2))}
   // structure markers: translucent and limited to the most recent ones
-  const mk=o.markers.slice(-30);
+  const sw=o.markers.filter(m=>m.kind==="sweep").slice(-6),br=o.markers.filter(m=>m.kind!=="sweep").slice(-12),mk=[...sw,...br].sort((a,b)=>a.time-b.time);
   cs.setMarkers(layerOn("mk")?mk.map(m=>({time:T(m.time),position:m.direction==="bullish"?"belowBar":"aboveBar",
     color:m.kind==="sweep"?A(t.gold,.75):A(m.direction==="bullish"?t.bull:t.bear,.7),shape:m.kind==="sweep"?"circle":m.direction==="bullish"?"arrowUp":"arrowDown",
     text:m.kind==="sweep"?"":m.kind,size:m.kind==="sweep"?0.6:0.8})):[]);
