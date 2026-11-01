@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.01-8"></script>
-<script src="js/desk.js?v=2026.11.01-8"></script>
-<script src="js/lab.js?v=2026.11.01-8"></script>
+<script src="js/engine.js?v=2026.11.01-9"></script>
+<script src="js/desk.js?v=2026.11.01-9"></script>
+<script src="js/lab.js?v=2026.11.01-9"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>MarketMiner · Signal Lab</title>
@@ -301,9 +301,13 @@ function mkChart(){
   chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{if(r)rsiC.timeScale().setVisibleLogicalRange(r)});
   new ResizeObserver(()=>{chart.applyOptions({width:$("chart").clientWidth});rsiC.applyOptions({width:$("rsiP").clientWidth})}).observe($("chart"));
   $("layers").innerHTML=LAYERS.map(([k,l,on])=>`<label><input type="checkbox" id="ly-${k}" ${on?"checked":""} onchange="CUR&&rChart(CUR,true)">${l}</label>`).join("");
+  $("layers").innerHTML+=`<span class="wmSw" style="margin-left:8px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px">Setup box: <label><input type="radio" name="wmSw" value="show" ${WMON?"checked":""} onchange="setWm(true)">Show</label><label><input type="radio" name="wmSw" value="hide" ${WMON?"":"checked"} onchange="setWm(false)">Hide</label></span>`;
+  setWm(WMON);
   applyTheme();
 }
 function rsiCalc(c,n=14){const o=Array(c.length).fill(null);let g=0,l=0;for(let i=1;i<c.length;i++){const d=c[i]-c[i-1],G=Math.max(d,0),Ls=Math.max(-d,0);if(i<=n){g+=G;l+=Ls;if(i===n){g/=n;l/=n;o[i]=l===0?100:100-100/(1+g/l)}}else{g=(g*(n-1)+G)/n;l=(l*(n-1)+Ls)/n;o[i]=l===0?100:100-100/(1+g/l)}}return o}
+let WMON=(()=>{try{return localStorage.getItem("lab.setupBox")!=="hide"}catch(e){return true}})();
+function setWm(on){WMON=on;try{localStorage.setItem("lab.setupBox",on?"show":"hide")}catch(e){}const w=$("sigWm");if(w)w.style.display=on?"":"none"}
 function sigWatermark(d){
   const s=d.setups[SEL],sc=d.score,bias=sc.bias,min=META.protection.min_score;
   let h=`<div class="wm-sym">${esc(d.symbol)} · ${esc(d.tf)}</div><div class="wm-row"><span class="${bias==="bullish"?"wm-up":bias==="bearish"?"wm-dn":""}">${bias.toUpperCase()}</span> · bull ${sc.bull.toFixed(0)} / bear ${sc.bear.toFixed(0)} · ${esc(d.regime.label)}</div>`;
