@@ -10,7 +10,7 @@
   const CK = "mmbot.cfg", SK = "mmbot.state";
   const TFSEC = { "1m": 60, "3m": 180, "5m": 300, "15m": 900, "30m": 1800, "1h": 3600, "4h": 14400, "1d": 86400, "1w": 604800 };
   const DEF = { on: false, tf: "15m", every: 60, watchMin: 45, exitOpposite: true, tgToken: "", tgChat: "",
-    notify: { reco: true, entry: true, skip: true, tp: true, exit: true, warn: true },
+    notify: { reco: true, entry: true, skip: true, tp: true, exit: true, warn: true, charts: true },
     symbols: ["DELTAF:BTCUSD", "DELTAF:ETHUSD", "NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX"] };
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || "null"); return v ? { ...d, ...v } : JSON.parse(JSON.stringify(d)); } catch (e) { return JSON.parse(JSON.stringify(d)); } };
   let cfg = load(CK, DEF); cfg.notify = { ...DEF.notify, ...(cfg.notify || {}) };
@@ -30,8 +30,18 @@
   let timer = null, busy = false, lastScan = null, wake = null, lastErr = "";
 
   // ------------------------------------------------------------------ Telegram
-  async function tg(text, force) {
+  const tgBase = () => `https://api.telegram.org/bot${encodeURIComponent(cfg.tgToken).replace(/%3A/gi, ":")}`;
+  async function tg(text, photo) {
     if (!cfg.tgToken || !cfg.tgChat) return { ok: false, why: "Telegram not set up" };
+    if (photo && text.length <= 1024) {
+      try {
+        const fd = new FormData();
+        fd.append("chat_id", cfg.tgChat); fd.append("caption", text); fd.append("parse_mode", "HTML"); fd.append("photo", photo, "chart.png");
+        const j = await (await fetch(`${tgBase()}/sendPhoto`, { method: "POST", body: fd })).json();
+        if (j.ok) return { ok: true };
+        log("err", "Telegram photo: " + (j.description || "refused") + " (sent as text)");
+      } catch (e) { log("err", "Telegram photo: " + e.message + " (sent as text)"); }
+    }
     const body = new URLSearchParams({ chat_id: cfg.tgChat, text, parse_mode: "HTML", disable_web_page_preview: "true" });
     try {
       const r = await fetch(`https://api.telegram.org/bot${encodeURIComponent(cfg.tgToken).replace(/%3A/gi, ":")}/sendMessage`, { method: "POST", body });
@@ -44,10 +54,42 @@
     }
   }
   function log(kind, text) { st.log.unshift({ t: nowS(), kind, text }); saveS(); if (paneOn()) rLog(); }
-  async function event(kind, text, tgText) {
+  async function event(kind, text, tgText, pic) {
     log(kind, text);
-    if (cfg.notify[kind] !== false && tgText) await tg(tgText);
+    if (cfg.notify[kind] === false || !tgText) return;
+    let photo = null;
+    if (pic && cfg.notify.charts !== false) { try { photo = await pic(); } catch (e) { console.warn("chart picture", e); } }
+    await tg(tgText, photo);
   }
+
+  // ------------------------------------------------------------------ chart picture with the Long/Short box (for Telegram)
+  async function snap(d, pos) {
+    if (!window.LightweightCharts || !window.MMPOS || !d || !d.candles || !d.candles.length) return null;
+    const W = 760, H = 430, div = document.createElement("div");
+    div.style.cssText = `position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px`;
+    document.body.appendChild(div);
+    const tz = d.market === "NSE" || d.market === "FNO" || d.market === "MCX" ? 19800 : 0, T = (x) => x + tz;
+    const ch = LightweightCharts.createChart(div, { width: W, height: H, layout: { background: { color: "#0d1117" }, textColor: "#cbd5e1", fontFamily: "JetBrains Mono" },
+      grid: { vertLines: { color: "#161d2b" }, horzLines: { color: "#161d2b" } }, rightPriceScale: { borderColor: "#263450", scaleMargins: { top: 0.08, bottom: 0.08 } },
+      timeScale: { borderColor: "#263450", timeVisible: true, secondsVisible: false, rightOffset: 18 }, crosshair: { mode: 2 },
+      watermark: { visible: true, text: `${short(d.symbol)}  ${d.tf}`, color: "rgba(148,163,184,.10)", fontSize: 48 } });
+    try {
+      const bars = d.candles.slice(-140);
+      const lo = Math.min(...bars.map((c) => c.low), pos.stop, ...pos.targets), hi = Math.max(...bars.map((c) => c.high), pos.stop, ...pos.targets);
+      const s = ch.addCandlestickSeries({ upColor: "#26a69a", downColor: "#ef5350", wickUpColor: "#26a69a", wickDownColor: "#ef5350", borderVisible: false,
+        autoscaleInfoProvider: () => ({ priceRange: { minValue: lo, maxValue: hi } }) });
+      s.setData(bars.map((c) => ({ time: T(c.time), open: c.open, high: c.high, low: c.low, close: c.close })));
+      ch.timeScale().fitContent();
+      await new Promise((r) => setTimeout(r, 80));
+      const cv = ch.takeScreenshot(), ctx = cv.getContext("2d"), k = cv.width / W;
+      ctx.save(); ctx.scale(k, k);
+      ctx.beginPath(); ctx.rect(0, 0, ch.timeScale().width(), H - ch.timeScale().height()); ctx.clip();
+      MMPOS.paint(ctx, MMPOS.geometry(ch, s, pos, T, TFSEC[d.tf] || 900));
+      ctx.restore();
+      return await new Promise((r) => cv.toBlob(r, "image/png"));
+    } finally { ch.remove(); div.remove(); }
+  }
+  const posOf = (s, title) => ({ direction: s.direction, entry: s.entry, stop: s.stop, targets: s.targets, rr: s.rr, time: s.time, title });
   const lv = (s) => `Entry ${F(s.entry)} · SL ${F(s.stop)}\nT1 ${F(s.targets[0])} · T2 ${F(s.targets[1])} · T3 ${F(s.targets[2])}${s.rr ? ` · ${(+s.rr).toFixed(1)}R` : ""}`;
   const arrow = (d) => (d === "LONG" ? "▲" : "▼");
 
@@ -77,7 +119,8 @@
 
   const openBotTrade = (sym) => Object.entries(st.trades).find(([, t]) => t.sym === sym && t.status === "open");
 
-  async function handle(sym, d, minS) {
+  async function handle(sym, d, minS, opt) {
+    const trade = !opt || opt.entries !== false;           // false: only alerts for the chart on screen, no entries/exits
     const tfs = TFSEC[d.tf] || 900, t = nowS(), setups = d.setups || [];
     const confirmed = setups.filter((s) => s.signal && !s.provisional && (!s.locked || ((s.hits || 0) === 0 && s.status !== "closed"))
       && s.time >= t - 2.5 * tfs);
@@ -85,7 +128,7 @@
     const mine = openBotTrade(sym);
 
     // in-between exit: confirmed opposite signal closes the bot's trade
-    if (mine && cfg.exitOpposite) {
+    if (trade && mine && cfg.exitOpposite) {
       const opp = confirmed.find((s) => s.direction !== mine[1].dir);
       if (opp) {
         const k = `xo|${sym}|${opp.time}`;
@@ -114,7 +157,7 @@
       }
     }
     // entries
-    for (const s of confirmed) {
+    for (const s of trade ? confirmed : []) {
       const k = `en|${sym}|${d.tf}|${s.strategy}|${s.direction}|${s.time}`;
       if (st.seen[k]) continue;
       st.seen[k] = t;
@@ -127,7 +170,8 @@
         st.trades[r.id] = { sym: d.symbol, tf: d.tf, dir: s.direction, name: s.name, score: s.score, entry: r.fill, stop: s.stop, targets: s.targets,
           qty: r.qty, cur: r.currency, hit: [], status: "open", opened: t };
         await event("entry", `#${r.id} ${short(sym)} ${s.direction} filled ${F(r.fill)} (${s.name}, ${s.score.toFixed(0)})`,
-          `✅ <b>PAPER ENTRY</b> #${r.id} · ${tgEsc(short(sym))} ${d.tf}\n${arrow(s.direction)} <b>${s.direction}</b> filled ${F(r.fill)} · qty ${F(r.qty)} · risk ${F(r.risk)} ${tgEsc(r.currency)}\n${lv(s)}\n${tgEsc(s.name)} · score ${s.score.toFixed(0)}`);
+          `✅ <b>PAPER ENTRY</b> #${r.id} · ${tgEsc(short(sym))} ${d.tf}\n${arrow(s.direction)} <b>${s.direction}</b> filled ${F(r.fill)} · qty ${F(r.qty)} · risk ${F(r.risk)} ${tgEsc(r.currency)}\n${lv(s)}\n${tgEsc(s.name)} · score ${s.score.toFixed(0)}`,
+          () => snap(d, { ...posOf(s, `paper #${r.id}`), entry: r.fill }));
         break;                                                         // one entry per symbol per scan
       } else {
         await event("skip", `${short(sym)} ${s.direction} not entered: ${(r.blocks || []).join(" · ")}`,
@@ -135,14 +179,15 @@
       }
     }
     // recommendations: best forming / watch setup per symbol per candle
-    const best = forming.find((s) => !(still && s.direction !== still[1].dir));
+    const best = (trade ? forming : [...confirmed.map((s) => ({ ...s, provisional: false })), ...forming]).find((s) => !(still && s.direction !== still[1].dir));
     if (best) {
       const k = `rc|${sym}|${d.tf}|${best.direction}|${best.time}`;
       if (!st.seen[k]) {
         st.seen[k] = t;
         const why = best.provisional ? "live, candle still forming" : `watch: below the entry minimum ${minS}`;
         await event("reco", `${short(sym)} ${best.direction} setup ${best.score.toFixed(0)} (${why})`,
-          `👀 <b>Setup</b> · ${tgEsc(short(sym))} ${d.tf}\n${arrow(best.direction)} <b>${best.direction}</b> · ${tgEsc(best.name)} · score ${best.score.toFixed(0)} (${why})\n${lv(best)}\nThe bot enters only if it confirms at candle close with score ≥ ${minS}.`);
+          `👀 <b>Setup</b> · ${tgEsc(short(sym))} ${d.tf}\n${arrow(best.direction)} <b>${best.direction}</b> · ${tgEsc(best.name)} · score ${best.score.toFixed(0)} (${why})\n${lv(best)}\n${trade ? `The bot enters only if it confirms at candle close with score ≥ ${minS}.` : "Chart on screen (not in the bot's markets): alert only, no paper entry."}`,
+          () => snap(d, posOf(best, `${best.score.toFixed(0)} ${best.provisional ? "live" : "watch"}`)));
       }
     }
   }
@@ -257,15 +302,27 @@
         <input id="tgChat" placeholder="Chat ID" style="width:150px" value="${E(cfg.tgChat)}" onchange="MMBOT.set('tgChat',this.value.trim())">
       </div>
       <div class="hr" style="gap:8px;margin-bottom:10px"><button class="btn sm" onclick="MMBOT.findChat()">Find my chat ID</button><button class="btn sm gold" onclick="MMBOT.test()">Send test</button><span id="tgMsg" class="nt"></span></div>
-      <div class="hr" style="gap:12px">${chk("reco", "Setup recommendations")}${chk("entry", "Entries")}${chk("skip", "Skipped entries")}${chk("tp", "T1 / T2 hits")}${chk("exit", "Exits & closes")}${chk("warn", "Exit warnings & data problems")}</div>
+      <div class="hr" style="gap:12px">${chk("reco", "Setup recommendations")}${chk("entry", "Entries")}${chk("skip", "Skipped entries")}${chk("tp", "T1 / T2 hits")}${chk("exit", "Exits & closes")}${chk("warn", "Exit warnings & data problems")}${chk("charts", "Chart picture with long/short box")}</div>
       <div class="nt" style="margin-top:8px">The token stays in this browser only. Anyone with the token can post as your bot, so don't share it.</div>
     </div>
     <div class="cd"><h3><span>Bot log</span><button class="btn sm" onclick="MMBOT.clearLog()">Clear</button></h3><div id="botLog" class="scroll" style="max-height:420px"></div></div>`;
     rStatus(); rLog();
   }
 
+  // the chart on screen in Signal Lab: alert its setups too (entries only if it is one of the bot's markets + timeframe)
+  let viewBusy = false;
+  async function onView(d) {
+    if (!cfg.on || viewBusy || !d || !d.symbol) return;
+    viewBusy = true;
+    try {
+      const minS = (M() && M().protection && M().protection.min_score) || 60;
+      await handle(d.symbol, d, minS, { entries: cfg.symbols.includes(d.symbol) && d.tf === cfg.tf });
+      saveS();
+    } finally { viewBusy = false; }
+  }
+
   window.MMBOT = {
-    setOn, render: rBot, tick, cfg: () => cfg, state: () => st,
+    setOn, render: rBot, tick, onView, snap, cfg: () => cfg, state: () => st,
     set(k, v) {
       const combo = k === "tgToken" && /^\s*(\d+:[\w-]+)\s*[|,\s]\s*(-?\d+)\s*$/.exec(v || "");   // setup code "token|chatId"
       if (combo) { cfg.tgToken = combo[1]; cfg.tgChat = combo[2]; }

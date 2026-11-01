@@ -43,6 +43,7 @@ a{color:inherit}.mono{font-family:var(--mono)}
 #chartBox{position:relative;border-radius:8px;overflow:hidden;border:1px solid #d7dee8;background:#fff}
 #chartBox[data-theme=dark]{border-color:var(--bdr);background:#0d1117}
 #chart{height:470px}#rsiP{height:110px;border-top:1px solid #e5e9f0}#chartBox[data-theme=dark] #rsiP{border-top-color:var(--bdr)}
+#posCv{position:absolute;top:0;left:0;z-index:2;pointer-events:none}
 #sigWm{position:absolute;top:10px;left:12px;z-index:3;pointer-events:auto;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;max-width:min(560px,calc(100% - 90px));padding:8px 11px;border-radius:8px;
   background:rgba(255,255,255,.62);border:1px solid rgba(15,23,42,.08);backdrop-filter:blur(2px);font:500 .7rem var(--mono);color:#334155;line-height:1.5}
 #chartBox[data-theme=dark] #sigWm{background:rgba(13,17,23,.6);border-color:rgba(226,232,240,.08);color:#cbd5e1}
@@ -135,7 +136,7 @@ td.r,th.r{text-align:right}
   <div class="grid" id="top">
     <div class="cd">
       <h3><span>Chart · <span id="chTitle">—</span></span><span><span id="liveTag" class="live off">LIVE —</span> <span id="regTag"></span> <button class="btn sm" id="thBtn" onclick="toggleTheme()">☾ Dark chart</button> <button class="btn sm" id="tvBtn" onclick="toggleTV()">TradingView</button></span></h3>
-      <div id="tvWrap" style="display:none"><div id="tvBox" style="height:580px"></div><div class="note" id="tvNote"></div></div><div id="chartBox" data-theme="light"><div id="chart"></div><div id="sigWm"></div><div id="legend"></div><div id="rsiP"></div></div>
+      <div id="tvWrap" style="display:none"><div id="tvBox" style="height:580px"></div><div class="note" id="tvNote"></div></div><div id="chartBox" data-theme="light"><div id="chart"></div><canvas id="posCv"></canvas><div id="sigWm"></div><div id="legend"></div><div id="rsiP"></div></div>
       <div class="layers" id="layers"></div>
     </div>
     <div>
@@ -214,6 +215,7 @@ async function run(fresh){
     const d=await api(`/api/lab/analyze?symbol=${encodeURIComponent(sym)}&tf=${TF}${fresh===true?"&fresh=1":""}${liveOn()?"&live=1":""}`);
     const keepSel=fresh===true&&CUR&&CUR.symbol===d.symbol&&CUR.tf===d.tf;
     CUR=d;$("una").innerHTML="";$("top").style.display="";if(!keepSel)SEL=0;if(SEL>=d.setups.length)SEL=0;render(d,keepSel);
+    try{window.MMBOT&&MMBOT.onView(d)}catch(e){console.warn("bot",e)}
   }catch(e){
     CUR=null;$("top").style.display="none";
     $("una").innerHTML=`<div class="una">DATA UNAVAILABLE<small>${esc(e.message)}</small><small>Signals are suppressed until the data source returns validated candles.</small></div>`;
@@ -275,7 +277,7 @@ function lockedHist(d){
 }
 
 /* ---------------- chart */
-const LAYERS=[["ema","EMA 20/50/200",1],["vwap","VWAP",1],["bb","Bollinger",0],["st","Supertrend",0],["ob","Order blocks",1],["fvg","FVGs",1],["liq","Liquidity",1],["lvl","PDH/PDL · OI S/R",1],["mk","BOS/CHoCH/sweeps",1],["setup","Setup levels",1]];
+const LAYERS=[["ema","EMA 20/50/200",1],["vwap","VWAP",1],["bb","Bollinger",0],["st","Supertrend",0],["ob","Order blocks",1],["fvg","FVGs",1],["liq","Liquidity",1],["lvl","PDH/PDL · OI S/R",1],["mk","BOS/CHoCH/sweeps",1],["setup","Setup levels",1],["pos","Long/short box",1]];
 function layerOn(k){const e=$("ly-"+k);return e?e.checked:true}
 const THEMES={
   light:{bg:"#ffffff",text:"#475569",grid:"#eef2f7",border:"#d7dee8",up:"#16a34a",dn:"#dc2626",volUp:"rgba(22,163,74,.18)",volDn:"rgba(220,38,38,.18)",
@@ -487,6 +489,27 @@ function drawTV(){
   if(window.TradingView)go();else{const sc=document.createElement("script");sc.src="https://s3.tradingview.com/tv.js";sc.onload=go;
     sc.onerror=()=>{$("tvBox").innerHTML='<div class="una">TradingView could not be loaded<small>Check the internet connection.</small></div>'};document.head.appendChild(sc)}
 }
+/* ---------------- Long/Short position box (TradingView-style) over the chart: the selected setup + the bot's open trades */
+const TFS_SEC={"1m":60,"3m":180,"5m":300,"15m":900,"30m":1800,"1h":3600,"4h":14400,"1d":86400,"1w":604800};
+let POSKEY="";
+function posList(d){
+  const out=[],s=d.setups[SEL];
+  if(s&&layerOn("pos"))out.push({...s,title:`${s.score.toFixed(0)}${s.signal?"":" watch"}${s.provisional?" · live":""}`});
+  try{const b=window.MMBOT&&MMBOT.state();if(b&&layerOn("pos"))Object.entries(b.trades).forEach(([id,t])=>{if(t.sym===d.symbol&&t.status!=="closed")
+    out.push({direction:t.dir,entry:t.entry,stop:t.stop,targets:t.targets,time:t.opened,title:`bot #${id}${t.hit.length?" "+t.hit.join(" "):""}`,faded:!!s})})}catch(e){}
+  return out;
+}
+function posDraw(force){
+  const cv=$("posCv");if(!cv||!chart||!CUR)return;
+  const d=CUR,tz=(d.market==="NSE"||d.market==="FNO"||d.market==="MCX")?19800:0,T=x=>x+tz,tfs=TFS_SEC[d.tf]||900;
+  const W=$("chart").clientWidth,H=$("chart").clientHeight-chart.timeScale().height();
+  const G=posList(d).map(p=>MMPOS.geometry(chart,cs,p,T,tfs));
+  const key=W+"|"+H+"|"+JSON.stringify(G);if(!force&&key===POSKEY)return;POSKEY=key;
+  const r=window.devicePixelRatio||1;cv.width=W*r;cv.height=H*r;cv.style.width=W+"px";cv.style.height=H+"px";
+  const ctx=cv.getContext("2d");ctx.setTransform(r,0,0,r,0,0);ctx.clearRect(0,0,W,H);ctx.beginPath();ctx.rect(0,0,G.length?G[0].x1:W,H);ctx.clip();
+  G.slice().reverse().forEach(g=>MMPOS.paint(ctx,g));
+}
+(function posLoop(){try{if(document.visibilityState==="visible")posDraw()}catch(e){}requestAnimationFrame(posLoop)})();
 function showSetup(i){SEL=i;rChart(CUR,true);window.scrollTo({top:0,behavior:"smooth"})}
 async function paperOpen(i){
   const s=CUR.setups[i];
@@ -709,6 +732,7 @@ async function recNow(){toast("Recorder running… this can take a minute",60000
 init().catch(e=>{$("qual").innerHTML=`<span class="dn">Signal Lab engine could not start: ${esc(e.message)}</span>`});
 </script>
 <script>window.addEventListener('mm-lab-status',e=>{const q=document.getElementById('qual');if(q&&e.detail)q.innerHTML='<span class="spin"></span> '+e.detail});</script>
-<script src="js/bot.js?v=2026.11.01-11"></script>
+<script src="js/position.js?v=2026.11.01-12"></script>
+<script src="js/bot.js?v=2026.11.01-12"></script>
 </body>
 </html>
