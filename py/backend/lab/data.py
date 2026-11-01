@@ -232,8 +232,9 @@ async def _load(symbol: str, tf: str, bars: int) -> tuple[list[list], str]:
     return rows, src
 
 
-async def candles(symbol: str, tf: str, bars: int = 400, fresh: bool = False) -> tuple[list[Candle], dict]:
-    """Closed, validated candles for `symbol` on `tf`, newest last, plus the quality report."""
+async def candles(symbol: str, tf: str, bars: int = 400, fresh: bool = False, forming: bool = False) -> tuple[list[Candle], dict]:
+    """Validated candles for `symbol` on `tf`, newest last, plus the quality report. Closed candles only, unless
+    `forming` is set: then the candle still in progress is included (live mode; it changes until it closes)."""
     symbol = symbol.strip().upper() if not symbol.upper().startswith("YF:") else "YF:" + symbol.split(":", 1)[1].strip()
     if tf not in TF_SECONDS:
         raise HTTPException(400, f"timeframe must be one of {', '.join(TF_SECONDS)}")
@@ -246,7 +247,7 @@ async def candles(symbol: str, tf: str, bars: int = 400, fresh: bool = False) ->
     try:
         if fresh:                                     # a candle has just closed: do not reuse the cached copy
             _cache.pop((symbol, tf, bars), None)
-        rows, src = await _cached((symbol, tf, bars), _ttl(tf), load_with_source)
+        rows, src = await _cached((symbol, tf, bars), min(_ttl(tf), 3.0) if forming else _ttl(tf), load_with_source)
     except HTTPException as exc:
         if exc.status_code in (401, 403):
             raise
@@ -256,13 +257,16 @@ async def candles(symbol: str, tf: str, bars: int = 400, fresh: bool = False) ->
     except Exception as exc:                          # noqa: BLE001
         raise DataUnavailable(f"{type(exc).__name__}: {exc}")
     now = time.time()
-    bars_ = closed_only(from_rows(rows), step, now)
+    raw = from_rows(rows)
+    bars_ = raw if forming else closed_only(raw, step, now)
     clean, q = validate(bars_, step, now)
     if not clean:
         raise DataUnavailable(f"No {tf} candles for {symbol}")
     if m in ("NSE", "FNO", "MCX") and tf not in ("1d", "1w"):
         q["stale"] = None if not q["stale"] else _india_stale(clean[-1].time, step, now, m)
-    q.update(source=src, symbol=symbol, tf=tf, as_of=clean[-1].time + step, fetched_at=int(now))
+    in_progress = clean[-1].time + step > now
+    q.update(source=src, symbol=symbol, tf=tf, as_of=int(now) if in_progress else clean[-1].time + step, fetched_at=int(now),
+             forming=in_progress, forming_closes_at=clean[-1].time + step if in_progress else None)
     return clean[-bars:], q
 
 
@@ -277,15 +281,32 @@ def _india_stale(last_t: int, step: int, now: float, m: str) -> bool:
     return now - (last_t + step) > 3 * step
 
 
+LIVE_LTP_TTL = 1.0                                    # FYERS quotes cadence while a chart is open (the phone uses 3 s)
+
+
+async def _fyers_ltp(symbol: str) -> float | None:
+    """Last traded price from FYERS quotes (refreshed about every second while the chart is open)."""
+    from backend.brokers.fyers.client import data_get
+    from backend.desk.routes import resolve
+    p = await data_get("/quotes", {"symbols": await resolve(symbol)})
+    d = (p.get("d") or [{}])[0]
+    v = d.get("v") or {}
+    lp = v.get("lp")
+    return float(lp) if lp else None
+
+
 async def live(symbol: str, tf: str) -> dict:
-    """The candle still forming plus the last price, for display only. Signals never use it (they wait for the close)."""
+    """The candle still forming, with the latest price folded in (FYERS: quotes LTP), for the live chart."""
     symbol = symbol.strip().upper() if not symbol.upper().startswith("YF:") else "YF:" + symbol.split(":", 1)[1].strip()
     if tf not in TF_SECONDS:
         raise HTTPException(400, f"timeframe must be one of {', '.join(TF_SECONDS)}")
     step = TF_SECONDS[tf]
-    poll = 2.0 if market_of(symbol) not in ("NSE", "FNO", "MCX", "YF") else 3.0
+    m = market_of(symbol)
+    india = m in ("NSE", "FNO", "MCX")
+    poll = LIVE_LTP_TTL if india else {"SHARK": 2.0, "YF": 5.0}.get(m, 2.0)
+    hist_ttl = 8.0 if india else 4.0 if m == "SHARK" else poll   # candle OHLC; the price itself comes faster (quotes / socket)
     try:
-        rows, src = await _cached(("live", symbol, tf), poll, lambda: _load(symbol, tf, 5))
+        rows, src = await _cached(("live", symbol, tf), hist_ttl, lambda: _load(symbol, tf, 5))
     except HTTPException as exc:
         if exc.status_code in (401, 403):
             raise
@@ -300,6 +321,14 @@ async def live(symbol: str, tf: str) -> dict:
     now = time.time()
     last = bars[-1]
     forming = last.time + step > now
+    ltp = None
+    if m in ("NSE", "FNO", "MCX") and forming:
+        try:
+            ltp = await _cached(("ltp", symbol), LIVE_LTP_TTL, lambda: _fyers_ltp(symbol))
+        except Exception:                             # noqa: BLE001 - the candle from history is still shown
+            ltp = None
+    if ltp:
+        last = Candle(last.time, last.open, max(last.high, ltp), min(last.low, ltp), ltp, last.volume)
     return {"symbol": symbol, "tf": tf, "source": src, "server_time": int(now), "price": last.close,
             "candle": {"time": last.time, "open": last.open, "high": last.high, "low": last.low, "close": last.close, "volume": last.volume},
             "forming": forming, "closes_at": last.time + step, "last_closed": (bars[-2].time if forming and len(bars) > 1 else last.time),

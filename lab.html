@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.01-6"></script>
-<script src="js/desk.js?v=2026.11.01-6"></script>
-<script src="js/lab.js?v=2026.11.01-6"></script>
+<script src="js/engine.js?v=2026.11.01-7"></script>
+<script src="js/desk.js?v=2026.11.01-7"></script>
+<script src="js/lab.js?v=2026.11.01-7"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>MarketMiner · Signal Lab</title>
@@ -122,15 +122,15 @@ td.r,th.r{text-align:right}
     <datalist id="symList"></datalist>
     <div class="seg" id="tfs"></div>
     <button class="btn pri" onclick="run()">▶ Analyse</button>
-    <label class="mono" style="font-size:.7rem;color:var(--t3);display:flex;gap:5px;align-items:center"><input type="checkbox" id="auto" style="width:auto"> auto-refresh</label>
+    <label class="mono" style="font-size:.7rem;color:var(--t3);display:flex;gap:5px;align-items:center" title="On: signals include the candle still forming and update every few seconds (they can change until the candle closes). Off: signals only from closed candles."><input type="checkbox" id="liveMode" style="width:auto" checked> live signals (don't wait for candle close)</label>
     <span id="busy"></span>
   </div>
   <div id="qual" class="qual">Pick a symbol and timeframe, then Analyse.</div>
   <div id="una"></div>
   <div class="grid" id="top">
     <div class="cd">
-      <h3><span>Chart · <span id="chTitle">—</span></span><span><span id="liveTag" class="live off">LIVE —</span> <span id="regTag"></span> <button class="btn sm" id="thBtn" onclick="toggleTheme()">☾ Dark chart</button></span></h3>
-      <div id="chartBox" data-theme="light"><div id="chart"></div><div id="sigWm"></div><div id="legend"></div><div id="rsiP"></div></div>
+      <h3><span>Chart · <span id="chTitle">—</span></span><span><span id="liveTag" class="live off">LIVE —</span> <span id="regTag"></span> <button class="btn sm" id="thBtn" onclick="toggleTheme()">☾ Dark chart</button> <button class="btn sm" id="tvBtn" onclick="toggleTV()">TradingView</button></span></h3>
+      <div id="tvWrap" style="display:none"><div id="tvBox" style="height:580px"></div><div class="note" id="tvNote"></div></div><div id="chartBox" data-theme="light"><div id="chart"></div><div id="sigWm"></div><div id="legend"></div><div id="rsiP"></div></div>
       <div class="layers" id="layers"></div>
     </div>
     <div>
@@ -183,27 +183,32 @@ async function init(){
   fillWatch();$("sym").value=s||"NSE:NIFTY50-INDEX";setTF(t||"15m",true);tab(tb);
   $("minS").textContent=`signal ≥ ${META.protection.min_score}`;
   $("sym").addEventListener("keydown",e=>{if(e.key==="Enter")run()});
-  $("auto").addEventListener("change",()=>{clearInterval(autoT);if($("auto").checked)autoT=setInterval(run,60000)});
+  try{$("liveMode").checked=localStorage.getItem("lab.live")!=="0"}catch(e){}
+  $("liveMode").addEventListener("change",()=>{try{localStorage.setItem("lab.live",$("liveMode").checked?"1":"0")}catch(e){}run()});
   ldAlertCount();setInterval(ldAlertCount,60000);
   run();
 }
 function fillWatch(){const l=META._groups[$("grp").value]||[];$("symList").innerHTML=l.map(s=>`<option value="${esc(s)}">`).join("");if(l.length&&document.activeElement!==$("sym")&&CUR)$("sym").value=l[0]}
 function setTF(t,silent){TF=t;document.querySelectorAll("#tfs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));if(!silent)run()}
 
+let RUNNING=false;
+const liveOn=()=>{const e=$("liveMode");return !e||e.checked};
 async function run(fresh){
   const sym=$("sym").value.trim();if(!sym)return;
+  if(fresh===true&&RUNNING)return;
   if(!fresh)liveStop();
+  RUNNING=true;
   try{localStorage.setItem("lab.sym",sym);localStorage.setItem("lab.tf",TF)}catch(e){}
   $("busy").innerHTML='<span class="spin"></span>';
   try{
-    const d=await api(`/api/lab/analyze?symbol=${encodeURIComponent(sym)}&tf=${TF}${fresh===true?"&fresh=1":""}`);
+    const d=await api(`/api/lab/analyze?symbol=${encodeURIComponent(sym)}&tf=${TF}${fresh===true?"&fresh=1":""}${liveOn()?"&live=1":""}`);
     const keepSel=fresh===true&&CUR&&CUR.symbol===d.symbol&&CUR.tf===d.tf;
     CUR=d;$("una").innerHTML="";$("top").style.display="";if(!keepSel)SEL=0;if(SEL>=d.setups.length)SEL=0;render(d,keepSel);
   }catch(e){
     CUR=null;$("top").style.display="none";
     $("una").innerHTML=`<div class="una">DATA UNAVAILABLE<small>${esc(e.message)}</small><small>Signals are suppressed until the data source returns validated candles.</small></div>`;
     $("qual").innerHTML=`<span>${esc(sym)} · ${TF}</span>`;
-  }finally{$("busy").innerHTML=""}
+  }finally{$("busy").innerHTML="";RUNNING=false}
 }
 
 function render(d,keep){
@@ -213,7 +218,7 @@ function render(d,keep){
     (q.stale?`<span class="dn">STALE — signals scored down</span>`:`<span class="up">fresh</span>`)+`<span>Computed in ${d.elapsed_ms} ms</span>`;
   $("chTitle").textContent=`${d.symbol} · ${d.tf}`;
   $("regTag").innerHTML=`<span class="chip">${esc(d.regime.label)}</span><span class="chip">volatility ${esc(d.regime.volatility)}</span>`+(d.context.kill_zone?`<span class="chip ok">${esc(d.context.kill_zone)}</span>`:"");
-  rScore(d.score);rSetups(d);rChart(d,keep);rIntel(d);rDeriv(d.derivatives);
+  rScore(d.score);rSetups(d);rChart(d,keep);if(TVON&&!keep)drawTV();rIntel(d);rDeriv(d.derivatives);
 }
 
 function rScore(s){
@@ -232,7 +237,7 @@ function rSetups(d){
     const v=s.validation?.status||"not backtested";
     return `<div class="setup ${L?"L":"S"} ${s.signal?"":"watch"}">
       <div class="st-h"><b class="${L?"up":"dn"}">${s.direction} · ${esc(s.name)}</b><span class="badge ${g}">${s.score.toFixed(0)} · ${esc(s.grade)}</span></div>
-      <div>${s.signal?'<span class="chip ok">SIGNAL</span>':'<span class="chip no">WATCH ONLY (below '+min+')</span>'}<span class="chip ${v==="validated"?"ok":"no"}">${esc(v)}</span><span class="chip">${esc(s.regime)}</span></div>
+      <div>${s.signal?'<span class="chip ok">SIGNAL</span>':'<span class="chip no">WATCH ONLY (below '+min+')</span>'}<span class="chip ${v==="validated"?"ok":"no"}">${esc(v)}</span><span class="chip">${esc(s.regime)}</span>${s.provisional?'<span class="chip no" title="Built on the candle that is still forming: it can change or disappear before the close">LIVE · CANDLE FORMING</span>':""}</div>
       <div class="lv"><div><span>Entry</span>${f(s.entry)}</div><div><span>Zone</span>${f(s.entry_zone[0])}–${f(s.entry_zone[1])}</div><div><span>Stop</span><b class="dn">${f(s.stop)}</b></div>
       <div><span>T1 · ${s.rr_t1.toFixed(1)}R</span><b class="up">${f(s.targets[0])}</b></div><div><span>T2 · ${s.rr.toFixed(1)}R</span><b class="up">${f(s.targets[1])}</b></div><div><span>T3 · ${s.rr_t3.toFixed(1)}R</span><b class="up">${f(s.targets[2])}</b></div>
       <div><span>Stop / ATR</span>${s.stop_atr.toFixed(2)}×</div><div><span>Size</span>${s.size?.qty?f(s.size.qty,4)+" ("+f(s.size.risk_amount,0)+" "+s.size.currency+")":esc(s.size?.why||"—")}</div><div><span>Max spread</span>${f(s.max_spread)}</div></div>
@@ -288,7 +293,7 @@ function sigWatermark(d){
   const s=d.setups[SEL],sc=d.score,bias=sc.bias,min=META.protection.min_score;
   let h=`<div class="wm-sym">${esc(d.symbol)} · ${esc(d.tf)}</div><div class="wm-row"><span class="${bias==="bullish"?"wm-up":bias==="bearish"?"wm-dn":""}">${bias.toUpperCase()}</span> · bull ${sc.bull.toFixed(0)} / bear ${sc.bear.toFixed(0)} · ${esc(d.regime.label)}</div>`;
   if(s){const L=s.direction==="LONG";
-    h+=`<div class="wm-sig ${L?"wm-up":"wm-dn"}">${L?"▲":"▼"} ${s.direction} · ${esc(s.name)} · ${s.score.toFixed(0)} ${esc(s.grade)}${s.signal?"":" (watch)"}</div>
+    h+=`<div class="wm-sig ${L?"wm-up":"wm-dn"}">${L?"▲":"▼"} ${s.direction} · ${esc(s.name)} · ${s.score.toFixed(0)} ${esc(s.grade)}${s.signal?"":" (watch)"}${s.provisional?" · live, candle forming":""}</div>
       <div class="wm-row">Entry ${f(s.entry)} · SL ${f(s.stop)} · T1 ${f(s.targets[0])} · T2 ${f(s.targets[1])} · T3 ${f(s.targets[2])} · ${s.rr.toFixed(1)}R</div>`;}
   else h+=`<div class="wm-row">No qualified setup on the last closed candle (signal ≥ ${min})</div>`;
   $("sigWm").innerHTML=h;
@@ -324,19 +329,26 @@ function rChart(d,keep){
   startLive(d);
 }
 /* ---------------- live feed
-   Fastest source per market, streamed straight from the exchange to this browser where the exchange allows it:
-   Binance -> Binance WebSocket kline stream; Delta Exchange (and Shark symbols served by Delta) -> Delta WebSocket mark
-   candlesticks; FYERS and Shark -> their REST data via MarketMiner every 2-3 s (FYERS' socket needs the login token,
-   which stays on the server). The forming candle is drawn faded and is display only: setups and scores use closed
-   candles, and the analysis re-runs on fresh data the moment a candle closes. */
+   Indian symbols: FYERS (candle from FYERS history, price from FYERS quotes about every second, via the MarketMiner
+   server, which keeps the FYERS token). Crypto: Shark Exchange's own live socket (the same public Socket.IO feed
+   SmartEntry uses) for every trade-price tick, with Shark's candles as the base; if Shark is down and the data is coming
+   from Delta, Delta's WebSocket; Binance symbols use Binance's WebSocket. In live mode the analysis also re-runs every
+   few seconds on the candle still forming, so signals do not wait for the close (they are marked LIVE until it closes). */
 const STEP={"1m":60,"3m":180,"5m":300,"15m":900,"30m":1800,"1h":3600,"4h":14400,"1d":86400,"1w":604800};
-const LIVEF={ws:null,timer:null,key:null,req:null,reqAt:0,tries:0,src:"",retry:0};
-function liveStop(){clearTimeout(LIVEF.timer);LIVEF.timer=null;if(LIVEF.ws){LIVEF.ws.onclose=null;try{LIVEF.ws.close()}catch(e){}LIVEF.ws=null}LIVEF.key=null}
-function startLive(d){const key=d.symbol+"|"+d.tf;if(LIVEF.key===key&&(LIVEF.ws||LIVEF.timer))return;liveStop();LIVEF.key=key;LIVEF.retry=0;liveConnect(d)}
+const LIVEF={ws:null,timer:null,anchor:null,ana:null,key:null,req:null,reqAt:0,tries:0,src:"",retry:0,bar:null};
+const SHARK_WS="wss://fawss.sharkexchange.in/socket.io/?EIO=4&transport=websocket";
+function liveStop(){[LIVEF.timer,LIVEF.anchor,LIVEF.ana].forEach(clearTimeout);LIVEF.timer=LIVEF.anchor=LIVEF.ana=null;
+  if(LIVEF.ws){LIVEF.ws.onclose=null;try{LIVEF.ws.close()}catch(e){}LIVEF.ws=null}LIVEF.key=null;LIVEF.bar=null}
+function startLive(d){const key=d.symbol+"|"+d.tf;if(LIVEF.key===key&&(LIVEF.ws||LIVEF.timer||LIVEF.anchor))return;liveStop();LIVEF.key=key;LIVEF.retry=0;liveConnect(d);scheduleAnalysis()}
+function scheduleAnalysis(){clearTimeout(LIVEF.ana);if(!liveOn()||!CUR)return;
+  const india=["NSE","FNO","MCX"].includes(CUR.market),ms=(india?10:8)*1000;
+  LIVEF.ana=setTimeout(async()=>{if(document.visibilityState!=="hidden"&&CUR&&STEP[CUR.tf]<86400*7)await run(true);scheduleAnalysis()},ms)}
 function liveConnect(d){const plan=wsPlan(d);if(plan)openWs(d,plan);else pollTick()}
 function wsPlan(d){
   const ex=d.symbol.split(":")[0].toUpperCase(),pair=d.symbol.split(":").slice(1).join(":").toUpperCase(),src=(d.quality&&d.quality.source)||"";
   if(typeof WebSocket==="undefined")return null;
+  if(ex==="SHARK"&&/^Shark/.test(src))return{name:"Shark Exchange live",url:SHARK_WS,socketio:true,tick:true,pair,
+    parse:m=>m&&m.e==="24hrTicker"&&String(m.s||"").toUpperCase()===pair?{price:+m.c,t:(+m.E||Date.now())/1000}:null};
   if(ex==="BINANCE")return{name:"Binance WebSocket",url:`wss://data-stream.binance.vision/ws/${pair.toLowerCase()}@kline_${d.tf}`,sub:null,
     parse:m=>{const k=m&&m.k;return k?{time:Math.floor(k.t/1000),open:+k.o,high:+k.h,low:+k.l,close:+k.c,volume:+k.v,closed:!!k.x}:null}};
   let dsym=null;
@@ -351,37 +363,93 @@ function openWs(d,plan){
   const key=d.symbol+"|"+d.tf;let ws,got=false;
   try{ws=new WebSocket(plan.url)}catch(e){return pollTick()}
   LIVEF.ws=ws;LIVEF.src=plan.name;liveBadge("off",`LIVE connecting to ${plan.name}…`);
-  const dog=setTimeout(()=>{if(!got&&LIVEF.ws===ws){ws.onclose=null;try{ws.close()}catch(e){}LIVEF.ws=null;pollTick(`${plan.name} silent, polling instead`)}},12000);
+  if(plan.tick)anchorTick(d,plan.name);          // Shark ticks need Shark's own candle underneath (refreshed every 10 s)
+  const dog=setTimeout(()=>{if(!got&&LIVEF.ws===ws){ws.onclose=null;try{ws.close()}catch(e){}LIVEF.ws=null;clearTimeout(LIVEF.anchor);LIVEF.anchor=null;pollTick(`${plan.name} silent, polling instead`)}},15000);
   ws.onopen=()=>{if(plan.sub)ws.send(JSON.stringify(plan.sub))};
-  ws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(e){return}const c=plan.parse(m);if(!c||!isFinite(c.close)||!c.time)return;
-    got=true;clearTimeout(dog);LIVEF.retry=0;onLive(c,plan.name,Date.now()/1000,true)};
+  ws.onmessage=ev=>{
+    const raw=String(ev.data);let m=null;
+    if(plan.socketio){                            // Engine.IO v4 / Socket.IO framing
+      if(raw[0]==="0"&&raw[1]!=="4"){ws.send("40");return}
+      if(raw.startsWith("40")){ws.send("42"+JSON.stringify(["subscribe",{params:[plan.pair.toLowerCase()+"@ticker"]}]));return}
+      if(raw==="2"){ws.send("3");return}
+      if(!raw.startsWith("42"))return;
+      try{const a=JSON.parse(raw.slice(2));if(a[0]!=="24hrTicker")return;m=a[1]}catch(e){return}
+    }else{try{m=JSON.parse(raw)}catch(e){return}}
+    const x=plan.parse(m);if(!x)return;
+    if(plan.tick){if(!isFinite(x.price)||x.price<=0)return;got=true;clearTimeout(dog);LIVEF.retry=0;onTick(x.price,x.t,plan.name);return}
+    if(!isFinite(x.close)||!x.time)return;got=true;clearTimeout(dog);LIVEF.retry=0;onLive(x,plan.name,Date.now()/1000,true)};
   ws.onclose=()=>{clearTimeout(dog);if(LIVEF.ws!==ws)return;LIVEF.ws=null;if(LIVEF.key!==key)return;
-    const w=Math.min(30,2**(++LIVEF.retry));liveBadge("err",`LIVE reconnecting in ${w}s`);LIVEF.timer=setTimeout(()=>{LIVEF.timer=null;if(CUR&&LIVEF.key===key)liveConnect(CUR)},w*1000)};
+    const w=Math.min(30,2**(++LIVEF.retry));liveBadge("err",`LIVE reconnecting in ${w}s`);
+    LIVEF.timer=setTimeout(()=>{LIVEF.timer=null;if(CUR&&LIVEF.key===key){clearTimeout(LIVEF.anchor);LIVEF.anchor=null;liveConnect(CUR)}},w*1000)};
+}
+async function anchorTick(d,name){                // Shark's current candle (OHLC) from MarketMiner; ticks then move it
+  const key=d.symbol+"|"+d.tf;clearTimeout(LIVEF.anchor);
+  try{const L=await api(`/api/lab/live?symbol=${encodeURIComponent(d.symbol)}&tf=${d.tf}`);if(LIVEF.key!==key)return;
+    const c=L.candle,b=LIVEF.bar;
+    if(!b||c.time>b.time)LIVEF.bar={...c};else if(c.time===b.time)LIVEF.bar={...c,high:Math.max(c.high,b.high),low:Math.min(c.low,b.low),close:b.t>L.server_time?b.close:c.close,t:b.t};
+    if(!LIVEF.ws)onLive({...LIVEF.bar,closed:!L.forming},name,L.server_time,false)}catch(e){}
+  if(LIVEF.key===key)LIVEF.anchor=setTimeout(()=>anchorTick(d,name),10000);
+}
+function onTick(price,t,name){
+  const d=CUR;if(!d)return;const step=STEP[d.tf];let b=LIVEF.bar;
+  const start=step>=86400?null:Math.floor(t/step)*step;  // intraday crypto candles are UTC-aligned
+  if(!b)return liveBadge("",`● LIVE <b>${f(price)}</b> · ${esc(name)}`);
+  if(start&&start>b.time)b=LIVEF.bar={time:start,open:price,high:price,low:price,close:price,volume:0,t};
+  else{b.close=price;b.high=Math.max(b.high,price);b.low=Math.min(b.low,price);b.t=t}
+  onLive({...b},name,t,true);
 }
 async function pollTick(note){
-  clearTimeout(LIVEF.timer);const d=CUR;if(!d)return;const key=d.symbol+"|"+d.tf;let wait=3000;
+  clearTimeout(LIVEF.timer);const d=CUR;if(!d)return;const key=d.symbol+"|"+d.tf;let wait=2000;
   if(document.visibilityState!=="hidden"){
     try{const L=await api(`/api/lab/live?symbol=${encodeURIComponent(d.symbol)}&tf=${d.tf}`);if(LIVEF.key!==key)return;
-      wait=Math.max(2,L.poll_s||3)*1000;const name=(/^FYERS/.test(L.source)?"FYERS":L.source.split(" (")[0])+` · every ${wait/1000}s`;LIVEF.src=name;
+      wait=Math.max(1,L.poll_s||2)*1000;const india=/^FYERS/.test(L.source);
+      const name=(india?"FYERS quotes":L.source.split(" (")[0])+` · ${wait/1000}s`;LIVEF.src=name;
       onLive({...L.candle,closed:!L.forming},name,L.server_time,false,note)}
     catch(e){liveBadge("err","LIVE paused: "+String(e.message).slice(0,70));wait=15000}}
   if(LIVEF.key===key)LIVEF.timer=setTimeout(()=>pollTick(),wait);
 }
 function liveBadge(cls,html,title){const t=$("liveTag");t.className="live "+cls;t.innerHTML=html;if(title)t.title=title}
 function onLive(c,srcName,now,stream,note){
-  const d=CUR;if(!d)return;const step=STEP[d.tf],lastClosed=d.candles[d.candles.length-1].time,t=TH();
+  const d=CUR;if(!d)return;const step=STEP[d.tf],t=TH(),last=d.candles[d.candles.length-1].time;
+  const baseClosed=d.quality&&d.quality.forming?last-step:last;   // newest CLOSED candle the analysis has
   const tz=(d.market==="NSE"||d.market==="FNO"||d.market==="MCX")?19800:0;
-  if(c.time>lastClosed&&!c.closed){const col=c.close>=c.open?t.up:t.dn;
-    try{cs.update({time:c.time+tz,open:c.open,high:c.high,low:c.low,close:c.close,color:col+"99",wickColor:col+"99",borderColor:col})}catch(e){}}
+  if(c.time>=last&&!(c.closed&&c.time<last)){const col=c.close>=c.open?t.up:t.dn;
+    try{cs.update({time:c.time+tz,open:c.open,high:c.high,low:c.low,close:c.close,color:col,wickColor:col,borderColor:col})}catch(e){}}
   const left=Math.max(0,Math.round(c.time+step-now)),mm=Math.floor(left/60),ss=String(left%60).padStart(2,"0");
   liveBadge("",`${stream?"● LIVE":"◐ LIVE"} <b>${f(c.close)}</b> · ${esc(srcName)} · ${new Date(now*1000).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"})}`+
-    (c.time+step>now&&!c.closed?` · closes in ${mm}:${ss}`:" · market idle")+(note?` · ${esc(note)}`:""),
-    `${stream?"Streaming":"Polling"} from ${srcName}. The faded candle is still forming and is display only; setups use closed candles and refresh the moment a candle closes.`);
-  // a candle has closed since the last analysis -> re-analyse once on fresh data
+    (c.time+step>now&&!c.closed?` · candle ${mm}:${ss} left`:" · market idle")+(note?` · ${esc(note)}`:""),
+    `${stream?"Streaming":"Updating"} from ${srcName}.`+(liveOn()?" Live signals: setups are recalculated every few seconds on the forming candle and marked LIVE until it closes.":" Signals wait for the candle to close."));
+  // a candle has closed since the last analysis -> re-analyse at once on fresh data
   const closedT=c.closed?c.time:c.time-step;
-  if(closedT>lastClosed){const nowMs=Date.now();
-    if(LIVEF.req!==closedT){LIVEF.req=closedT;LIVEF.tries=1;LIVEF.reqAt=nowMs;setTimeout(()=>run(true),stream?1500:0)}
-    else if(nowMs-LIVEF.reqAt>8000&&LIVEF.tries<4){LIVEF.tries++;LIVEF.reqAt=nowMs;run(true)}}  // the exchange can take a few seconds to publish the closed candle
+  if(closedT>baseClosed){const nowMs=Date.now();
+    if(LIVEF.req!==closedT){LIVEF.req=closedT;LIVEF.tries=1;LIVEF.reqAt=nowMs;setTimeout(()=>run(true),stream?1200:0)}
+    else if(nowMs-LIVEF.reqAt>8000&&LIVEF.tries<4){LIVEF.tries++;LIVEF.reqAt=nowMs;run(true)}}
+}
+/* ---------------- TradingView view (their chart and data; MarketMiner signals cannot be drawn on it) */
+const TV_IV={"1m":"1","3m":"3","5m":"5","15m":"15","30m":"30","1h":"60","4h":"240","1d":"D","1w":"W"};
+function tvSymbol(sym){
+  const [ex,rest]=[sym.split(":")[0].toUpperCase(),sym.split(":").slice(1).join(":").toUpperCase()];
+  const IDX={"NIFTY50-INDEX":"NSE:NIFTY","NIFTYBANK-INDEX":"NSE:BANKNIFTY","FINNIFTY-INDEX":"NSE:CNXFINANCE","MIDCPNIFTY-INDEX":"NSE:NIFTY_MID_SELECT","SENSEX-INDEX":"BSE:SENSEX","BANKEX-INDEX":"BSE:BANKEX"};
+  if(ex==="NSE"||ex==="BSE"){if(IDX[rest])return[IDX[rest],null];if(/-(EQ|BE)$/.test(rest))return[`${ex}:${rest.replace(/-(EQ|BE)$/,"")}`,null];
+    if(rest.endsWith("-FUT"))return[`${ex}:${rest.slice(0,-4)}1!`,"continuous front-month future"];return[`${ex}:${rest}`,null]}
+  if(ex==="MCX")return[`MCX:${rest.replace(/-FUT$/,"")}1!`,"continuous front-month future"];
+  if(ex==="BINANCE")return[`BINANCE:${rest}`,null];
+  if(ex==="SHARK")return[`BINANCE:${rest}.P`,"Shark Exchange is not on TradingView: showing the Binance perpetual"];
+  if(ex==="DELTAF"||ex==="DELTA")return[`BINANCE:${rest.replace(/USD$/,"USDT").split("-")[0]}.P`,"Delta Exchange is not on TradingView's free chart: showing the Binance perpetual"];
+  if(ex==="YF"){const M={"^GSPC":"SP:SPX","^NDX":"NASDAQ:NDX","^DJI":"DJ:DJI","^IXIC":"NASDAQ:IXIC","^N225":"TVC:NI225","^FTSE":"TVC:UKX","GC=F":"COMEX:GC1!","CL=F":"NYMEX:CL1!","DX-Y.NYB":"TVC:DXY"};
+    if(M[rest])return[M[rest],null];if(rest.endsWith("=X"))return[`FX:${rest.slice(0,-2)}`,null];return[rest,null]}
+  return[rest,null];
+}
+let TVON=false;
+function toggleTV(){TVON=!TVON;$("tvWrap").style.display=TVON?"":"none";$("chartBox").style.display=TVON?"none":"";$("layers").style.display=TVON?"none":"";
+  $("tvBtn").textContent=TVON?"◀ MarketMiner chart":"TradingView";if(TVON)drawTV()}
+function drawTV(){
+  const sym=(CUR&&CUR.symbol)||$("sym").value.trim(),[tvs,note]=tvSymbol(sym);
+  $("tvNote").innerHTML=`TradingView chart of <b>${esc(tvs)}</b>${note?` (${esc(note)})`:""}. TradingView's own data and its delays apply (NSE on the free chart can be delayed or not shown), and MarketMiner's setups, levels and scores can't be drawn on it: switch back to the MarketMiner chart for those.`;
+  const go=()=>{$("tvBox").innerHTML="";new TradingView.widget({container_id:"tvBox",symbol:tvs,interval:TV_IV[TF]||"15",timezone:"Asia/Kolkata",theme:THEME,style:"1",
+    locale:"en",autosize:true,allow_symbol_change:true,hide_side_toolbar:false,withdateranges:true,studies:["STD;VWAP"]})};
+  if(window.TradingView)go();else{const sc=document.createElement("script");sc.src="https://s3.tradingview.com/tv.js";sc.onload=go;
+    sc.onerror=()=>{$("tvBox").innerHTML='<div class="una">TradingView could not be loaded<small>Check the internet connection.</small></div>'};document.head.appendChild(sc)}
 }
 function showSetup(i){SEL=i;rChart(CUR,true);window.scrollTo({top:0,behavior:"smooth"})}
 async function paperOpen(i){

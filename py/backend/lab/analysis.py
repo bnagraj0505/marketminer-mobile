@@ -123,11 +123,11 @@ def _indicators(E: Engine) -> dict:
             "volume_profile": vp, "fib": fib, "divergences": div, "has_volume": F.has_volume}
 
 
-async def analyze(symbol: str, tf: str, bars: int = 600, fresh: bool = False) -> dict:
+async def analyze(symbol: str, tf: str, bars: int = 600, fresh: bool = False, live: bool = False) -> dict:
     t0 = time.time()
     itf, htf = MTF[tf]
     sess, anchor, market = D.session_key(symbol), D.anchor_minutes(symbol), D.market_of(symbol)
-    main, q = await D.candles(symbol, tf, bars, fresh)  # DataUnavailable propagates -> DATA UNAVAILABLE on screen
+    main, q = await D.candles(symbol, tf, bars, fresh, forming=live)  # DataUnavailable propagates -> DATA UNAVAILABLE on screen
     q["recent_gaps"] = _quality_recent(main, TF_SECONDS[tf])
 
     async def opt(sym, t, n):
@@ -154,7 +154,9 @@ async def analyze(symbol: str, tf: str, bars: int = 600, fresh: bool = False) ->
         s["validation"] = (val.get("status") or {}).get(s["strategy"], {"status": "not backtested"})
         s["size"] = P.size(symbol, market, s["entry"], s["stop"], prot)
         s["signal"] = s["score"] >= prot["min_score"]
-    _journal(symbol, tf, res["setups"], prot["min_score"])
+        s["provisional"] = bool(q.get("forming"))
+    if not q.get("forming"):                          # journal / alerts only from closed candles (a live candle can still change)
+        _journal(symbol, tf, res["setups"], prot["min_score"])
     ictr = ICT.analyze(main, market, db or None, main[-1].time)
     ext, intl, obs = ictr.pop("_reports")
     traps = [asdict(t) for t in ext.traps]
@@ -172,7 +174,8 @@ async def analyze(symbol: str, tf: str, bars: int = 600, fresh: bool = False) ->
         hs, ls = E.F.swings_at(E.F.t[i], "high"), E.F.swings_at(E.F.t[i], "low")
         der["liquidations"] = O.liquidation_estimates(main[-1].close, ls[-1].price if ls else None, hs[-1].price if hs else None)
     candles_out = [{"time": b.time, "open": b.open, "high": b.high, "low": b.low, "close": b.close, "volume": b.volume} for b in main[-400:]]
-    _alerts(symbol, tf, E, res, prot)
+    if not q.get("forming"):
+        _alerts(symbol, tf, E, res, prot)
     return {"symbol": symbol, "tf": tf, "market": market, "quality": q, "candles": candles_out, "overlays": _overlays(E, 400),
             "indicators": _indicators(E), "regime": reg, "score": res["score"], "setups": res["setups"][:8],
             "rejected": res["rejected"][:20], "context": ctx, "mtf": mtf, "ict": ictr, "price_action": par, "derivatives": der,

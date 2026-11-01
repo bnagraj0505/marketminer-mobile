@@ -13,6 +13,7 @@ from backend.lab import store, data as D, service as SV, recorder
 from backend.lab.candle import resample, from_rows
 
 store.DB = Path("/data/lab.db")
+D.LIVE_LTP_TTL = 3.0                                  # the phone shares FYERS' per-minute budget with other pages
 SV.PLATFORM.update(name="mobile", threads=False)
 SV.WATCH = {
     "India": ["NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX", "NSE:FINNIFTY-INDEX", "BSE:SENSEX-INDEX", "NSE:NIFTY-FUT", "NSE:BANKNIFTY-FUT",
@@ -51,7 +52,7 @@ async def _route(path: str, q: dict, method: str, body: dict):
     if p == "/meta":
         return SV.meta()
     if p == "/analyze":
-        return await SV.analyze(q.get("symbol", ""), q.get("tf", "15m"), int(q.get("bars") or 600), q.get("fresh") in ("1", "true"))
+        return await SV.analyze(q.get("symbol", ""), q.get("tf", "15m"), int(q.get("bars") or 600), q.get("fresh") in ("1", "true"), q.get("live") in ("1", "true"))
     if p == "/live":
         return await SV.live(q.get("symbol", ""), q.get("tf", "15m"))
     if p == "/mtf":
