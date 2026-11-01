@@ -210,3 +210,10 @@ def recorder_status() -> dict:
 
 async def recorder_run() -> dict:
     return await recorder.run_once()
+
+async def candles_only(symbol: str, tf: str = "5m", bars: int = 500) -> dict:
+    """Candles for the MM Trend page (no analysis)."""
+    sym, t = _sym(symbol), _tf(tf)
+    bs, q = await D.candles(sym, t, max(50, min(2000, int(bars))), False, True)
+    return {"symbol": sym, "tf": t, "market": D.market_of(sym), "quality": q,
+            "candles": [{"time": b.time, "open": b.open, "high": b.high, "low": b.low, "close": b.close, "volume": b.volume} for b in bs]}

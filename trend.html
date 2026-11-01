@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/engine.js?v=2026.11.01-9"></script>
+<script src="js/desk.js?v=2026.11.01-9"></script>
+<script src="js/lab.js?v=2026.11.01-9"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06080f">
+<title>MarketMiner · MM Trend</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg0:#06080f;--bg1:#0d1117;--bg2:#131a27;--bdr:#1b2536;--bdr2:#263450;--t1:#e2e8f0;--t2:#8b9ab5;--t3:#5b6b85;--g:#16a34a;--g2:#00e676;--r:#dc2626;--r2:#ff5252;--a:#ffab00;--cy:#18ffff;--gd:#FFD700;--mono:'JetBrains Mono',ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg0);color:var(--t1);min-height:100vh;overflow-x:hidden}
+.header{position:sticky;top:0;z-index:50;background:rgba(6,8,15,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);padding:8px 16px;padding-top:max(8px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-family:var(--mono);font-weight:800;font-size:1.3rem;letter-spacing:-.5px}.logo .m{color:var(--cy)}.logo .s{color:var(--gd)}.logo small{font:600 .7rem var(--mono);color:var(--t3);margin-left:8px}
+.hr{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--bg2);border:1px solid var(--bdr2);color:var(--t2);padding:6px 11px;border-radius:6px;cursor:pointer;font:600 .74rem var(--mono);text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn.gold{background:rgba(255,215,0,.1);border-color:rgba(255,215,0,.45);color:var(--gd)}.btn.sm{padding:3px 8px;font-size:.68rem}.btn:disabled{opacity:.4}
+main{padding:12px 16px 40px;max-width:1500px;margin:0 auto}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.ctl select,.ctl input{background:var(--bg1);border:1px solid var(--bdr2);color:var(--t1);padding:7px 9px;border-radius:6px;font:600 .8rem var(--mono);max-width:100%}
+.tfs{display:flex;border:1px solid var(--bdr2);border-radius:7px;overflow:hidden}
+.tfs button{background:var(--bg1);border:0;border-right:1px solid var(--bdr2);color:var(--t2);padding:7px 10px;font:700 .74rem var(--mono);cursor:pointer}
+.tfs button:last-child{border-right:0}.tfs button.on{background:rgba(255,215,0,.12);color:var(--gd)}
+.cd{background:var(--bg1);border:1px solid var(--bdr);border-radius:9px;padding:12px;min-width:0;margin-bottom:12px}
+.cd h3{font:800 .74rem var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.nt{color:var(--t3)}.up{color:var(--g2)}.dn{color:var(--r2)}.am{color:var(--a)}
+#chartBox{position:relative;border:1px solid var(--bdr);border-radius:9px;overflow:hidden;background:#0d1117}
+#chart{height:520px}
+#title{position:absolute;top:10px;left:12px;z-index:3;pointer-events:none;font:800 .9rem var(--mono);color:#cbd5e1;background:rgba(13,17,23,.65);padding:5px 9px;border-radius:7px}
+.stats{display:flex;gap:14px;flex-wrap:wrap;font:600 .78rem var(--mono);margin:10px 0}
+.stats b{font-weight:800}
+.sig{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;font:600 .78rem var(--mono)}
+.sig div{background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;padding:7px 9px}.sig small{display:block;color:var(--t3);font-size:.64rem;text-transform:uppercase;margin-bottom:2px}
+table{width:100%;border-collapse:collapse;font:600 .74rem var(--mono)}th,td{padding:7px 8px;border-bottom:1px solid var(--bdr);text-align:left;white-space:nowrap}
+th{color:var(--t3);font-size:.64rem;text-transform:uppercase}tr.row{cursor:pointer}tr.row:hover{background:var(--bg2)}td.r,th.r{text-align:right}
+.scroll{overflow-x:auto}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--bdr2);border-top-color:var(--gd);border-radius:50%;animation:sp 1s linear infinite;vertical-align:middle}@keyframes sp{to{transform:rotate(360deg)}}
+.una{padding:60px 16px;text-align:center;color:var(--t2);font:700 .9rem var(--mono)}.una small{display:block;margin-top:6px;color:var(--t3);font-weight:500}
+@media(max-width:700px){#chart{height:420px}}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="logo"><span class="m">Market</span><span class="s">Miner</span><small>MM TREND</small></div>
+  <div class="hr">
+    <a class="btn" href="index.html">← Dashboard</a>
+    <a class="btn" href="lab.html">◎ Signal Lab</a>
+    <a class="btn" href="desk.html">Day Desk</a>
+    <a class="btn" href="crypto.html">₿ Crypto</a>
+  </div>
+</header>
+<main>
+  <div class="ctl">
+    <select id="grp" onchange="fillMarkets(true)"></select>
+    <select id="mkt" onchange="pick(this.value)"></select>
+    <input id="sym" placeholder="or any symbol, e.g. SHARK:XRPUSDT" style="width:230px" onkeydown="if(event.key==='Enter')pick(this.value)">
+    <div class="tfs" id="tfs"></div>
+    <label class="nt" style="font:600 .7rem var(--mono)">ATR <input id="per" type="number" min="5" max="50" style="width:56px"></label>
+    <label class="nt" style="font:600 .7rem var(--mono)">× <input id="mul" type="number" min="1" max="6" step="0.1" style="width:60px"></label>
+    <span id="busy"></span>
+  </div>
+  <div id="chartBox"><div id="chart"></div><div id="title"></div></div>
+  <div class="stats" id="stats"></div>
+  <div class="cd"><h3><span>Latest signal</span><span class="nt" id="sigAge"></span></h3><div class="sig" id="sig"></div></div>
+  <div class="cd"><h3><span>Scanner · <span id="scanGrp"></span></span><span class="hr"><span class="nt" id="scanInfo"></span><button class="btn sm gold" onclick="scan()">↻ Scan group</button></span></h3>
+    <div class="scroll"><table><thead><tr><th>Market</th><th class="r">Price</th><th>Trend</th><th>Last signal</th><th class="r">Entry</th><th class="r">SL</th><th>Result so far</th><th class="r">TP1 %</th><th class="r">SL %</th></tr></thead><tbody id="scanBody"><tr><td colspan="9" class="nt">Tap “Scan group”.</td></tr></tbody></table></div>
+    <div class="nt" style="margin-top:8px;line-height:1.5">MM Trend is MarketMiner's own trend indicator: an ATR trailing stop drawn as a green (up) / red (down) band. <b>Buy / Sell</b> when the band flips on a <b>closed</b> candle (signals never redraw), stop at the band, <b>TP1 / TP2 / TP3</b> at 1R / 2R / 3R, stop to breakeven after TP1. Percentages are over the signals in the loaded history. Analysis only, not advice; no orders are placed.</div>
+  </div>
+</main>
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+<script src="js/mmtrend.js?v=2026.11.01-16"></script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const DP=x=>{const a=Math.abs(+x||0);return a>=100?2:a>=10?3:a>=1?4:6};
+const f=(x,d)=>{if(x==null||isNaN(x))return"—";const n=d??DP(x);return Number(x).toLocaleString("en-IN",{maximumFractionDigits:n,minimumFractionDigits:d==null&&Math.abs(x)<10&&x!=0?n:0})};
+const TFS=["1m","3m","5m","15m","30m","1h","4h","1d"],TFSEC={"1m":60,"3m":180,"5m":300,"15m":900,"30m":1800,"1h":3600,"4h":14400,"1d":86400};
+const LS={get:(k,d)=>{try{const v=localStorage.getItem("mmt."+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem("mmt."+k,JSON.stringify(v))}catch(e){}}};
+let TF=LS.get("tf","5m"),SYM=LS.get("sym","DELTAF:BTCUSD"),GROUPS={},chart,cs,band,timer=null,LAST=null;
+const OPT=()=>({period:+$("per").value||10,mult:+$("mul").value||2.5});
+const QUICK={
+  "Indices":["NSE:NIFTY50-INDEX","NSE:NIFTYBANK-INDEX","NSE:FINNIFTY-INDEX","BSE:SENSEX-INDEX"],
+  "Options (ATM, front expiry)":["NSE:NIFTY-ATM-CE","NSE:NIFTY-ATM-PE","NSE:BANKNIFTY-ATM-CE","NSE:BANKNIFTY-ATM-PE","NSE:FINNIFTY-ATM-CE","NSE:FINNIFTY-ATM-PE"],
+  "Gold & Crude":["MCX:GOLD-FUT","MCX:CRUDEOIL-FUT","MCX:SILVER-FUT","MCX:NATURALGAS-FUT"],
+};
+async function api(p){const r=await fetch(p);const j=await r.json().catch(()=>({detail:r.statusText}));if(!r.ok)throw new Error(j.detail||r.statusText);return j}
+
+function mkChart(){
+  chart=LightweightCharts.createChart($("chart"),{layout:{background:{color:"#0d1117"},textColor:"#94a3b8",fontFamily:"JetBrains Mono"},
+    grid:{vertLines:{color:"#141b29"},horzLines:{color:"#141b29"}},rightPriceScale:{borderColor:"#263450"},timeScale:{borderColor:"#263450",timeVisible:true,secondsVisible:false,rightOffset:6},crosshair:{mode:0}});
+  cs=chart.addCandlestickSeries({upColor:"#26a69a",downColor:"#ef5350",wickUpColor:"#26a69a",wickDownColor:"#ef5350",borderVisible:false});
+  band=chart.addLineSeries({lineWidth:5,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+  new ResizeObserver(()=>chart.applyOptions({width:$("chart").clientWidth})).observe($("chart"));
+}
+function draw(d,keep){
+  const tz=["NSE","FNO","MCX"].includes(d.market)?19800:0,T=x=>x+tz,n=d.candles.length;
+  const cc=d.candles.map((c,i)=>i===n-1&&d.quality&&d.quality.forming?{...c,forming:true}:c);
+  const pf={priceFormat:{type:"price",precision:DP(cc[n-1].close),minMove:Math.pow(10,-DP(cc[n-1].close))}};cs.applyOptions(pf);band.applyOptions(pf);
+  cs.setData(cc.map(c=>({time:T(c.time),open:c.open,high:c.high,low:c.low,close:c.close})));
+  const mm=MMTREND.compute(cc,OPT());
+  band.setData(mm.band.map(p=>({time:T(p.time),value:p.value,color:p.trend>0?"rgba(22,163,74,.95)":"rgba(220,38,38,.95)"})));
+  cs.setMarkers(MMTREND.markers(mm.signals,T,x=>f(x)));
+  if(!keep)chart.timeScale().fitContent();
+  const st=mm.stats;$("title").innerHTML=`${esc(d.symbol)} · ${d.tf} · <span style="color:${st&&st.trend==="up"?"#22c55e":"#ef4444"}">${st?(st.trend==="up"?"▲ UPTREND":"▼ DOWNTREND"):""}</span>`;
+  $("stats").innerHTML=st?`<span>Signals <b>${st.closed}</b>${st.signals>st.closed?" (+1 running)":""}</span><span class="up">TP1 <b>${st.tp1}%</b></span><span class="up">TP2 <b>${st.tp2}%</b></span><span class="up">TP3 <b>${st.tp3}%</b></span><span class="dn">SL <b>${st.sl}%</b></span><span class="nt">${esc(d.quality&&d.quality.source||"")}</span>`:"";
+  const s=st&&st.last;
+  if(s){const L=s.dir==="LONG",res=s.result==="running"?(s.hits.length?`running · TP${s.hits.length} ✓`:"running"):s.result;
+    $("sig").innerHTML=`<div><small>Signal</small><b class="${L?"up":"dn"}">${L?"▲ BUY":"▼ SELL"}</b></div><div><small>Entry</small>${f(s.entry)}</div><div><small>Stop</small><span class="dn">${f(s.sl)}</span></div>`+
+      s.tps.map((x,i)=>`<div><small>TP${i+1} (${i+1}R)</small><span class="up">${f(x)}</span> ${s.hits.length>i?"✓":""}</div>`).join("")+`<div><small>Status</small>${esc(res)}</div>`;
+    $("sigAge").textContent=new Date((s.time+(TFSEC[d.tf]||300))*1000).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})+" (candle close)";
+  }else{$("sig").innerHTML='<div class="nt">No flip in the loaded history.</div>';$("sigAge").textContent=""}
+}
+async function load(keep){
+  $("busy").innerHTML='<span class="spin"></span>';
+  try{const d=await api(`/api/lab/candles?symbol=${encodeURIComponent(SYM)}&tf=${TF}&bars=600`);LAST=d;if(!chart)mkChart();draw(d,keep)}
+  catch(e){$("chart").innerHTML=`<div class="una">DATA UNAVAILABLE<small>${esc(e.message)}</small></div>`;chart=null;$("stats").innerHTML="";$("sig").innerHTML=""}
+  finally{$("busy").innerHTML=""}
+}
+function pick(v){v=(v||"").trim().toUpperCase();if(!v)return;SYM=v;LS.set("sym",v);$("sym").value=v;syncPicker();load()}
+function setTF(t){TF=t;LS.set("tf",t);document.querySelectorAll("#tfs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));load()}
+function fillGroups(){const g=$("grp").value;$("grp").innerHTML=Object.keys(GROUPS).map(k=>`<option ${k===g?"selected":""}>${esc(k)}</option>`).join("")}
+function fillMarkets(go){const l=GROUPS[$("grp").value]||[];$("scanGrp").textContent=$("grp").value;
+  $("mkt").innerHTML=(l.includes(SYM)?"":`<option value="">— pick a market (${l.length}) —</option>`)+l.map(s=>`<option value="${esc(s)}" ${s===SYM?"selected":""}>${esc(s.split(":").pop())} · ${esc(s.split(":")[0])}</option>`).join("");
+  if(go&&l.length)pick(l[0])}
+function syncPicker(){const g=Object.keys(GROUPS).find(k=>GROUPS[k].includes(SYM));if(g&&$("grp").value!==g)$("grp").value=g;fillMarkets(false)}
+
+// scanner: trend + last signal for every market of the group
+let SCANNING=false;
+async function scan(){
+  if(SCANNING)return;SCANNING=true;const l=GROUPS[$("grp").value]||[],rows={};let done=0;
+  const paint=()=>{$("scanBody").innerHTML=l.map(s=>{const r=rows[s];if(!r)return`<tr><td>${esc(s.split(":").pop())}</td><td colspan="8" class="nt"><span class="spin"></span></td></tr>`;
+    if(r.err)return`<tr class="row" onclick="pick('${esc(s)}')"><td>${esc(s.split(":").pop())}</td><td colspan="8" class="nt">${esc(r.err.slice(0,80))}</td></tr>`;
+    const x=r.last,L=x&&x.dir==="LONG",age=x?Math.round((Date.now()/1000-x.time)/(TFSEC[TF]||300)):null;
+    return`<tr class="row" onclick="pick('${esc(s)}')"><td><b>${esc(s.split(":").pop())}</b> <span class="nt">${esc(s.split(":")[0])}</span></td><td class="r">${f(r.px)}</td>
+      <td class="${r.trend==="up"?"up":"dn"}">${r.trend==="up"?"▲ up":"▼ down"}</td>
+      <td>${x?`<span class="${L?"up":"dn"}">${L?"Buy":"Sell"}</span> <span class="nt">${age} bars ago</span>`:"—"}</td><td class="r">${x?f(x.entry):"—"}</td><td class="r dn">${x?f(x.sl):"—"}</td>
+      <td>${x?(x.result==="running"?(x.hits.length?`<span class="up">running · TP${x.hits.length} ✓</span>`:"running"):(x.result==="SL"?'<span class="dn">SL ✗</span>':`<span class="up">${esc(x.result)}</span>`)):"—"}</td>
+      <td class="r up">${r.st.tp1}%</td><td class="r dn">${r.st.sl}%</td></tr>`}).join("")||'<tr><td colspan="9" class="nt">No markets in this group.</td></tr>';
+    $("scanInfo").textContent=`${done}/${l.length}`};
+  paint();
+  const one=async s=>{try{const d=await api(`/api/lab/candles?symbol=${encodeURIComponent(s)}&tf=${TF}&bars=400`),n=d.candles.length;
+      const cc=d.candles.map((c,i)=>i===n-1&&d.quality&&d.quality.forming?{...c,forming:true}:c),mm=MMTREND.compute(cc,OPT());
+      rows[s]={px:cc[n-1].close,trend:mm.stats.trend,last:mm.stats.last,st:mm.stats}}catch(e){rows[s]={err:e.message}}done++;paint()};
+  const q=[...l];await Promise.all([0,1].map(async()=>{while(q.length)await one(q.shift())}));   // two at a time (exchange rate limits)
+  SCANNING=false;$("scanInfo").textContent=`scanned ${new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})} · tap a row to open`;
+}
+
+async function init(){
+  $("tfs").innerHTML=TFS.map(t=>`<button data-t="${t}" class="${t===TF?"on":""}" onclick="setTF('${t}')">${t}</button>`).join("");
+  $("per").value=LS.get("per",10);$("mul").value=LS.get("mul",2.5);
+  $("per").onchange=$("mul").onchange=()=>{LS.set("per",+$("per").value);LS.set("mul",+$("mul").value);if(LAST)draw(LAST,true)};
+  let meta={watch:{},user_watch:[]};try{meta=await api("/api/lab/meta")}catch(e){}
+  GROUPS={...QUICK};Object.entries(meta.watch||{}).forEach(([k,v])=>{if(!GROUPS[k])GROUPS[k]=v});if((meta.user_watch||[]).length)GROUPS["My watch-list"]=meta.user_watch;
+  fillGroups();$("sym").value=SYM;syncPicker();if(!Object.values(GROUPS).flat().includes(SYM))fillMarkets(false);
+  load();
+  clearInterval(timer);timer=setInterval(()=>{if(document.visibilityState==="visible")load(true)},30000);   // signals only change when a candle closes
+  try{const r=await fetch("https://api.india.delta.exchange/v2/products?contract_types=perpetual_futures&states=live&page_size=500"),j=await r.json();   // every Delta perpetual
+    const l=[...new Set((j.result||[]).map(p=>p.symbol).filter(x=>/^[A-Z0-9]+USD$/.test(x)))].sort().map(x=>"DELTAF:"+x);if(l.length){GROUPS["Crypto · all (Delta perps)"]=l;fillGroups();syncPicker()}}catch(e){}
+}
+init();
+</script>
+</body>
+</html>
