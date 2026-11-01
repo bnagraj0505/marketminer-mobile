@@ -704,6 +704,6 @@ async function recNow(){toast("Recorder running… this can take a minute",60000
 init().catch(e=>{$("qual").innerHTML=`<span class="dn">Signal Lab engine could not start: ${esc(e.message)}</span>`});
 </script>
 <script>window.addEventListener('mm-lab-status',e=>{const q=document.getElementById('qual');if(q&&e.detail)q.innerHTML='<span class="spin"></span> '+e.detail});</script>
-<script src="js/bot.js?v=2026.11.01-10"></script>
+<script src="js/bot.js?v=2026.11.01-11"></script>
 </body>
 </html>

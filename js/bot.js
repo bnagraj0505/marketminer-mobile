@@ -253,7 +253,7 @@
         <li>Open your new bot in Telegram and send it any message (e.g. "hi").</li>
         <li>Paste the token below and tap <b>Find my chat ID</b>, then <b>Send test</b>.</li></ol>
       <div class="hr" style="gap:8px;margin-bottom:8px">
-        <input id="tgTok" type="password" placeholder="Bot token 123456:ABC…" style="flex:1;min-width:220px" value="${E(cfg.tgToken)}" onchange="MMBOT.set('tgToken',this.value.trim())">
+        <input id="tgTok" type="password" placeholder="Bot token, or setup code token|chatID" style="flex:1;min-width:220px" value="${E(cfg.tgToken)}" onchange="MMBOT.set('tgToken',this.value.trim())">
         <input id="tgChat" placeholder="Chat ID" style="width:150px" value="${E(cfg.tgChat)}" onchange="MMBOT.set('tgChat',this.value.trim())">
       </div>
       <div class="hr" style="gap:8px;margin-bottom:10px"><button class="btn sm" onclick="MMBOT.findChat()">Find my chat ID</button><button class="btn sm gold" onclick="MMBOT.test()">Send test</button><span id="tgMsg" class="nt"></span></div>
@@ -267,7 +267,9 @@
   window.MMBOT = {
     setOn, render: rBot, tick, cfg: () => cfg, state: () => st,
     set(k, v) {
-      if (k.startsWith("notify.")) cfg.notify[k.slice(7)] = v; else cfg[k] = v;
+      const combo = k === "tgToken" && /^\s*(\d+:[\w-]+)\s*[|,\s]\s*(-?\d+)\s*$/.exec(v || "");   // setup code "token|chatId"
+      if (combo) { cfg.tgToken = combo[1]; cfg.tgChat = combo[2]; }
+      else if (k.startsWith("notify.")) cfg.notify[k.slice(7)] = v; else cfg[k] = v;
       saveC(); if (k === "every") schedule(); if (k === "tgToken" || k === "tgChat") rBot();
     },
     sym(s, on) { cfg.symbols = on ? [...new Set([...cfg.symbols, s])] : cfg.symbols.filter((x) => x !== s); saveC(); },
