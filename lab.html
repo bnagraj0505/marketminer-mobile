@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.01-3"></script>
-<script src="js/desk.js?v=2026.11.01-3"></script>
-<script src="js/lab.js?v=2026.11.01-3"></script>
+<script src="js/engine.js?v=2026.11.01-4"></script>
+<script src="js/desk.js?v=2026.11.01-4"></script>
+<script src="js/lab.js?v=2026.11.01-4"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>MarketMiner · Signal Lab</title>
@@ -40,7 +40,21 @@ a{color:inherit}.mono{font-family:var(--mono)}
 @media(max-width:1100px){.grid{grid-template-columns:1fr}}
 .cd{background:var(--bg1);border:1px solid var(--bdr);border-radius:9px;padding:12px;min-width:0}
 .cd h3{font:700 .7rem var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
-#chart{height:470px}#rsiP{height:110px;margin-top:4px}
+#chartBox{position:relative;border-radius:8px;overflow:hidden;border:1px solid #d7dee8;background:#fff}
+#chartBox[data-theme=dark]{border-color:var(--bdr);background:#0d1117}
+#chart{height:470px}#rsiP{height:110px;border-top:1px solid #e5e9f0}#chartBox[data-theme=dark] #rsiP{border-top-color:var(--bdr)}
+#sigWm{position:absolute;top:10px;left:12px;z-index:3;pointer-events:none;max-width:min(560px,calc(100% - 90px));padding:8px 11px;border-radius:8px;
+  background:rgba(255,255,255,.62);border:1px solid rgba(15,23,42,.08);backdrop-filter:blur(2px);font:500 .7rem var(--mono);color:#334155;line-height:1.5}
+#chartBox[data-theme=dark] #sigWm{background:rgba(13,17,23,.6);border-color:rgba(226,232,240,.08);color:#cbd5e1}
+#sigWm .wm-sym{font:800 .95rem var(--mono);opacity:.75;letter-spacing:.3px}
+#sigWm .wm-sig{font:800 .8rem var(--mono);margin-top:3px}
+#sigWm .wm-row{opacity:.85}
+#sigWm .wm-up{color:#15803d}#sigWm .wm-dn{color:#b91c1c}
+#chartBox[data-theme=dark] #sigWm .wm-up{color:var(--g)}#chartBox[data-theme=dark] #sigWm .wm-dn{color:var(--r)}
+#legend{position:absolute;top:10px;right:72px;z-index:3;pointer-events:none;display:flex;gap:9px;font:600 .62rem var(--mono);color:#64748b;background:rgba(255,255,255,.55);padding:3px 7px;border-radius:5px}
+#chartBox[data-theme=dark] #legend{background:rgba(13,17,23,.55);color:#8b9ab5}
+#legend i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
+@media(max-width:700px){#legend{display:none}#sigWm{font-size:.62rem;max-width:calc(100% - 70px)}}
 .layers{display:flex;gap:10px;flex-wrap:wrap;font:500 .68rem var(--mono);color:var(--t2);margin-top:6px}
 .layers label{display:flex;gap:4px;align-items:center;cursor:pointer}
 .scorebar{display:flex;height:22px;border-radius:5px;overflow:hidden;font:700 .66rem var(--mono)}
@@ -112,8 +126,8 @@ td.r,th.r{text-align:right}
   <div id="una"></div>
   <div class="grid" id="top">
     <div class="cd">
-      <h3><span>Chart · <span id="chTitle">—</span></span><span id="regTag"></span></h3>
-      <div id="chart"></div><div id="rsiP"></div>
+      <h3><span>Chart · <span id="chTitle">—</span></span><span><span id="regTag"></span> <button class="btn sm" id="thBtn" onclick="toggleTheme()">☾ Dark chart</button></span></h3>
+      <div id="chartBox" data-theme="light"><div id="chart"></div><div id="sigWm"></div><div id="legend"></div><div id="rsiP"></div></div>
       <div class="layers" id="layers"></div>
     </div>
     <div>
@@ -228,41 +242,79 @@ function rSetups(d){
 /* ---------------- chart */
 const LAYERS=[["ema","EMA 20/50/200",1],["vwap","VWAP",1],["bb","Bollinger",0],["st","Supertrend",0],["ob","Order blocks",1],["fvg","FVGs",1],["liq","Liquidity",1],["lvl","PDH/PDL · OI S/R",1],["mk","BOS/CHoCH/sweeps",1],["setup","Setup levels",1]];
 function layerOn(k){const e=$("ly-"+k);return e?e.checked:true}
+const THEMES={
+  light:{bg:"#ffffff",text:"#475569",grid:"#eef2f7",border:"#d7dee8",up:"#16a34a",dn:"#dc2626",volUp:"rgba(22,163,74,.18)",volDn:"rgba(220,38,38,.18)",
+    ema20:"#0891b2",ema50:"#ca8a04",ema200:"#ea580c",vwap:"#7c3aed",bb:"#94a3b8",st:"#2563eb",rsi:"#0891b2",rsiLvl:"#cbd5e1",wm:"rgba(15,23,42,.06)",
+    bull:"rgba(22,163,74,",bear:"rgba(220,38,38,",gold:"rgba(180,130,0,",cyan:"rgba(8,145,178,",orange:"rgba(234,88,12,",grey:"rgba(100,116,139,",violet:"rgba(124,58,237,",entry:"#0f172a"},
+  dark:{bg:"#0d1117",text:"#8b9ab5",grid:"#131a27",border:"#1b2536",up:"#00e676",dn:"#ff5252",volUp:"rgba(0,230,118,.22)",volDn:"rgba(255,82,82,.22)",
+    ema20:"#18ffff",ema50:"#FFD700",ema200:"#ff9100",vwap:"#b388ff",bb:"#5b6b85",st:"#448aff",rsi:"#18ffff",rsiLvl:"#263450",wm:"rgba(226,232,240,.05)",
+    bull:"rgba(0,230,118,",bear:"rgba(255,82,82,",gold:"rgba(255,215,0,",cyan:"rgba(24,255,255,",orange:"rgba(255,145,0,",grey:"rgba(139,154,181,",violet:"rgba(179,136,255,",entry:"#e2e8f0"}};
+let THEME=(()=>{try{return localStorage.getItem("lab.chartTheme")||"light"}catch(e){return "light"}})();
+const TH=()=>THEMES[THEME];
+function chartOpts(){const t=TH();return{layout:{background:{color:t.bg},textColor:t.text,fontFamily:"JetBrains Mono"},grid:{vertLines:{color:t.grid},horzLines:{color:t.grid}},
+  rightPriceScale:{borderColor:t.border},timeScale:{borderColor:t.border,timeVisible:true,secondsVisible:false},crosshair:{mode:0}}}
+function applyTheme(){
+  const t=TH();$("chartBox").dataset.theme=THEME;$("thBtn").textContent=THEME==="light"?"☾ Dark chart":"☀ Light chart";
+  if(!chart)return;
+  chart.applyOptions(chartOpts());rsiC.applyOptions({...chartOpts(),timeScale:{visible:false}});
+  cs.applyOptions({upColor:t.up,downColor:t.dn,wickUpColor:t.up,wickDownColor:t.dn});
+  [["ema20",t.ema20],["ema50",t.ema50],["ema200",t.ema200],["vwap",t.vwap],["bbu",t.bb],["bbl",t.bb],["st",t.st]].forEach(([k,c])=>lines[k].applyOptions({color:c}));
+  rsiS.applyOptions({color:t.rsi});rsiLv.forEach(l=>l.applyOptions({color:t.rsiLvl}));
+  $("legend").innerHTML=[["EMA20",t.ema20],["EMA50",t.ema50],["EMA200",t.ema200],["VWAP",t.vwap]].map(([n,c])=>`<span><i style="background:${c}"></i>${n}</span>`).join("");
+}
+function toggleTheme(){THEME=THEME==="light"?"dark":"light";try{localStorage.setItem("lab.chartTheme",THEME)}catch(e){}applyTheme();if(CUR)rChart(CUR,true)}
+let rsiLv=[];
 function mkChart(){
-  const opt={layout:{background:{color:"#0d1117"},textColor:"#8b9ab5",fontFamily:"JetBrains Mono"},grid:{vertLines:{color:"#131a27"},horzLines:{color:"#131a27"}},
-    rightPriceScale:{borderColor:"#1b2536"},timeScale:{borderColor:"#1b2536",timeVisible:true,secondsVisible:false},crosshair:{mode:0}};
-  chart=LightweightCharts.createChart($("chart"),{...opt,height:470});
-  cs=chart.addCandlestickSeries({upColor:"#00e676",downColor:"#ff5252",borderVisible:false,wickUpColor:"#00e676",wickDownColor:"#ff5252"});
-  lines.vol=chart.addHistogramSeries({priceScaleId:"v",priceFormat:{type:"volume"},color:"#263450"});chart.priceScale("v").applyOptions({scaleMargins:{top:.82,bottom:0}});
+  const t=TH();
+  chart=LightweightCharts.createChart($("chart"),{...chartOpts(),height:$("chart").clientHeight||470});
+  cs=chart.addCandlestickSeries({upColor:t.up,downColor:t.dn,borderVisible:false,wickUpColor:t.up,wickDownColor:t.dn});
+  lines.vol=chart.addHistogramSeries({priceScaleId:"v",priceFormat:{type:"volume"},lastValueVisible:false,priceLineVisible:false});chart.priceScale("v").applyOptions({scaleMargins:{top:.84,bottom:0}});
   const L=(c,w=1,s=0)=>chart.addLineSeries({color:c,lineWidth:w,lineStyle:s,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
-  lines.ema20=L("#18ffff");lines.ema50=L("#FFD700");lines.ema200=L("#ff9100",2);lines.vwap=L("#b388ff",2,2);lines.bbu=L("#5b6b85",1,1);lines.bbl=L("#5b6b85",1,1);lines.st=L("#448aff",1,3);
-  rsiC=LightweightCharts.createChart($("rsiP"),{...opt,height:110,timeScale:{visible:false}});rsiS=rsiC.addLineSeries({color:"#18ffff",lineWidth:1,priceLineVisible:false});
-  [70,30].forEach(v=>rsiS.createPriceLine({price:v,color:"#263450",lineWidth:1,lineStyle:2,axisLabelVisible:false}));
+  lines.ema20=L(t.ema20);lines.ema50=L(t.ema50);lines.ema200=L(t.ema200,2);lines.vwap=L(t.vwap,2,2);lines.bbu=L(t.bb,1,1);lines.bbl=L(t.bb,1,1);lines.st=L(t.st,1,3);
+  rsiC=LightweightCharts.createChart($("rsiP"),{...chartOpts(),height:110,timeScale:{visible:false}});rsiS=rsiC.addLineSeries({color:t.rsi,lineWidth:1,priceLineVisible:false});
+  rsiLv=[70,30].map(v=>rsiS.createPriceLine({price:v,color:t.rsiLvl,lineWidth:1,lineStyle:2,axisLabelVisible:false}));
   chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{if(r)rsiC.timeScale().setVisibleLogicalRange(r)});
   new ResizeObserver(()=>{chart.applyOptions({width:$("chart").clientWidth});rsiC.applyOptions({width:$("rsiP").clientWidth})}).observe($("chart"));
   $("layers").innerHTML=LAYERS.map(([k,l,on])=>`<label><input type="checkbox" id="ly-${k}" ${on?"checked":""} onchange="CUR&&rChart(CUR,true)">${l}</label>`).join("");
+  applyTheme();
 }
 function rsiCalc(c,n=14){const o=Array(c.length).fill(null);let g=0,l=0;for(let i=1;i<c.length;i++){const d=c[i]-c[i-1],G=Math.max(d,0),Ls=Math.max(-d,0);if(i<=n){g+=G;l+=Ls;if(i===n){g/=n;l/=n;o[i]=l===0?100:100-100/(1+g/l)}}else{g=(g*(n-1)+G)/n;l=(l*(n-1)+Ls)/n;o[i]=l===0?100:100-100/(1+g/l)}}return o}
+function sigWatermark(d){
+  const s=d.setups[SEL],sc=d.score,bias=sc.bias,min=META.protection.min_score;
+  let h=`<div class="wm-sym">${esc(d.symbol)} · ${esc(d.tf)}</div><div class="wm-row"><span class="${bias==="bullish"?"wm-up":bias==="bearish"?"wm-dn":""}">${bias.toUpperCase()}</span> · bull ${sc.bull.toFixed(0)} / bear ${sc.bear.toFixed(0)} · ${esc(d.regime.label)}</div>`;
+  if(s){const L=s.direction==="LONG";
+    h+=`<div class="wm-sig ${L?"wm-up":"wm-dn"}">${L?"▲":"▼"} ${s.direction} · ${esc(s.name)} · ${s.score.toFixed(0)} ${esc(s.grade)}${s.signal?"":" (watch)"}</div>
+      <div class="wm-row">Entry ${f(s.entry)} · SL ${f(s.stop)} · T1 ${f(s.targets[0])} · T2 ${f(s.targets[1])} · T3 ${f(s.targets[2])} · ${s.rr.toFixed(1)}R</div>`;}
+  else h+=`<div class="wm-row">No qualified setup on the last closed candle (signal ≥ ${min})</div>`;
+  $("sigWm").innerHTML=h;
+}
 function rChart(d,keep){
   if(!chart)mkChart();
-  const tz=(d.market==="NSE"||d.market==="FNO"||d.market==="MCX")?19800:0;const T=t=>t+tz;  // show exchange-local time on the axis
+  const t=TH(),A=(base,a)=>base+a+")";
+  const tz=(d.market==="NSE"||d.market==="FNO"||d.market==="MCX")?19800:0;const T=x=>x+tz;  // exchange-local time on the axis
+  chart.applyOptions({watermark:{visible:true,text:`${d.symbol.split(":").pop()}  ${d.tf}`,color:t.wm,fontSize:Math.max(28,Math.min(64,Math.round(($("chart").clientWidth||600)/14))),horzAlign:"center",vertAlign:"center",fontFamily:"JetBrains Mono"}});
   cs.setData(d.candles.map(c=>({time:T(c.time),open:c.open,high:c.high,low:c.low,close:c.close})));
-  lines.vol.setData(d.indicators.has_volume?d.candles.map(c=>({time:T(c.time),value:c.volume,color:c.close>=c.open?"rgba(0,230,118,.25)":"rgba(255,82,82,.25)"})):[]);
+  lines.vol.setData(d.indicators.has_volume?d.candles.map(c=>({time:T(c.time),value:c.volume,color:c.close>=c.open?t.volUp:t.volDn})):[]);
   const o=d.overlays,S=(k,a,on)=>lines[k].setData(on?a.map(p=>({time:T(p.time),value:p.value})):[]);
   S("ema20",o.ema20,layerOn("ema"));S("ema50",o.ema50,layerOn("ema"));S("ema200",o.ema200,layerOn("ema"));S("vwap",o.vwap,layerOn("vwap"));
   S("bbu",o.bb_up,layerOn("bb"));S("bbl",o.bb_lo,layerOn("bb"));S("st",o.supertrend,layerOn("st"));
   const r=rsiCalc(d.candles.map(c=>c.close));rsiS.setData(d.candles.map((c,i)=>r[i]==null?null:{time:T(c.time),value:r[i]}).filter(Boolean));
   plines.forEach(p=>cs.removePriceLine(p));plines=[];
-  const PL=(price,color,title,style=2,w=1)=>{if(price==null)return;plines.push(cs.createPriceLine({price,color,lineWidth:w,lineStyle:style,axisLabelVisible:true,title}))};
-  if(layerOn("ob"))o.order_blocks.filter(x=>x.state!=="breaker").slice(-4).forEach(x=>{const c=x.direction==="bullish"?"rgba(0,230,118,.55)":"rgba(255,82,82,.55)";PL(x.top,c,`${x.direction==="bullish"?"Bull":"Bear"} OB`,0);PL(x.bottom,c,"",0)});
-  if(layerOn("fvg"))o.fvgs.slice(-4).forEach(x=>{const c=x.direction==="bullish"?"rgba(24,255,255,.5)":"rgba(255,145,0,.55)";PL(x.top,c,`FVG ${x.quality}`,1);PL(x.bottom,c,"",1)});
-  if(layerOn("liq")){o.liquidity_above.slice(0,3).forEach(p=>PL(p,"rgba(255,215,0,.6)","BSL",3));o.liquidity_below.slice(0,3).forEach(p=>PL(p,"rgba(255,215,0,.6)","SSL",3))}
-  if(layerOn("lvl")){const pl=d.ict.period_levels||{};PL(pl.pdh,"#8b9ab5","PDH");PL(pl.pdl,"#8b9ab5","PDL");PL(pl.pwh,"#5b6b85","PWH");PL(pl.pwl,"#5b6b85","PWL");
-    const lv=d.levels||{};PL(lv.oi_support,"#00e676","OI support",0,2);PL(lv.oi_resistance,"#ff5252","OI resistance",0,2);PL(lv.max_pain,"#b388ff","Max pain",2)}
+  const PL=(price,color,title,style=2,w=1,label=true)=>{if(price==null)return;plines.push(cs.createPriceLine({price,color,lineWidth:w,lineStyle:style,axisLabelVisible:label,title}))};
+  // context levels are drawn faint (watermark style) so candles and the trade levels stay readable
+  if(layerOn("ob"))o.order_blocks.filter(x=>x.state!=="breaker").slice(-3).forEach(x=>{const c=A(x.direction==="bullish"?t.bull:t.bear,.32);PL(x.top,c,`${x.direction==="bullish"?"Bull":"Bear"} OB`,0,1,false);PL(x.bottom,c,"",0,1,false)});
+  if(layerOn("fvg"))o.fvgs.slice(-3).forEach(x=>{const c=A(x.direction==="bullish"?t.cyan:t.orange,.32);PL(x.top,c,`FVG ${x.quality}`,1,1,false);PL(x.bottom,c,"",1,1,false)});
+  if(layerOn("liq")){o.liquidity_above.slice(0,2).forEach(p=>PL(p,A(t.gold,.45),"BSL",3,1,false));o.liquidity_below.slice(0,2).forEach(p=>PL(p,A(t.gold,.45),"SSL",3,1,false))}
+  if(layerOn("lvl")){const pl=d.ict.period_levels||{};PL(pl.pdh,A(t.grey,.5),"PDH",2,1,false);PL(pl.pdl,A(t.grey,.5),"PDL",2,1,false);
+    const lv=d.levels||{};PL(lv.oi_support,A(t.bull,.6),"OI support",0,2);PL(lv.oi_resistance,A(t.bear,.6),"OI resistance",0,2);PL(lv.max_pain,A(t.violet,.5),"Max pain",2,1,false)}
   const s=d.setups[SEL];
-  if(s&&layerOn("setup")){PL(s.entry,"#e2e8f0","Entry",0,2);PL(s.stop,"#ff5252","SL",0,2);s.targets.forEach((t,i)=>PL(t,"#00e676","T"+(i+1),0,1))}
-  cs.setMarkers(layerOn("mk")?o.markers.map(m=>({time:T(m.time),position:m.direction==="bullish"?"belowBar":"aboveBar",color:m.kind==="sweep"?"#FFD700":m.direction==="bullish"?"#00e676":"#ff5252",
-    shape:m.kind==="sweep"?"circle":m.direction==="bullish"?"arrowUp":"arrowDown",text:m.kind==="sweep"?"sweep":m.kind})):[]);
+  if(s&&layerOn("setup")){PL(s.entry,t.entry,"Entry",0,2);PL(s.stop,t.dn,"SL",0,2);s.targets.forEach((x,i)=>PL(x,t.up,"T"+(i+1),i?2:0,i?1:2))}
+  // structure markers: translucent and limited to the most recent ones
+  const mk=o.markers.slice(-30);
+  cs.setMarkers(layerOn("mk")?mk.map(m=>({time:T(m.time),position:m.direction==="bullish"?"belowBar":"aboveBar",
+    color:m.kind==="sweep"?A(t.gold,.75):A(m.direction==="bullish"?t.bull:t.bear,.7),shape:m.kind==="sweep"?"circle":m.direction==="bullish"?"arrowUp":"arrowDown",
+    text:m.kind==="sweep"?"":m.kind,size:m.kind==="sweep"?0.6:0.8})):[]);
+  sigWatermark(d);
   if(!keep)chart.timeScale().fitContent();
 }
 function showSetup(i){SEL=i;rChart(CUR,true);window.scrollTo({top:0,behavior:"smooth"})}
