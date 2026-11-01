@@ -130,3 +130,18 @@ def merge(symbol: str, tf: str, fresh: list[dict], last: float | None) -> tuple[
         out.append(s)
     return out, recent
 
+
+def history(symbol: str, tf: str, since: int, limit: int = 60) -> list[dict]:
+    """Every locked signal for this symbol/timeframe since `since` (active and closed), oldest first, with its result,
+    so the chart can keep each one marked: T3 hit, T1/T2 then stop (partial), stop hit, expired, or still running."""
+    _init()
+    rows = store.q("SELECT * FROM active_setups WHERE symbol=? AND tf=? AND bar_time>=? ORDER BY bar_time DESC LIMIT ?",
+                   (symbol, tf, int(since), int(limit)))
+    out = []
+    for r in reversed(rows):
+        p = json.loads(r["payload"] or "{}")
+        out.append({"id": r["id"], "direction": r["direction"], "strategy": r["strategy"], "name": p.get("name") or r["strategy"],
+                    "score": p.get("score"), "rr": p.get("rr"), "entry": r["entry"], "stop": r["stop"], "targets": [r["t1"], r["t2"], r["t3"]],
+                    "time": r["bar_time"], "status": r["status"], "outcome": r["outcome"], "hits": r["hits"] or 0,
+                    "exit": r["exit"], "r_result": r["r_result"], "closed_at": r["closed_at"]})
+    return out

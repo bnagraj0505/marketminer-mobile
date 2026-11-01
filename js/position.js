@@ -14,10 +14,21 @@
     if (ctx.roundRect) ctx.roundRect(bx, y - h / 2, w, h, 3); else ctx.rect(bx, y - h / 2, w, h);
     ctx.fill(); ctx.fillStyle = fg; ctx.textBaseline = "middle"; ctx.fillText(text, bx + 5, y + 0.5);
   }
-  /** p: {x0, x1, yE, yS, yT:[y1,y2,y3], dir, entry, stop, targets, rr, title, faded, height} (CSS pixels). */
+  /** Result badge for a tracked signal: text + colour from its status/outcome/hits. */
+  function result(m) {
+    const o = String(m.outcome || ""), h = m.hits || 0, r = m.r_result;
+    const R = r == null ? "" : ` ${r >= 0 ? "+" : ""}${(+r).toFixed(1)}R`;
+    if (m.status === "active") return h ? { text: `● T${h} hit · running`, color: "rgba(8,153,129,.95)" } : { text: "● running", color: "rgba(59,130,246,.95)" };
+    if (/T3/.test(o)) return { text: `✓ T3 full target${R}`, color: "rgba(8,153,129,.95)" };
+    if (/stop/.test(o) && h) return { text: `◐ T${h} hit, then stop (partial)${R}`, color: "rgba(217,119,6,.95)" };
+    if (/stop/.test(o)) return { text: `✗ stop hit${R}`, color: "rgba(242,54,69,.95)" };
+    if (/expired/.test(o)) return { text: `⌛ ${h ? "T" + h + " hit, " : ""}expired${R}`, color: "rgba(100,116,139,.95)" };
+    return { text: o || m.status || "", color: "rgba(100,116,139,.95)" };
+  }
+  /** p: {x0, x1, yE, yS, yT:[y1,y2,y3], dir, entry, stop, targets, rr, title, faded, compact, badge, yX} (CSS pixels). */
   function paint(ctx, p) {
     if (p.yE == null || p.yS == null || !p.yT || p.yT.some((v) => v == null)) return;
-    const L = p.dir === "LONG", x0 = Math.max(0, p.x0), x1 = Math.max(x0 + 40, p.x1), w = x1 - x0;
+    const L = p.dir === "LONG", x0 = Math.max(0, p.x0), x1 = Math.max(x0 + (p.compact ? 14 : 40), p.x1), w = x1 - x0;
     const yT = p.yT[2], a = p.faded ? 0.1 : 0.2, b = p.faded ? 0.45 : 0.85;
     ctx.save();
     // zones
@@ -33,6 +44,15 @@
     // entry line
     ctx.strokeStyle = p.faded ? "rgba(148,163,184,.7)" : "rgba(148,163,184,1)"; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(x0, p.yE + 0.5); ctx.lineTo(x1, p.yE + 0.5); ctx.stroke();
+    if (p.yX != null) {                                // where it ended
+      ctx.fillStyle = p.badge ? p.badge.color : "#94a3b8"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x1, p.yX, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+    if (p.compact) {
+      if (p.badge) tag(ctx, p.badge.text, x0 + 2, (L ? Math.min(yT, p.yE) : Math.max(yT, p.yE)) + (L ? -11 : 11), p.badge.color, "#fff");
+      ctx.restore();
+      return;
+    }
     // labels
     const green = "rgba(8,153,129,.95)", red = "rgba(242,54,69,.95)", ink = "#fff";
     const off = L ? -11 : 11;
@@ -41,19 +61,25 @@
     tag(ctx, "T1", x1 - 4, p.yT[0], "rgba(8,153,129,.75)", ink, "right");
     tag(ctx, "T2", x1 - 4, p.yT[1], "rgba(8,153,129,.75)", ink, "right");
     tag(ctx, `${L ? "▲ LONG" : "▼ SHORT"} ${num(p.entry)}${p.title ? " · " + p.title : ""}`, x0 + 4, p.yE, p.faded ? "rgba(71,85,105,.85)" : "rgba(30,41,59,.95)", ink);
+    if (p.badge) tag(ctx, p.badge.text, x1 - 4, p.yE + (L ? 12 : -12) + (L ? 8 : -8), p.badge.color, ink, "right");
     ctx.restore();
   }
   /** Pixel geometry for one position on a lightweight-charts chart. T: chart-time mapper (adds the exchange offset). */
   function geometry(chart, series, pos, T, tfSec) {
     const ts = chart.timeScale(), paneW = ts.width();
+    let xEnd = paneW;
+    if (pos.endTime != null) {                          // closed: the box stops at the candle where it ended
+      const e = ts.timeToCoordinate(T(Math.floor(pos.endTime / tfSec) * tfSec));
+      if (e != null) xEnd = e; else if (pos.endTime < pos.time) xEnd = 0;
+    }
     let x0 = ts.timeToCoordinate(T(Math.floor(pos.time / tfSec) * tfSec));
     if (x0 == null) {                                   // bar not loaded (older than the chart): start at the left edge
       const first = ts.getVisibleLogicalRange && ts.getVisibleLogicalRange();
       x0 = first ? 0 : 0;
     }
     const y = (v) => series.priceToCoordinate(v);
-    return { x0, x1: paneW, yE: y(pos.entry), yS: y(pos.stop), yT: pos.targets.map(y), dir: pos.direction, entry: pos.entry,
+    return { x0, x1: xEnd, yE: y(pos.entry), yX: pos.exit != null ? y(pos.exit) : null, compact: !!pos.compact, badge: pos.badge, yS: y(pos.stop), yT: pos.targets.map(y), dir: pos.direction, entry: pos.entry,
       stop: pos.stop, targets: pos.targets, rr: pos.rr, title: pos.title, faded: pos.faded };
   }
-  window.MMPOS = { paint, geometry };
+  window.MMPOS = { paint, geometry, result };
 })();

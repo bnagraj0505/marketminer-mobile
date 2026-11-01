@@ -277,7 +277,7 @@ function lockedHist(d){
 }
 
 /* ---------------- chart */
-const LAYERS=[["ema","EMA 20/50/200",1],["vwap","VWAP",1],["bb","Bollinger",0],["st","Supertrend",0],["ob","Order blocks",1],["fvg","FVGs",1],["liq","Liquidity",1],["lvl","PDH/PDL · OI S/R",1],["mk","BOS/CHoCH/sweeps",1],["setup","Setup levels",1],["pos","Long/short box",1]];
+const LAYERS=[["ema","EMA 20/50/200",1],["vwap","VWAP",1],["bb","Bollinger",0],["st","Supertrend",0],["ob","Order blocks",1],["fvg","FVGs",1],["liq","Liquidity",1],["lvl","PDH/PDL · OI S/R",1],["mk","BOS/CHoCH/sweeps",1],["setup","Setup levels",1],["pos","Long/short box",1],["hist","Signal history (results)",1]];
 function layerOn(k){const e=$("ly-"+k);return e?e.checked:true}
 const THEMES={
   light:{bg:"#ffffff",text:"#475569",grid:"#eef2f7",border:"#d7dee8",up:"#16a34a",dn:"#dc2626",volUp:"rgba(22,163,74,.18)",volDn:"rgba(220,38,38,.18)",
@@ -493,11 +493,16 @@ function drawTV(){
 const TFS_SEC={"1m":60,"3m":180,"5m":300,"15m":900,"30m":1800,"1h":3600,"4h":14400,"1d":86400,"1w":604800};
 let POSKEY="";
 function posList(d){
-  const out=[],s=d.setups[SEL];
-  if(s&&layerOn("pos"))out.push({...s,title:`${s.score.toFixed(0)}${s.signal?"":" watch"}${s.provisional?" · live":""}`});
+  const out=[],H=[],s=d.setups[SEL];
+  // every tracked signal stays marked: box from its signal candle to where it ended, with the result
+  if(layerOn("hist"))(d.signal_marks||[]).forEach(m=>{if(s&&s.active_id===m.id&&layerOn("pos"))return;
+    H.push({...m,compact:m.status!=="active",faded:m.status!=="active",endTime:m.status==="active"?null:m.closed_at,exit:m.status==="active"?null:m.exit,
+      badge:MMPOS.result(m),title:m.status==="active"?`${(+m.score||0).toFixed(0)} · tracking`:""})});
+  if(s&&layerOn("pos"))out.push({...s,title:`${s.score.toFixed(0)}${s.signal?"":" watch"}${s.provisional?" · live":""}`,
+    badge:s.locked?MMPOS.result({status:s.status||"active",outcome:s.outcome,hits:s.hits,r_result:s.r_result}):null});
   try{const b=window.MMBOT&&MMBOT.state();if(b&&layerOn("pos"))Object.entries(b.trades).forEach(([id,t])=>{if(t.sym===d.symbol&&t.status!=="closed")
     out.push({direction:t.dir,entry:t.entry,stop:t.stop,targets:t.targets,time:t.opened,title:`bot #${id}${t.hit.length?" "+t.hit.join(" "):""}`,faded:!!s})})}catch(e){}
-  return out;
+  return out.concat(H);                               // history last = painted underneath
 }
 function posDraw(force){
   const cv=$("posCv");if(!cv||!chart||!CUR)return;
@@ -506,7 +511,7 @@ function posDraw(force){
   const G=posList(d).map(p=>MMPOS.geometry(chart,cs,p,T,tfs));
   const key=W+"|"+H+"|"+JSON.stringify(G);if(!force&&key===POSKEY)return;POSKEY=key;
   const r=window.devicePixelRatio||1;cv.width=W*r;cv.height=H*r;cv.style.width=W+"px";cv.style.height=H+"px";
-  const ctx=cv.getContext("2d");ctx.setTransform(r,0,0,r,0,0);ctx.clearRect(0,0,W,H);ctx.beginPath();ctx.rect(0,0,G.length?G[0].x1:W,H);ctx.clip();
+  const ctx=cv.getContext("2d");ctx.setTransform(r,0,0,r,0,0);ctx.clearRect(0,0,W,H);ctx.beginPath();ctx.rect(0,0,chart.timeScale().width(),H);ctx.clip();
   G.slice().reverse().forEach(g=>MMPOS.paint(ctx,g));
 }
 (function posLoop(){try{if(document.visibilityState==="visible")posDraw()}catch(e){}requestAnimationFrame(posLoop)})();
@@ -732,7 +737,7 @@ async function recNow(){toast("Recorder running… this can take a minute",60000
 init().catch(e=>{$("qual").innerHTML=`<span class="dn">Signal Lab engine could not start: ${esc(e.message)}</span>`});
 </script>
 <script>window.addEventListener('mm-lab-status',e=>{const q=document.getElementById('qual');if(q&&e.detail)q.innerHTML='<span class="spin"></span> '+e.detail});</script>
-<script src="js/position.js?v=2026.11.01-12"></script>
-<script src="js/bot.js?v=2026.11.01-12"></script>
+<script src="js/position.js?v=2026.11.01-13"></script>
+<script src="js/bot.js?v=2026.11.01-13"></script>
 </body>
 </html>

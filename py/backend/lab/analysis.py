@@ -172,6 +172,10 @@ async def analyze(symbol: str, tf: str, bars: int = 600, fresh: bool = False, li
         shown, recent_locked = AC.merge(symbol, tf, res["setups"], main[-1].close)
     except Exception:                                 # noqa: BLE001 - locking must never break analysis
         shown, recent_locked = res["setups"], []
+    try:
+        marks = AC.history(symbol, tf, main[-400].time if len(main) >= 400 else main[0].time)
+    except Exception:                                 # noqa: BLE001
+        marks = []
     for s in shown:
         if s.get("locked"):
             s["signal"] = True
@@ -196,7 +200,7 @@ async def analyze(symbol: str, tf: str, bars: int = 600, fresh: bool = False, li
     if not q.get("forming"):
         _alerts(symbol, tf, E, res, prot)
     return {"symbol": symbol, "tf": tf, "market": market, "quality": q, "candles": candles_out, "overlays": _overlays(E, 400),
-            "indicators": _indicators(E), "regime": reg, "score": res["score"], "setups": shown[:8], "locked_history": recent_locked,
+            "indicators": _indicators(E), "regime": reg, "score": res["score"], "setups": shown[:8], "locked_history": recent_locked, "signal_marks": marks,
             "rejected": res["rejected"][:20], "context": ctx, "mtf": mtf, "ict": ictr, "price_action": par, "derivatives": der,
             "levels": liq, "validation": val.get("summary"), "elapsed_ms": int((time.time() - t0) * 1000),
             "disclaimer": "Analysis and paper trading only. Scores rank setups; they are not probabilities of profit."}
