@@ -1,6 +1,6 @@
 // MarketMiner Mobile: network first, cached copy when offline. Market data is never cached here.
-const CACHE = 'mm-mobile-v7';
-const SHELL = ['./', './index.html', './crypto.html', './fyers.html', './js/engine.js', './desk.html', './js/desk.js', './lab.html', './js/lab.js', './manifest.webmanifest', './icons/icon-192.png'];
+const CACHE = 'mm-mobile-v8';
+const SHELL = ['./', './index.html', './crypto.html', './fyers.html', './js/engine.js', './desk.html', './js/desk.js', './lab.html', './js/lab.js', './js/bot.js', './tv.html', './manifest.webmanifest', './icons/icon-192.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE).map(x => caches.delete(x))))); self.clients.claim(); });
 self.addEventListener('fetch', e => {

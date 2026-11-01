@@ -114,6 +114,7 @@ td.r,th.r{text-align:right}
     <a class="btn" href="index.html">← Dashboard</a>
     <a class="btn" href="desk.html">Day Desk</a>
     <a class="btn" href="crypto.html">₿ Crypto</a>
+    <a class="btn" href="tv.html">📈 TradingView</a>
     <a class="btn" href="fyers.html">Connections</a>
     <button class="btn" id="alBtn" onclick="tab('alerts')">🔔 Alerts <span id="alN"></span></button>
   </div>
@@ -152,6 +153,7 @@ td.r,th.r{text-align:right}
   <section class="pane" id="p-mtf"></section>
   <section class="pane" id="p-bt"></section>
   <section class="pane" id="p-paper"></section>
+  <section class="pane" id="p-bot"></section>
   <section class="pane" id="p-journal"></section>
   <section class="pane" id="p-alerts"></section>
   <section class="pane" id="p-settings"></section>
@@ -159,7 +161,7 @@ td.r,th.r{text-align:right}
 <div class="toast" id="toast"></div>
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <script>
-const TABS=[["intel","Intelligence"],["deriv","Derivatives"],["mtf","Multi-timeframe"],["bt","Backtest"],["paper","Paper & risk"],["journal","Journal"],["alerts","Alerts"],["settings","Settings"]];
+const TABS=[["intel","Intelligence"],["deriv","Derivatives"],["mtf","Multi-timeframe"],["bt","Backtest"],["paper","Paper & risk"],["bot","Auto bot"],["journal","Journal"],["alerts","Alerts"],["settings","Settings"]];
 const TFS=["1m","3m","5m","15m","30m","1h","4h","1d","1w"];
 let META=null,CUR=null,TF="15m",chart,cs,rsiC,rsiS,lines={},plines=[],SEL=0,autoT=null;
 const $=id=>document.getElementById(id);
@@ -174,7 +176,7 @@ const post=(p,b)=>api(p,{method:"POST",headers:{"Content-Type":"application/json
 
 function tab(k){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.k===k));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id==="p-"+k));
   try{localStorage.setItem("lab.tab",k)}catch(e){}
-  if(k==="mtf")ldMTF();if(k==="bt")rBT();if(k==="paper")ldPaper();if(k==="journal")ldJournal();if(k==="alerts")ldAlerts();if(k==="settings")rSettings();if(k==="deriv"&&CUR)rDeriv(CUR.derivatives)}
+  if(k==="mtf")ldMTF();if(k==="bt")rBT();if(k==="paper")ldPaper();if(k==="journal")ldJournal();if(k==="alerts")ldAlerts();if(k==="settings")rSettings();if(k==="bot"&&window.MMBOT)MMBOT.render();if(k==="deriv"&&CUR)rDeriv(CUR.derivatives)}
 
 async function init(){
   $("tabs").innerHTML=TABS.map(([k,l])=>`<button data-k="${k}" onclick="tab('${k}')">${l}</button>`).join("");
@@ -702,5 +704,6 @@ async function recNow(){toast("Recorder running… this can take a minute",60000
 init().catch(e=>{$("qual").innerHTML=`<span class="dn">Signal Lab engine could not start: ${esc(e.message)}</span>`});
 </script>
 <script>window.addEventListener('mm-lab-status',e=>{const q=document.getElementById('qual');if(q&&e.detail)q.innerHTML='<span class="spin"></span> '+e.detail});</script>
+<script src="js/bot.js?v=2026.11.01-10"></script>
 </body>
 </html>

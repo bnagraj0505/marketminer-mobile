@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06080f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>MarketMiner · TradingView</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg0:#06080f;--bg1:#0d1117;--bg2:#131a27;--bdr:#1b2536;--bdr2:#263450;--t1:#e2e8f0;--t2:#8b9ab5;--t3:#5b6b85;--g:#00e676;--r:#ff5252;--a:#ffab00;--cy:#18ffff;--gd:#FFD700;--tv:#2962ff;--mono:'JetBrains Mono',ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg0);color:var(--t1);min-height:100vh;overflow-x:hidden}
+.header{position:sticky;top:0;z-index:50;background:rgba(6,8,15,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);padding:8px 16px;padding-top:max(8px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-family:var(--mono);font-weight:800;font-size:1.3rem;letter-spacing:-.5px}.logo .m{color:var(--cy)}.logo .s{color:var(--gd)}
+.logo small{font:600 .7rem var(--mono);color:var(--t3);margin-left:8px}
+.hr{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--bg2);border:1px solid var(--bdr2);color:var(--t2);padding:6px 11px;border-radius:6px;cursor:pointer;font:600 .74rem var(--mono);text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn.on{color:var(--gd);border-color:rgba(255,215,0,.45);background:rgba(255,215,0,.08)}
+.btn.tv{background:var(--tv);border-color:var(--tv);color:#fff;font-weight:800}
+.btn.sm{padding:3px 8px;font-size:.68rem}
+main{padding:12px 16px 40px;max-width:1500px;margin:0 auto}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.ctl select,.ctl input{background:var(--bg1);border:1px solid var(--bdr2);color:var(--t1);padding:7px 9px;border-radius:6px;font:600 .8rem var(--mono);max-width:100%}
+.tfs{display:flex;border:1px solid var(--bdr2);border-radius:7px;overflow:hidden}
+.tfs button{background:var(--bg1);border:0;border-right:1px solid var(--bdr2);color:var(--t2);padding:7px 10px;font:700 .74rem var(--mono);cursor:pointer}
+.tfs button:last-child{border-right:0}.tfs button.on{background:rgba(255,215,0,.12);color:var(--gd)}
+.grid{display:grid;grid-template-columns:1fr 330px;gap:12px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+#tvBox{height:calc(100vh - 190px);min-height:460px;border:1px solid var(--bdr);border-radius:9px;overflow:hidden;background:#0d1117}
+.cd{background:var(--bg1);border:1px solid var(--bdr);border-radius:9px;padding:12px;min-width:0;margin-bottom:12px}
+.cd h3{font:800 .74rem var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px;display:flex;justify-content:space-between;gap:8px}
+.nt{color:var(--t3)}.up{color:var(--g)}.dn{color:var(--r)}.am{color:var(--a)}.cy{color:var(--cy)}
+.row{padding:7px 0;border-bottom:1px solid var(--bdr);font:600 .74rem var(--mono);line-height:1.5}
+.row:last-child{border-bottom:0}
+.note{font-size:.78rem;color:var(--t2);line-height:1.55}
+.una{padding:40px 16px;text-align:center;color:var(--t2);font:700 .9rem var(--mono)}.una small{display:block;margin-top:6px;color:var(--t3);font-weight:500}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="logo"><span class="m">Market</span><span class="s">Miner</span><small>TRADINGVIEW</small></div>
+  <div class="hr">
+    <a class="btn" href="index.html">← Dashboard</a>
+    <a class="btn" href="lab.html">◎ Signal Lab</a>
+    <a class="btn" href="crypto.html">₿ Crypto</a>
+  </div>
+</header>
+<main>
+  <div class="ctl">
+    <select id="sym" onchange="setSym(this.value)"></select>
+    <input id="symTxt" placeholder="Any TradingView symbol, e.g. NSE:TCS" style="width:240px" onkeydown="if(event.key==='Enter'&&this.value.trim())setSym(this.value.trim().toUpperCase())">
+    <div class="tfs" id="tfs"></div>
+    <a class="btn tv" id="openTv" target="_blank" rel="noopener">Open in TradingView ↗</a>
+  </div>
+  <div class="grid">
+    <div><div id="tvBox"></div></div>
+    <aside>
+      <div class="cd">
+        <h3><span>Your TradingView paper account</span></h3>
+        <div class="note">The chart here is TradingView's public chart: it can't sign in as you, so your paid indicators, layouts and <b>Paper Trading</b> panel aren't inside it. Tap <b>Open in TradingView</b> to open the same symbol and timeframe in your own account (the TradingView app on the phone, if installed). Then use the Trading Panel → Paper Trading there.<br><br>The MarketMiner bot can't place orders in TradingView (TradingView has no API for that). It trades in MarketMiner's own paper ledger. Its live trades are listed below so you can mirror them.</div>
+      </div>
+      <div class="cd"><h3><span>Bot trades to mirror</span><span id="botOn" class="nt"></span></h3><div id="botTrades"></div></div>
+      <div class="cd"><h3><span>Latest bot alerts</span></h3><div id="botLog"></div></div>
+    </aside>
+  </div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const f=x=>x==null||isNaN(x)?"—":Number(x).toLocaleString("en-IN",{maximumFractionDigits:Math.abs(x)>=1?2:6});
+const LIST={
+  "Crypto":[["BINANCE:BTCUSDT.P","BTC perpetual"],["BINANCE:ETHUSDT.P","ETH perpetual"],["BINANCE:SOLUSDT.P","SOL perpetual"],["BINANCE:XRPUSDT.P","XRP perpetual"],["BINANCE:BTCUSDT","BTC spot"],["BINANCE:ETHUSDT","ETH spot"]],
+  "India":[["NSE:NIFTY","NIFTY 50"],["NSE:BANKNIFTY","BANK NIFTY"],["NSE:CNXFINANCE","FIN NIFTY"],["BSE:SENSEX","SENSEX"],["NSE:NIFTY1!","NIFTY future"],["NSE:BANKNIFTY1!","BANKNIFTY future"],["NSE:RELIANCE","RELIANCE"],["NSE:HDFCBANK","HDFC BANK"],["NSE:SBIN","SBI"],["MCX:CRUDEOIL1!","CRUDE OIL"],["MCX:GOLD1!","GOLD"]],
+};
+const TFS=[["1","1m"],["3","3m"],["5","5m"],["15","15m"],["30","30m"],["60","1h"],["240","4h"],["D","1d"],["W","1w"]];
+const TFMAP={"1m":"1","3m":"3","5m":"5","15m":"15","30m":"30","1h":"60","4h":"240","1d":"D","1w":"W"};
+// MarketMiner symbol -> TradingView symbol (same mapping as Signal Lab)
+function tvSymbol(sym){
+  const [ex,rest]=[sym.split(":")[0].toUpperCase(),sym.split(":").slice(1).join(":").toUpperCase()];
+  const IDX={"NIFTY50-INDEX":"NSE:NIFTY","NIFTYBANK-INDEX":"NSE:BANKNIFTY","FINNIFTY-INDEX":"NSE:CNXFINANCE","MIDCPNIFTY-INDEX":"NSE:NIFTY_MID_SELECT","SENSEX-INDEX":"BSE:SENSEX","BANKEX-INDEX":"BSE:BANKEX"};
+  if(ex==="NSE"||ex==="BSE"){if(IDX[rest])return IDX[rest];if(/-(EQ|BE)$/.test(rest))return`${ex}:${rest.replace(/-(EQ|BE)$/,"")}`;if(rest.endsWith("-FUT"))return`${ex}:${rest.slice(0,-4)}1!`;return`${ex}:${rest}`}
+  if(ex==="MCX")return`MCX:${rest.replace(/-FUT$/,"")}1!`;
+  if(ex==="BINANCE")return`BINANCE:${rest}`;
+  if(ex==="SHARK")return`BINANCE:${rest}.P`;
+  if(ex==="DELTAF"||ex==="DELTA")return`BINANCE:${rest.replace(/USD$/,"USDT").split("-")[0]}.P`;
+  return rest||sym;
+}
+let SYM="BINANCE:BTCUSDT.P",IV="15";
+try{SYM=localStorage.getItem("tv.sym")||SYM;IV=localStorage.getItem("tv.iv")||IV}catch(e){}
+
+function fillSel(){
+  const known=Object.values(LIST).flat().some(([s])=>s===SYM);
+  $("sym").innerHTML=Object.entries(LIST).map(([g,l])=>`<optgroup label="${g}">${l.map(([s,n])=>`<option value="${s}" ${s===SYM?"selected":""}>${n} · ${s}</option>`).join("")}</optgroup>`).join("")
+    +(known?"":`<option value="${esc(SYM)}" selected>${esc(SYM)}</option>`);
+}
+function setSym(s){SYM=s;try{localStorage.setItem("tv.sym",s)}catch(e){}fillSel();draw()}
+function setIv(v){IV=v;try{localStorage.setItem("tv.iv",v)}catch(e){}draw()}
+function draw(){
+  $("tfs").innerHTML=TFS.map(([v,l])=>`<button class="${v===IV?"on":""}" onclick="setIv('${v}')">${l}</button>`).join("");
+  $("openTv").href=`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(SYM)}&interval=${IV}`;
+  const go=()=>{$("tvBox").innerHTML="";new TradingView.widget({container_id:"tvBox",symbol:SYM,interval:IV,timezone:"Asia/Kolkata",theme:"dark",style:"1",
+    locale:"en",autosize:true,allow_symbol_change:true,hide_side_toolbar:false,withdateranges:true,details:true,studies:["STD;VWAP"]})};
+  if(window.TradingView)go();else{const sc=document.createElement("script");sc.src="https://s3.tradingview.com/tv.js";sc.onload=go;
+    sc.onerror=()=>{$("tvBox").innerHTML='<div class="una">TradingView could not be loaded<small>Check the internet connection.</small></div>'};document.head.appendChild(sc)}
+}
+// bot trades + alerts, read from the Signal Lab bot's memory on this device
+function bot(){
+  let cfg={},st={trades:{},log:[]};
+  try{cfg=JSON.parse(localStorage.getItem("mmbot.cfg")||"{}");st=JSON.parse(localStorage.getItem("mmbot.state")||"null")||st}catch(e){}
+  $("botOn").innerHTML=cfg.on?'<span class="up">● bot running</span>':'<a class="nt" href="lab.html">bot stopped</a>';
+  const open=Object.entries(st.trades||{}).filter(([,t])=>t.status!=="closed");
+  $("botTrades").innerHTML=open.length?open.map(([id,t])=>{const tv=tvSymbol(t.sym);return`<div class="row"><span class="${t.dir==="LONG"?"up":"dn"}">#${id} ${t.dir==="LONG"?"▲":"▼"} ${t.dir}</span> ${esc(t.sym.split(":").pop())} ${esc(t.tf)}
+    <br>Entry ${f(t.entry)} · SL ${f(t.stop)}<br>T1 ${f(t.targets[0])} · T2 ${f(t.targets[1])} · T3 ${f(t.targets[2])}${(t.hit||[]).length?` · <span class="up">${t.hit.join(" ")} hit</span>`:""}
+    <div class="hr" style="margin-top:5px"><button class="btn sm" onclick="IV='${TFMAP[t.tf]||"15"}';setSym('${esc(tv)}')">Chart</button><a class="btn sm" target="_blank" rel="noopener" href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tv)}&interval=${TFMAP[t.tf]||"15"}">Open in TradingView ↗</a></div></div>`}).join("")
+    :'<div class="nt">No open bot trades. Start the bot in Signal Lab → Auto bot.</div>';
+  const cls={entry:"up",exit:"am",tp:"up",skip:"am",warn:"am",err:"dn",reco:"cy",info:"nt"};
+  const L=(st.log||[]).filter(l=>l.kind!=="info").slice(0,15);
+  $("botLog").innerHTML=L.length?L.map(l=>`<div class="row"><span class="nt">${new Date(l.t*1000).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}</span> <span class="${cls[l.kind]||""}">${esc(l.kind.toUpperCase())}</span> ${esc(l.text)}</div>`).join(""):'<div class="nt">Nothing yet.</div>';
+}
+fillSel();draw();bot();setInterval(bot,15000);window.addEventListener("storage",bot);
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
