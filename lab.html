@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.01-7"></script>
-<script src="js/desk.js?v=2026.11.01-7"></script>
-<script src="js/lab.js?v=2026.11.01-7"></script>
+<script src="js/engine.js?v=2026.11.01-8"></script>
+<script src="js/desk.js?v=2026.11.01-8"></script>
+<script src="js/lab.js?v=2026.11.01-8"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>MarketMiner · Signal Lab</title>
@@ -230,23 +230,38 @@ function rScore(s){
 
 function rSetups(d){
   const min=META.protection.min_score;
+  const hist=lockedHist(d);
   if(!d.setups.length){$("setups").innerHTML=`<div class="note">No strategy qualifies on the last closed candle. ${d.rejected.length?"Ideas rejected:":""}</div>`+
-    d.rejected.slice(0,8).map(r=>`<div class="note">· ${esc(r.name)} ${r.direction}: ${esc(r.rejected)}</div>`).join("");return}
+    d.rejected.slice(0,8).map(r=>`<div class="note">· ${esc(r.name)} ${r.direction}: ${esc(r.rejected)}</div>`).join("")+hist;return}
   $("setups").innerHTML=d.setups.map((s,i)=>{
     const L=s.direction==="LONG",g=s.grade==="A"?"gA":s.grade==="B"?"gB":s.grade==="C"?"gC":"gN";
     const v=s.validation?.status||"not backtested";
     return `<div class="setup ${L?"L":"S"} ${s.signal?"":"watch"}">
       <div class="st-h"><b class="${L?"up":"dn"}">${s.direction} · ${esc(s.name)}</b><span class="badge ${g}">${s.score.toFixed(0)} · ${esc(s.grade)}</span></div>
-      <div>${s.signal?'<span class="chip ok">SIGNAL</span>':'<span class="chip no">WATCH ONLY (below '+min+')</span>'}<span class="chip ${v==="validated"?"ok":"no"}">${esc(v)}</span><span class="chip">${esc(s.regime)}</span>${s.provisional?'<span class="chip no" title="Built on the candle that is still forming: it can change or disappear before the close">LIVE · CANDLE FORMING</span>':""}</div>
+      <div>${s.signal?'<span class="chip ok">SIGNAL</span>':'<span class="chip no">WATCH ONLY (below '+min+')</span>'}<span class="chip ${v==="validated"?"ok":"no"}">${esc(v)}</span><span class="chip">${esc(s.regime)}</span>${s.provisional?'<span class="chip no" title="Built on the candle that is still forming: it can change or disappear before the close">LIVE · CANDLE FORMING</span>':""}${s.counter?'<span class="chip no" title="Opposite direction to the locked active setup, which stays valid until its stop or T3 is hit">COUNTER-SIGNAL</span>':""}</div>
+      ${s.locked?lockedLine(s):""}
       <div class="lv"><div><span>Entry</span>${f(s.entry)}</div><div><span>Zone</span>${f(s.entry_zone[0])}–${f(s.entry_zone[1])}</div><div><span>Stop</span><b class="dn">${f(s.stop)}</b></div>
-      <div><span>T1 · ${s.rr_t1.toFixed(1)}R</span><b class="up">${f(s.targets[0])}</b></div><div><span>T2 · ${s.rr.toFixed(1)}R</span><b class="up">${f(s.targets[1])}</b></div><div><span>T3 · ${s.rr_t3.toFixed(1)}R</span><b class="up">${f(s.targets[2])}</b></div>
+      <div><span>T1 · ${s.rr_t1.toFixed(1)}R${tick(s,1)}</span><b class="up">${f(s.targets[0])}</b></div><div><span>T2 · ${s.rr.toFixed(1)}R${tick(s,2)}</span><b class="up">${f(s.targets[1])}</b></div><div><span>T3 · ${s.rr_t3.toFixed(1)}R${tick(s,3)}</span><b class="up">${f(s.targets[2])}</b></div>
       <div><span>Stop / ATR</span>${s.stop_atr.toFixed(2)}×</div><div><span>Size</span>${s.size?.qty?f(s.size.qty,4)+" ("+f(s.size.risk_amount,0)+" "+s.size.currency+")":esc(s.size?.why||"—")}</div><div><span>Max spread</span>${f(s.max_spread)}</div></div>
       <div class="why"><b>Hold:</b> ${esc(s.expected_hold)} · <b>Invalidation:</b> ${esc(s.invalidation)}<br><b>Trailing:</b> ${esc(s.trailing)}</div>
       <div class="why"><b class="up">For</b><ul>${s.reasons_for.map(r=>`<li>${esc(r)}</li>`).join("")}</ul>
       ${s.reasons_against.length?`<b class="dn">Against</b><ul class="ag">${s.reasons_against.map(r=>`<li>${esc(r)}</li>`).join("")}</ul>`:""}
       <div class="nt" style="font-size:.66rem">${esc(s.adjustments.join(" · "))}</div></div>
       <div class="hr" style="margin-top:7px"><button class="btn sm" onclick="showSetup(${i})">Show on chart</button>${s.signal?`<button class="btn sm gold" onclick="paperOpen(${i})">Paper trade</button>`:""}</div>
-    </div>`}).join("")+(d.rejected.length?`<details class="note"><summary>${d.rejected.length} ideas rejected on this candle</summary>${d.rejected.map(r=>`· ${esc(r.name)} ${r.direction}: ${esc(r.rejected)}`).join("<br>")}</details>`:"");
+    </div>`}).join("")+hist+(d.rejected.length?`<details class="note"><summary>${d.rejected.length} ideas rejected on this candle</summary>${d.rejected.map(r=>`· ${esc(r.name)} ${r.direction}: ${esc(r.rejected)}`).join("<br>")}</details>`:"");
+}
+const tick=(s,n)=>s.locked&&s.hits>=n?' <b class="up">✓ hit</b>':"";
+function lockedLine(s){
+  const nr=s.now_r,cs=s.counter_signals||[];
+  return `<div class="note" style="margin:5px 0;border-left:3px solid var(--cy);padding-left:7px"><b style="color:var(--cy)">🔒 ACTIVE · locked ${ts(s.locked_at)}</b> · levels stay fixed until the stop or T3 is hit`+
+    `<br>Targets hit: <b>${s.hits||0}/3</b> · now <b class="${nr>=0?"up":"dn"}">${nr==null?"—":(nr>=0?"+":"")+nr.toFixed(2)+"R"}</b> · best <b class="up">+${(s.best_r||0).toFixed(2)}R</b>`+
+    (s.hits>=1?` · after T1 the plan is stop to breakeven (${f(s.entry)})`:"")+
+    (cs.length?`<br><b class="dn">⚠ Counter-signal:</b> ${esc(cs.join(", "))}. The locked setup is still valid; consider exiting or moving the stop to breakeven.`:"")+`</div>`;
+}
+function lockedHist(d){
+  const h=d.locked_history||[];if(!h.length)return "";
+  return `<details class="note" open><summary>Recent locked setups on ${esc(d.symbol)} · ${esc(d.tf)}</summary>`+h.map(s=>
+    `· ${ts(s.locked_at)} <b class="${s.direction==="LONG"?"up":"dn"}">${s.direction}</b> ${esc(s.name||s.strategy)} entry ${f(s.entry)} SL ${f(s.stop)} T3 ${f(s.targets[2])} → <b class="${(s.r_result||0)>=0?"up":"dn"}">${esc(s.outcome)}</b> (${(s.r_result>=0?"+":"")+(s.r_result??0).toFixed(2)}R, ${ts(s.closed_at)})`).join("<br>")+`</details>`;
 }
 
 /* ---------------- chart */
@@ -293,7 +308,7 @@ function sigWatermark(d){
   const s=d.setups[SEL],sc=d.score,bias=sc.bias,min=META.protection.min_score;
   let h=`<div class="wm-sym">${esc(d.symbol)} · ${esc(d.tf)}</div><div class="wm-row"><span class="${bias==="bullish"?"wm-up":bias==="bearish"?"wm-dn":""}">${bias.toUpperCase()}</span> · bull ${sc.bull.toFixed(0)} / bear ${sc.bear.toFixed(0)} · ${esc(d.regime.label)}</div>`;
   if(s){const L=s.direction==="LONG";
-    h+=`<div class="wm-sig ${L?"wm-up":"wm-dn"}">${L?"▲":"▼"} ${s.direction} · ${esc(s.name)} · ${s.score.toFixed(0)} ${esc(s.grade)}${s.signal?"":" (watch)"}${s.provisional?" · live, candle forming":""}</div>
+    h+=`<div class="wm-sig ${L?"wm-up":"wm-dn"}">${L?"▲":"▼"} ${s.direction} · ${esc(s.name)} · ${s.score.toFixed(0)} ${esc(s.grade)}${s.signal?"":" (watch)"}${s.provisional?" · live, candle forming":""}${s.locked?" · 🔒 active, T"+(s.hits||0)+"/3 hit":""}</div>
       <div class="wm-row">Entry ${f(s.entry)} · SL ${f(s.stop)} · T1 ${f(s.targets[0])} · T2 ${f(s.targets[1])} · T3 ${f(s.targets[2])} · ${s.rr.toFixed(1)}R</div>`;}
   else h+=`<div class="wm-row">No qualified setup on the last closed candle (signal ≥ ${min})</div>`;
   $("sigWm").innerHTML=h;

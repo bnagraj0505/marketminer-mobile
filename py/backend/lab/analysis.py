@@ -15,6 +15,7 @@ from . import options as O
 from . import store
 from . import strategies as ST
 from . import protect as P
+from . import active as AC
 from .engine import Engine, MTF
 
 CRYPTO_OPT = ("BTC", "ETH")
@@ -155,8 +156,26 @@ async def analyze(symbol: str, tf: str, bars: int = 600, fresh: bool = False, li
         s["size"] = P.size(symbol, market, s["entry"], s["stop"], prot)
         s["signal"] = s["score"] >= prot["min_score"]
         s["provisional"] = bool(q.get("forming"))
-    if not q.get("forming"):                          # journal / alerts only from closed candles (a live candle can still change)
-        _journal(symbol, tf, res["setups"], prot["min_score"])
+    # Setups from the last CLOSED candle: with a forming candle that is the one before it. Only these can be locked.
+    if q.get("forming") and i >= 1:
+        closed = E.signals_at(i - 1, opt_ctx, settings, q)["setups"]
+        for s in closed:
+            s["validation"] = (val.get("status") or {}).get(s["strategy"], {"status": "not backtested"})
+            s["size"] = P.size(symbol, market, s["entry"], s["stop"], prot)
+    else:
+        closed = res["setups"]
+    _journal(symbol, tf, closed, prot["min_score"])     # journal / locks only from closed candles (a live candle can still change)
+    try:
+        AC.update(symbol, tf, main, sess, market, TF_SECONDS[tf])
+        AC.lock(symbol, tf, closed, prot["min_score"])
+        AC.update(symbol, tf, main, sess, market, TF_SECONDS[tf])   # a just-locked setup may already be tapped by the forming candle
+        shown, recent_locked = AC.merge(symbol, tf, res["setups"], main[-1].close)
+    except Exception:                                 # noqa: BLE001 - locking must never break analysis
+        shown, recent_locked = res["setups"], []
+    for s in shown:
+        if s.get("locked"):
+            s["signal"] = True
+            s["size"] = P.size(symbol, market, s["entry"], s["stop"], prot)
     ictr = ICT.analyze(main, market, db or None, main[-1].time)
     ext, intl, obs = ictr.pop("_reports")
     traps = [asdict(t) for t in ext.traps]
@@ -177,7 +196,7 @@ async def analyze(symbol: str, tf: str, bars: int = 600, fresh: bool = False, li
     if not q.get("forming"):
         _alerts(symbol, tf, E, res, prot)
     return {"symbol": symbol, "tf": tf, "market": market, "quality": q, "candles": candles_out, "overlays": _overlays(E, 400),
-            "indicators": _indicators(E), "regime": reg, "score": res["score"], "setups": res["setups"][:8],
+            "indicators": _indicators(E), "regime": reg, "score": res["score"], "setups": shown[:8], "locked_history": recent_locked,
             "rejected": res["rejected"][:20], "context": ctx, "mtf": mtf, "ict": ictr, "price_action": par, "derivatives": der,
             "levels": liq, "validation": val.get("summary"), "elapsed_ms": int((time.time() - t0) * 1000),
             "disclaimer": "Analysis and paper trading only. Scores rank setups; they are not probabilities of profit."}
