@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.01-1"></script>
-<script src="js/desk.js?v=2026.11.01-1"></script>
+<script src="js/engine.js?v=2026.11.01-2"></script>
+<script src="js/desk.js?v=2026.11.01-2"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>MarketMiner · Day Desk</title>
@@ -203,6 +203,7 @@ summary{cursor:pointer;font:600 .72rem var(--mono);color:var(--t2)}
       <div class="mgrp"><span class="mlab">Crypto · public, no key</span><div class="mkts m4">
         <button data-m="BINANCE"><b>BINANCE SPOT</b><span>24/7 · USDT</span></button>
         <button data-m="BINANCEF"><b>BINANCE FUTURES</b><span>Perpetuals · BTC · ETH · gold · silver · crude · USDT</span></button>
+        <button data-m="DELTAF"><b>DELTA FUTURES</b><span>Perpetuals · BTC · ETH · SOL · USD (replaces Shark)</span></button>
         <button data-m="DELTA"><b>DELTA OPTIONS</b><span>Delta Exchange India · BTC · ETH · gold (XAUT) · USD</span></button>
       </div></div>
     </div>
@@ -365,7 +366,7 @@ const CS=c=>{c=c||(CFG&&CFG.currency)||'INR';return c==='INR'?'₹':c+' ';};
 const mo=(n,c)=>n==null||isNaN(n)?'—':CS(c)+f2(n);
 const f0=n=>n==null||isNaN(n)?'—':Number(n).toLocaleString('en-IN',{maximumFractionDigits:0});
 const pc=x=>x==null?'—':(100*x).toFixed(1)+'%';
-const short=s=>String(s||'').replace(/^NSE:|^BSE:|^BINANCE:|^SHARK:/,'').replace(/-EQ$|-BE$/,'');
+const short=s=>String(s||'').replace(/^NSE:|^BSE:|^BINANCE:|^SHARK:|^DELTAF:/,'').replace(/-EQ$|-BE$/,'');
 const fullSym=v=>{v=v.trim().toUpperCase().replace(/[\s\/]/g,'');if(v.includes(':'))return v;return T.market==='NSE'?`NSE:${v}-EQ`:T.market==='FNO'?`NSE:${v}`:`${T.market}:${v}`;};
 const sgn=n=>n>0?'pos':n<0?'neg':'';
 
@@ -421,7 +422,7 @@ function mstat(){const d=ist(),t=d.getHours()*60+d.getMinutes(),wd=d.getDay()>=1
   const on=wd&&t>=555&&t<930,pre=wd&&t>=540&&t<555;$('mdot').className='dot '+(on?'on':pre?'pre':'');
   $('mtxt').textContent=(on?'NSE LIVE':pre?'PRE-OPEN':'NSE CLOSED')+' · '+d.toTimeString().slice(0,5)+' IST';}
 async function fyStatus(){try{const s=await api('/api/markets/status');const c=(lab,ok,hint)=>`<a href="fyers.html" style="text-decoration:none" class="${ok?'pos':'neg'}" title="${esc(hint||'')}">● ${lab}</a>`;
-  $('fyst').innerHTML=c('FYERS',s.FYERS.connected,s.FYERS.message)+' '+c('Binance',s.BINANCE.enabled&&!s.BINANCE.last_error,s.BINANCE.last_error||'')+' '+c('Shark',s.SHARK.enabled&&!s.SHARK.last_error,s.SHARK.last_error||'');}catch(e){$('fyst').textContent='?';}}
+  $('fyst').innerHTML=c('FYERS',s.FYERS.connected,s.FYERS.message)+' '+c('Binance',s.BINANCE.enabled&&!s.BINANCE.last_error,s.BINANCE.last_error||'')+' '+c('Delta',s.DELTA.enabled&&!s.DELTA.last_error,s.DELTA.last_error||'');}catch(e){$('fyst').textContent='?';}}
 
 /* ---------- 1 scan ---------- */
 const FILT={all:'All',up:'ORB breakout',dn:'ORB breakdown',daily:'Daily setup'};
@@ -669,22 +670,22 @@ async function saveCfg(){const b={};CF.forEach(([k,,t])=>{const v=$('cf_'+k).val
   try{CFG=await api('/api/desk/config?market='+T.market,b);applyCfg();closeCfg();toast('Limits saved');T.risk=null;save();renderTicket();}catch(e){$('cfgErr').innerHTML=errBox(e.message);}}
 function applyCfg(){$('tUntil').value=CFG.flat_by;$('zLoss').placeholder=CFG.max_loss_per_trade;$('zLoss').value=CFG.max_loss_per_trade;$('zCur').textContent=CS().trim();
   document.querySelectorAll('#mktBar button').forEach(b=>b.classList.toggle('on',b.dataset.m===T.market));$('scanMkt').textContent=MLAB[T.market]||T.market;$('mktNow').textContent=MLAB[T.market]||T.market;
-  const der=['FNO','MCX','BINANCEF','DELTA'].includes(T.market);$('pick').classList.toggle('hidden',!der);if(der)loadUnderlyings();
-  $('eSym').placeholder={NSE:'SBIN or NSE:SBIN-EQ',FNO:'NIFTY-FUT, NIFTY-ATM-CE or a contract',MCX:'CRUDEOIL-FUT',BINANCE:'BTCUSDT',BINANCEF:'BTCUSDT, XAUUSDT',SHARK:'BTCUSDT',DELTA:'BTC-ATM-CE'}[T.market]||'';mstat();
+  const der=['FNO','MCX','BINANCEF','DELTAF','DELTA'].includes(T.market);$('pick').classList.toggle('hidden',!der);if(der)loadUnderlyings();
+  $('eSym').placeholder={NSE:'SBIN or NSE:SBIN-EQ',FNO:'NIFTY-FUT, NIFTY-ATM-CE or a contract',MCX:'CRUDEOIL-FUT',BINANCE:'BTCUSDT',BINANCEF:'BTCUSDT, XAUUSDT',DELTAF:'BTCUSD, ETHUSD',DELTA:'BTC-ATM-CE'}[T.market]||'';mstat();
   $('eOrm').value=String(CFG.or_minutes);$('ormNote').textContent=CFG.or_minutes;$('xTgtVal').value=CFG.target_r;}
 
 async function setMarket(m){if(m===T.market&&CFG)return;if(watchT)toggleWatch(false);T=blank(m);save();scanRows=[];renderScan();$('scanMeta').textContent='';
   ['eOut','xOut','tOut','zOut','rOut','oOut','scanErr'].forEach(id=>$(id).innerHTML='');$('eSym').value='';$('eChartBox').classList.add('hidden');setSide('buy');
   try{CFG=await api('/api/desk/config?market='+m);applyCfg();}catch(e){toast(e.message);}renderTicket();}
 document.querySelectorAll('#mktBar button').forEach(b=>b.onclick=()=>setMarket(b.dataset.m));
-const MLAB={NSE:'NSE STOCKS',FNO:'INDEX F&O',MCX:'MCX',BINANCE:'BINANCE SPOT',BINANCEF:'BINANCE FUTURES',SHARK:'SHARK',DELTA:'DELTA OPTIONS'};
+const MLAB={NSE:'NSE STOCKS',FNO:'INDEX F&O',MCX:'MCX',BINANCE:'BINANCE SPOT',BINANCEF:'BINANCE FUTURES',DELTAF:'DELTA FUTURES',DELTA:'DELTA OPTIONS'};
 /* ---------- contract picker ---------- */
 let PK={type:'FUT',chain:null,items:[]};
 async function loadUnderlyings(){try{const r=await api('/api/desk/derivs/underlyings?market='+T.market);PK.items=r.items;
   const pop=r.items.filter(i=>i.popular),rest=r.items.filter(i=>!i.popular);
   const opt=i=>`<option value="${esc(i.id)}">${esc(i.underlying)}${i.exchange&&T.market==='FNO'?' · '+i.exchange:''}${i.name&&T.market!=='FNO'&&T.market!=='MCX'?' · '+esc(i.name):''}</option>`;
   $('pkU').innerHTML=(pop.length?`<optgroup label="Popular">${pop.map(opt).join('')}</optgroup>`:'')+(rest.length?`<optgroup label="All">${rest.slice(0,400).map(opt).join('')}</optgroup>`:'');
-  const perp=T.market==='BINANCEF';document.querySelectorAll('#pkT button').forEach(b=>b.classList.toggle('hidden',perp&&b.dataset.v!=='FUT'||T.market==='DELTA'&&b.dataset.v==='FUT'));
+  const perp=T.market==='BINANCEF'||T.market==='DELTAF';document.querySelectorAll('#pkT button').forEach(b=>b.classList.toggle('hidden',perp&&b.dataset.v!=='FUT'||T.market==='DELTA'&&b.dataset.v==='FUT'));
   if(T.market==='DELTA')setPkType('CE');else setPkType('FUT');loadChain();}catch(e){$('pkN').innerHTML=errBox(e.message);}}
 function setPkType(v){PK.type=v;document.querySelectorAll('#pkT button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));renderChain();}
 document.querySelectorAll('#pkT button').forEach(b=>b.onclick=()=>setPkType(b.dataset.v));
@@ -696,7 +697,7 @@ function renderChain(){const c=PK.chain;if(!c)return;const fut=PK.type==='FUT';
   $('pkE').innerHTML=fut?(c.futures||[]).map(f=>`<option value="${esc(f.symbol)}">${esc(f.expiry)}</option>`).join(''):(c.expiries||[]).map(e=>`<option ${e===c.expiry?'selected':''}>${esc(e)}</option>`).join('');
   if(!fut){const rows=(c.strikes||[]).filter(r=>r[PK.type]);
     $('pkS').innerHTML=rows.map(r=>`<option value="${esc(r[PK.type])}" ${r.strike===c.atm?'selected':''}>${fq(r.strike)}${r.strike===c.atm?'  ★ ATM':''}</option>`).join('');}
-  const al=c.aliases||{};$('pkQ').innerHTML=Object.entries(al).map(([k,v])=>`<button class="btn sm" onclick="pickSym('${esc(v)}')">${k==='FUT'?(T.market==='BINANCEF'?'Perpetual':'Front-month future'):'Nearest '+k.replace('-',' ')} · rolls by itself</button>`).join('');
+  const al=c.aliases||{};$('pkQ').innerHTML=Object.entries(al).map(([k,v])=>`<button class="btn sm" onclick="pickSym('${esc(v)}')">${k==='FUT'?(T.market==='BINANCEF'||T.market==='DELTAF'?'Perpetual':'Front-month future'):'Nearest '+k.replace('-',' ')} · rolls by itself</button>`).join('');
   $('pkN').textContent=(T.market==='DELTA'?'Delta option candles use the mark (fair) price, so quiet strikes still have continuous bars; daily expiries have little history for the Time Machine. ':'')+(c.spot?`Spot ${fq(c.spot)} · `:'')+(c.lot?(T.market==='DELTA'?`1 contract = ${fq(c.lot)} ${esc(c.underlying)} · `:`lot ${fq(c.lot)} · `):'')+(fut?`${(c.futures||[]).length} future(s)`:`${(c.strikes||[]).length} strikes on ${c.expiry||'—'}`);}
 function useContract(){const sym=PK.type==='FUT'?($('pkE').value||(PK.chain.futures[0]||{}).symbol):$('pkS').value;if(!sym){toast('Pick a contract');return;}pickSym(sym);}
 function pickSym(sym){setSymbol(sym,PK.type==='PE'?'buy':T.side);checkEntry();}

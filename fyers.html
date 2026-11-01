@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.01-1"></script><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script src="js/engine.js?v=2026.11.01-2"></script><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f"><title>MarketMiner · Connections</title>
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -69,7 +69,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--t2);font:.7rem/1.5 v
 </div>
 <p class="fine" style="margin-top:10px">Data only: MarketMiner Mobile never places orders. Your FYERS details stay on this device. The day's login ends at 06:30 IST. After one full <b>Connect FYERS</b> login, renew each morning with just your FYERS PIN for the next 15 days. The PIN is sent once to FYERS and never saved.</p></div></section>
 <section class="panel full" id="cryptoPanel"><div class="cd-h"><span class="cd-t">₿ Crypto market data</span><span class="fine">Public, read-only · no API key · no orders</span></div><div class="cd-b">
-<p class="muted" style="margin-bottom:10px">Binance spot (data-api.binance.vision), Binance USD-M futures (fapi.binance.com), Shark Exchange USDT perpetuals (api.sharkexchange.in) and Delta Exchange India options (api.india.delta.exchange). Switch them on here, then pick the market on the Day Desk.</p>
+<p class="muted" style="margin-bottom:10px">Binance spot (data-api.binance.vision), Binance USD-M futures (fapi.binance.com), Delta Exchange perpetual futures (in place of Shark, which phones can't reach) and Delta Exchange India options (api.india.delta.exchange). Switch them on here, then pick the market on the Day Desk.</p>
 <div class="cards" id="cryptoCards"></div></div></section>
 <section class="panel"><div class="cd-h"><span class="cd-t">📈 Index quotes · FYERS</span></div><div class="cd-b"><div class="row"><button id="loadQuotes">Fetch FYERS quotes</button><span class="fine">NIFTY 50 · BANKNIFTY · FINNIFTY</span></div><div id="quotes" class="cards" style="margin-top:12px"><div class="muted">No quote request yet.</div></div></div></section>
 <section class="panel"><div class="cd-h"><span class="cd-t">🩺 Diagnostics</span></div><div class="cd-b"><pre id="log">Ready. Connect FYERS, then fetch quotes to validate the data path.</pre></div></section>
@@ -104,7 +104,7 @@ $('renewForm').onsubmit=async e=>{e.preventDefault();const pin=$('pin').value.tr
 $('pasteCode').onclick=async()=>{let x=null;try{x=await navigator.clipboard.readText()}catch(e){}if(!x||x.indexOf('.')<0)x=prompt('Paste the FYERS login code you copied in Safari');if(!x)return;
  try{await MM.FY.finishWithCode(x);log('FYERS login completed on this device.');await status();}catch(e){$('statusMsg').textContent=e.message;}};
 loadApp();status();
-const CRY={BINANCE:'Binance (spot, USDT)',BINANCEF:'Binance futures (USD-M perpetuals)',SHARK:'Shark Exchange (perpetuals, USDT)',DELTA:'Delta Exchange India options (BTC, ETH, XAUT)'};
+const CRY={BINANCE:'Binance (spot, USDT)',BINANCEF:'Binance futures (USD-M perpetuals)',DELTAF:'Delta Exchange India perpetual futures (replaces Shark on the phone)',DELTA:'Delta Exchange India options (BTC, ETH, XAUT)'};
 async function loadCrypto(){try{const st=await api('/api/markets/status');
  $('cryptoCards').innerHTML=Object.keys(CRY).map(m=>{const f=st[m];return `<div class="quote" id="c_${m}"><span class="status ${f.enabled?(f.last_error?'bad':'ok'):''}"><i class="dot"></i><span>${CRY[m]}</span></span>
  <div class="muted" style="margin:8px 0;font-size:12px">${esc(f.url)}</div><div class="row"><button onclick="toggleFeed('${m}',${!f.enabled})" class="${f.enabled?'secondary':''}">${f.enabled?'Switch off':'Switch on'}</button><button class="secondary" onclick="testFeed('${m}')" ${f.enabled?'':'disabled'}>Test connection</button></div>

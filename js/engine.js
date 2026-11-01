@@ -599,13 +599,14 @@
   }
 
   // ---------------------------------------------------------------- crypto feed status (Connections page)
-  const FEEDS = { BINANCE: "https://data-api.binance.vision", BINANCEF: "https://fapi.binance.com", SHARK: "https://api.sharkexchange.in", DELTA: "https://api.india.delta.exchange" };
+  const FEEDS = { BINANCE: "https://data-api.binance.vision", BINANCEF: "https://fapi.binance.com", SHARK: "https://api.sharkexchange.in", DELTA: "https://api.india.delta.exchange", DELTAF: "https://api.india.delta.exchange" };
   async function feedTest(m) {
     const t0 = performance.now();
     if (m === "BINANCE") { const r = await getJ(`${BN}/api/v3/ticker/price?symbols=${encodeURIComponent('["BTCUSDT","ETHUSDT","SOLUSDT"]')}`); return { ping: { ms: Math.round(performance.now() - t0) }, instruments: "—", sample: r.map((x) => ({ pair: x.symbol, price: +x.price, quote: "USDT" })) }; }
     if (m === "BINANCEF") { const r = await Promise.all(["BTCUSDT", "XAUUSDT"].map((s) => getJ(`${BF}/fapi/v1/ticker/price?symbol=${s}`))); return { ping: { ms: Math.round(performance.now() - t0) }, instruments: "—", sample: r.map((x) => ({ pair: x.symbol, price: +x.price, quote: "USDT" })) }; }
     if (m === "DELTA") { const o = await options("BTC"); return { ping: { ms: Math.round(performance.now() - t0) }, instruments: o.expiries.length + " expiries", sample: [{ pair: "BTC spot", price: o.spot, quote: "USD" }] }; }
-    throw new HE(503, "Shark Exchange is not reachable from a phone browser; it is used only by the PC Day Desk.");
+    if (m === "DELTAF") { const r = await Promise.all(["BTCUSD", "ETHUSD"].map((x) => getJ(`${DL}/v2/tickers/${x}`))); return { ping: { ms: Math.round(performance.now() - t0) }, instruments: "perpetuals", sample: r.map((x) => ({ pair: x.result.symbol, price: +x.result.mark_price, quote: "USD" })) }; }
+    throw new HE(503, "Shark Exchange is not reachable from a phone browser: the phone uses Delta Exchange perpetuals (Delta Futures) instead.");
   }
 
   // ---------------------------------------------------------------- router

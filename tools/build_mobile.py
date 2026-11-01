@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = Path(sys.argv[1] if len(sys.argv) > 1 else "../MarketMiner-FYERS/static")
 ENGINE = '<script src="js/engine.js?v=__V__"></script>'
-VERSION = "2026.11.01-1"
+VERSION = "2026.11.01-2"
 
 # Panels the phone can't feed (they need NSE's website or Moneycontrol through the PC's proxy)
 DROP_CARDS = ["🌐 Global Indices", "🔔 Pre-Open", "⚡ F&amp;O Pre-Open", "⚡ F&O Pre-Open", "💰 Large Deals", "📈 OI Spurts Analysis",
@@ -101,6 +101,8 @@ def build_fyers(src: str) -> str:
                   html, flags=re.S, count=1)
     html = html.replace('<button id="refreshStatus" class="secondary">Refresh status</button>',
                         '<button id="refreshStatus" class="secondary">Refresh status</button><button id="pasteCode" class="secondary">Paste login code</button>', 1)
+    html = html.replace("SHARK:'Shark Exchange (perpetuals, USDT)',", "DELTAF:'Delta Exchange India perpetual futures (replaces Shark on the phone)',")
+    html = html.replace("Shark Exchange USDT perpetuals (api.sharkexchange.in) and ", "Delta Exchange perpetual futures (in place of Shark, which phones can't reach) and ")
     html = html.replace("Data only: MarketMiner never places orders on FYERS.", "Data only: MarketMiner Mobile never places orders. Your FYERS details stay on this device.")
     login_js = r"""
 // ---- phone build: finish the FYERS login that comes back to this page
@@ -119,8 +121,21 @@ $('pasteCode').onclick=async()=>{let x=null;try{x=await navigator.clipboard.read
 def build_desk(src: str) -> str:
     html = common(src)
     html = html.replace(ENGINE.replace("__V__", VERSION), ENGINE.replace("__V__", VERSION) + '\n<script src="js/desk.js?v=' + VERSION + '"></script>', 1)
-    # Shark Exchange does not answer phone browsers: drop its market button
-    html = re.sub(r'\s*<button data-m="SHARK">.*?</button>', "", html, count=1, flags=re.S)
+    # Shark Exchange does not answer phone browsers: its slot becomes Delta Exchange perpetual futures (DELTAF)
+    html, n = re.subn(r'<button data-m="SHARK">.*?</button>', '<button data-m="DELTAF"><b>DELTA FUTURES</b><span>Perpetuals · BTC · ETH · SOL · USD (replaces Shark)</span></button>', html, count=1, flags=re.S)
+    reps = [
+        ("['FNO','MCX','BINANCEF','DELTA'].includes(T.market)", "['FNO','MCX','BINANCEF','DELTAF','DELTA'].includes(T.market)"),
+        ("SHARK:'BTCUSDT',", "DELTAF:'BTCUSD, ETHUSD',"),
+        ("SHARK:'SHARK',", "DELTAF:'DELTA FUTURES',"),
+        ("const perp=T.market==='BINANCEF';", "const perp=T.market==='BINANCEF'||T.market==='DELTAF';"),
+        ("(T.market==='BINANCEF'?'Perpetual':'Front-month future')", "(T.market==='BINANCEF'||T.market==='DELTAF'?'Perpetual':'Front-month future')"),
+        ("|^SHARK:/", "|^SHARK:|^DELTAF:/"),
+        ("c('Shark',s.SHARK.enabled&&!s.SHARK.last_error,s.SHARK.last_error||'')", "c('Delta',s.DELTA.enabled&&!s.DELTA.last_error,s.DELTA.last_error||'')"),
+    ]
+    for a, b in reps:
+        if a not in html:
+            raise SystemExit("desk.html changed; update build_mobile.py: " + a[:60])
+        html = html.replace(a, b)
     return html
 
 

@@ -325,9 +325,9 @@
   }
 
   // ================================================================ data layer (routes.py port)
-  const MARKETS = ["NSE", "FNO", "MCX", "BINANCE", "BINANCEF", "SHARK", "DELTA"], FYM = ["NSE", "FNO", "MCX"];
-  const SESSION = { NSE, FNO: NSE, MCX, BINANCE: CRYPTO, BINANCEF: CRYPTO, SHARK: CRYPTO, DELTA: CRYPTO };
-  const CURRENCY = { NSE: "INR", FNO: "INR", MCX: "INR", BINANCE: "USDT", BINANCEF: "USDT", SHARK: "USDT", DELTA: "USD" };
+  const MARKETS = ["NSE", "FNO", "MCX", "BINANCE", "BINANCEF", "DELTAF", "SHARK", "DELTA"], FYM = ["NSE", "FNO", "MCX"];
+  const SESSION = { NSE, FNO: NSE, MCX, BINANCE: CRYPTO, BINANCEF: CRYPTO, DELTAF: CRYPTO, SHARK: CRYPTO, DELTA: CRYPTO };
+  const CURRENCY = { NSE: "INR", FNO: "INR", MCX: "INR", BINANCE: "USDT", BINANCEF: "USDT", DELTAF: "USD", SHARK: "USDT", DELTA: "USD" };
   const MAX_SCAN = 40;
   const DEFAULT_WATCHLIST = {
     NSE: ["RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS", "SBIN", "BHARTIARTL", "ITC", "LT", "KOTAKBANK", "AXISBANK", "BAJFINANCE", "MARUTI", "SUNPHARMA", "M&M", "TITAN", "TATASTEEL", "HCLTECH", "ADANIENT", "TRENT"].map((s) => `NSE:${s}-EQ`),
@@ -337,10 +337,12 @@
     MCX: ["CRUDEOIL", "CRUDEOILM", "NATURALGAS", "GOLD", "GOLDM", "SILVER", "SILVERM", "COPPER", "ZINC"].map((u) => `MCX:${u}-FUT`),
     BINANCEF: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT", "XAUUSDT", "XAGUSDT", "CLUSDT"].map((s) => `BINANCEF:${s}`),
     DELTA: ["DELTA:BTC-ATM-CE", "DELTA:BTC-ATM-PE", "DELTA:ETH-ATM-CE", "DELTA:ETH-ATM-PE"],
+    // Delta Exchange India perpetual futures: the phone's stand-in for Shark Exchange (same idea: INR-funded, USD-quoted perps)
+    DELTAF: ["BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "BNBUSD", "DOGEUSD", "AVAXUSD", "LTCUSD", "ADAUSD", "LINKUSD"].map((s) => `DELTAF:${s}`),
   };
   const NSE_RE = /^(NSE|BSE):[A-Z0-9&_.\-]{1,30}-(EQ|BE|INDEX)$/, FO_RE = /^(NSE|BSE|MCX):[A-Z0-9&_\-]{2,40}$/, PAIR_RE = /^[A-Z0-9]{3,20}$/,
     DELTA_RE = /^([CP]-[A-Z0-9]{2,10}-[0-9]+(\.[0-9]+)?-[0-9]{6}|[A-Z0-9]{2,10}-ATM-(CE|PE))$/;
-  const marketOf = (s) => { const h = s.split(":")[0]; return ["BINANCE", "BINANCEF", "SHARK", "DELTA", "MCX"].includes(h) ? h : NSE_RE.test(s) ? "NSE" : "FNO"; };
+  const marketOf = (s) => { const h = s.split(":")[0]; return ["BINANCE", "BINANCEF", "DELTAF", "SHARK", "DELTA", "MCX"].includes(h) ? h : NSE_RE.test(s) ? "NSE" : "FNO"; };
   const isOption = (s) => { s = s.toUpperCase(); return s.endsWith("CE") || s.endsWith("PE") || s.startsWith("DELTA:C-") || s.startsWith("DELTA:P-"); };
   const pairOf = (s) => s.split(":").slice(1).join(":");
   function normSymbol(s, market) {
@@ -351,10 +353,10 @@
     if (m === "NSE" && !NSE_RE.test(s)) throw new HE(400, `'${s}' is not a FYERS symbol like NSE:SBIN-EQ or NSE:NIFTY50-INDEX`);
     if ((m === "FNO" || m === "MCX") && !FO_RE.test(s)) throw new HE(400, `'${s}' is not a FYERS F&O symbol like NSE:NIFTY-FUT or MCX:CRUDEOIL-FUT`);
     if (m === "DELTA" && !DELTA_RE.test(pairOf(s))) throw new HE(400, `'${s}' is not a Delta option like DELTA:C-BTC-80000-271126 or DELTA:BTC-ATM-CE`);
-    if (["BINANCE", "BINANCEF", "SHARK"].includes(m) && !PAIR_RE.test(pairOf(s))) throw new HE(400, `'${s}' is not a ${m} pair like ${m}:BTCUSDT`);
+    if (["BINANCE", "BINANCEF", "DELTAF", "SHARK"].includes(m) && !PAIR_RE.test(pairOf(s))) throw new HE(400, `'${s}' is not a ${m} pair like ${m}:${m === "DELTAF" ? "BTCUSD" : "BTCUSDT"}`);
     return s;
   }
-  const needEnabled = (m) => { if (m === "SHARK") throw new HE(409, "Shark Exchange is not available on the phone version (it does not answer phone browsers). Use it from the PC."); };
+  const needEnabled = (m) => { if (m === "SHARK") throw new HE(409, "Shark Exchange does not answer phone browsers: use Delta Futures (perpetuals) here instead, or Shark on the PC."); };
 
   // ---- FYERS symbol masters (fyers_master.py)
   const MASTER_URL = { NSE: "https://public.fyers.in/sym_details/NSE_FO.csv", BSE: "https://public.fyers.in/sym_details/BSE_FO.csv", MCX: "https://public.fyers.in/sym_details/MCX_COM.csv" };
@@ -445,6 +447,20 @@
     if (!Object.keys(info).length) throw new HE(502, `Delta Exchange returned no live ${coin} options`);
     return { info, spot };
   });
+  const deltaPerps = () => cached("dlperps", 900e3, async () => {
+    const info = {}; let after = null;
+    for (let i = 0; i < 6; i++) {
+      const d = await getJ(`${DL}/v2/products?` + new URLSearchParams({ contract_types: "perpetual_futures", states: "live", page_size: 500, ...(after ? { after } : {}) }));
+      for (const p of (d || {}).result || []) {
+        const cv = +(p.contract_value || 0.001);
+        info[p.symbol] = { pair: p.symbol, base: (p.underlying_asset || {}).symbol || "", quote: ((p.quoting_asset || {}).symbol || "USD").toUpperCase(), tick: +(p.tick_size || 0.5),
+          qty_step: cv, min_qty: cv, contract_value: cv, name: p.description || `${p.symbol} perpetual` };
+      }
+      after = ((d || {}).meta || {}).after; if (!after) break;
+    }
+    if (!Object.keys(info).length) throw new HE(502, "Delta Exchange returned no perpetual futures");
+    return info;
+  });
   async function resolve(symbol) {
     const s = symbol.toUpperCase();
     if (!/(-FUT|-ATM-CE|-ATM-PE)$/.test(s)) return s;
@@ -488,25 +504,26 @@
       rows = rows.concat(((d || {}).result || []).map((r) => [+r.time, +r.open, +r.high, +r.low, +r.close, +(r.volume || 0)])); start = stop; }
     const m = new Map(rows.map((r) => [r[0], r])); return [...m.keys()].sort((a, b) => a - b).map((k) => m.get(k));
   }
-  const cryptoHistory = (m, pair) => cached(`ch:${m}:${pair}`, 20e3, () => (m === "DELTA" ? deltaCandles(pair, "5m", Math.floor(Date.now() / 1000) - 45 * 86400, Math.floor(Date.now() / 1000)) : bnPaged(m, pair, Math.floor(Date.now() / 1000) - 45 * 86400)));
+  const isDelta = (m) => m === "DELTA" || m === "DELTAF";
+  const cryptoHistory = (m, pair) => cached(`ch:${m}:${pair}`, 20e3, () => (isDelta(m) ? deltaCandles(pair, "5m", Math.floor(Date.now() / 1000) - 45 * 86400, Math.floor(Date.now() / 1000)) : bnPaged(m, pair, Math.floor(Date.now() / 1000) - 45 * 86400)));
   async function historyBars(symbol) {
     const m = marketOf(symbol), S = SESSION[m];
     if (FYM.includes(m)) { const rows = await fyCandles(symbol, "5", 90, 30); return parseCandles(isOption(symbol) ? fillGaps(rows) : rows, Date.now(), BAR, S); }
-    needEnabled(m); const rows = await cryptoHistory(m, pairOf(symbol)); return parseCandles(m === "DELTA" ? fillGaps(rows) : rows, Date.now(), BAR, S);
+    needEnabled(m); const rows = await cryptoHistory(m, pairOf(symbol)); return parseCandles(isDelta(m) ? fillGaps(rows) : rows, Date.now(), BAR, S);
   }
   async function todayBars(symbol) {
     const m = marketOf(symbol), S = SESSION[m]; let bars;
     if (FYM.includes(m)) { const rows = await fyCandles(symbol, "5", 0, 20); bars = parseCandles(isOption(symbol) ? fillGaps(rows) : rows, Date.now(), BAR, S); }
     else { needEnabled(m); const now = Math.floor(Date.now() / 1000);
-      const rows = await cached(`tb:${symbol}`, 20e3, () => (m === "DELTA" ? deltaCandles(pairOf(symbol), "5m", now - 300 * 300, now) : bnK(m === "BINANCE" ? BN : BF, m === "BINANCE" ? "/api/v3/klines" : "/fapi/v1/klines", pairOf(symbol), "5m", 300)));
-      bars = parseCandles(m === "DELTA" ? fillGaps(rows) : rows, Date.now(), BAR, S); }
+      const rows = await cached(`tb:${symbol}`, 20e3, () => (isDelta(m) ? deltaCandles(pairOf(symbol), "5m", now - 300 * 300, now) : bnK(m === "BINANCE" ? BN : BF, m === "BINANCE" ? "/api/v3/klines" : "/fapi/v1/klines", pairOf(symbol), "5m", 300)));
+      bars = parseCandles(isDelta(m) ? fillGaps(rows) : rows, Date.now(), BAR, S); }
     const sd = S.sessionDate(Date.now()); return bars.filter((b) => b.date === sd);
   }
   async function dailyBars(symbol) {
     const m = marketOf(symbol);
     if (FYM.includes(m)) return dailyFromCandles(await fyCandles(symbol, "D", 150, 6 * 3600), Date.now(), m !== "MCX" ? NSE : MCX);
     needEnabled(m); const now = Math.floor(Date.now() / 1000);
-    const rows = await cached(`db:${symbol}`, 1800e3, () => (m === "DELTA" ? deltaCandles(pairOf(symbol), "1d", now - 150 * 86400, now) : bnK(m === "BINANCE" ? BN : BF, m === "BINANCE" ? "/api/v3/klines" : "/fapi/v1/klines", pairOf(symbol), "1d", 150)));
+    const rows = await cached(`db:${symbol}`, 1800e3, () => (isDelta(m) ? deltaCandles(pairOf(symbol), "1d", now - 150 * 86400, now) : bnK(m === "BINANCE" ? BN : BF, m === "BINANCE" ? "/api/v3/klines" : "/fapi/v1/klines", pairOf(symbol), "1d", 150)));
     return dailyFromCandles(rows, Date.now(), SESSION[m]);
   }
   async function instrument(symbol, cfg) {
@@ -518,6 +535,7 @@
     let meta;
     if (m === "BINANCE") meta = await binanceInfo(pairOf(symbol));
     else if (m === "BINANCEF") { meta = (await futInfoAll())[pairOf(symbol)]; if (!meta) throw new HE(400, `${pairOf(symbol)} is not a listed Binance Futures instrument`); }
+    else if (m === "DELTAF") { meta = (await deltaPerps())[pairOf(symbol)]; if (!meta) throw new HE(400, `${pairOf(symbol)} is not a live Delta Exchange perpetual (try BTCUSD, ETHUSD)`); }
     else { const coin = pairOf(symbol).split("-")[1]; meta = (await deltaCoin(coin)).info[pairOf(symbol)]; if (!meta) throw new HE(400, `${pairOf(symbol)} is not a live Delta Exchange option`); }
     return { ...meta, lot: meta.qty_step };
   }
@@ -529,7 +547,7 @@
       try {
         if (m === "BINANCE") out[s] = +(await getJ(`${BN}/api/v3/ticker/price?symbol=${p}`)).price;
         else if (m === "BINANCEF") out[s] = +(await getJ(`${BF}/fapi/v1/ticker/price?symbol=${p}`)).price;
-        else if (m === "DELTA") { const r = ((await getJ(`${DL}/v2/tickers/${p}`)) || {}).result || {}; if (r.mark_price != null) out[s] = +r.mark_price; }
+        else if (isDelta(m)) { const r = ((await getJ(`${DL}/v2/tickers/${p}`)) || {}).result || {}; if (r.mark_price != null) out[s] = +r.mark_price; }
       } catch (e) { /* a missing price leaves the position unmarked */ }
     }
     return out;
@@ -541,6 +559,7 @@
     const base = { NSE: DEFAULT_CONFIG, FNO: DEFAULT_CONFIG, MCX: MCX_CONFIG }[market] || CRYPTO_CONFIG, cfg = { ...base, currency: CURRENCY[market] };
     if (market === "FNO" || market === "MCX") Object.assign(cfg, { budget: 300000, max_order_value: 1500000, max_position_pct: 100, cost_per_order: 40, max_loss_per_trade: 2500, max_daily_loss: 7500 });
     if (market === "DELTA") cfg.fee_bps = 3;
+    if (market === "DELTAF") cfg.fee_bps = 5;          // Delta futures taker fee ~0.05%
     Object.assign(cfg, allSaved()[market] || {});
     if (market === "SHARK") cfg.currency = "USDT";
     cfg.market = market;
@@ -606,6 +625,8 @@
       if (market === "DELTA") return { market, items: ["BTC", "ETH", "XAUT"].map((c) => ({ underlying: c, exchange: "DELTA", id: `DELTA:${c}`, popular: true, options: true })) };
       if (market === "BINANCEF") { const info = await futInfoAll(), pref = POPULAR_PERPS.filter((p) => info[p]), rest = Object.keys(info).filter((p) => !pref.includes(p)).sort();
         return { market, items: pref.concat(rest).map((p) => ({ underlying: p, id: `${market}:${p}`, popular: pref.includes(p), name: info[p].name })) }; }
+      if (market === "DELTAF") { const info = await deltaPerps(), popular = DEFAULT_WATCHLIST.DELTAF.map(pairOf), pref = popular.filter((p) => info[p]), rest = Object.keys(info).filter((p) => !pref.includes(p)).sort();
+        return { market, items: pref.concat(rest).map((p) => ({ underlying: p, id: `${market}:${p}`, popular: pref.includes(p), name: info[p].name })) }; }
       if (market === "BINANCE") { const pref = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"]; return { market, items: pref.map((p) => ({ underlying: p, id: `${market}:${p}`, popular: true, name: p })) }; }
       needEnabled(market); throw new HE(400, "No derivatives for this market");
     }
@@ -625,7 +646,7 @@
         return { market, exchange: "DELTA", underlying: coin, futures: [], expiries: exps, expiry: chosen, strikes: rows, spot: sp, atm, lot: (opts[0] || {}).contract_value || 0.001,
           aliases: { "ATM-CE": `DELTA:${coin}-ATM-CE`, "ATM-PE": `DELTA:${coin}-ATM-PE` } };
       }
-      if (market === "BINANCEF" || market === "BINANCE") { const sym = underlying.includes(":") ? underlying : `${market}:${underlying}`; return { market, underlying: pairOf(sym), futures: [{ symbol: sym, expiry: "perpetual" }], expiries: [], strikes: [], aliases: { FUT: sym } }; }
+      if (market === "BINANCEF" || market === "BINANCE" || market === "DELTAF") { const sym = underlying.includes(":") ? underlying : `${market}:${underlying}`; return { market, underlying: pairOf(sym), futures: [{ symbol: sym, expiry: "perpetual" }], expiries: [], strikes: [], aliases: { FUT: sym } }; }
       needEnabled(market); throw new HE(400, "No derivatives for this market");
     }
     if (p === "/api/desk/scan") {
@@ -658,7 +679,7 @@
     if (p === "/api/desk/size") {
       const sym = await resolve(normSymbol(body.symbol)), m = marketOf(sym), cfg = loadConfig(m), inst = await instrument(sym, cfg);
       const out = sizePosition(body, cfg, body.max_loss || null, +inst.qty_step, inst.min_qty), lot = inst.lot || 1;
-      if (m === "DELTA" && lot < 1) { out.lots = Math.round(out.qty / lot); out.lot = lot; out.notes.push(`1 contract = ${lot} ${inst.base || ""}: ${out.lots} contract(s).`); }
+      if (isDelta(m) && lot < 1) { out.lots = Math.round(out.qty / lot); out.lot = lot; out.notes.push(`1 contract = ${lot} ${inst.base || ""}: ${out.lots} contract(s).`); }
       else if ((m === "FNO" || m === "MCX") && lot > 1) { out.lots = Math.floor(out.qty / lot); out.lot = lot; out.notes.push(`Lot size ${lot}: ${out.lots} lot(s) = ${out.qty} units` + (m === "MCX" ? " (MCX: units = lots x the contract multiplier; order FYERS in lots)." : ".")); }
       return out;
     }
