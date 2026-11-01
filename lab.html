@@ -168,7 +168,9 @@ const TFS=["1m","3m","5m","15m","30m","1h","4h","1d","1w"];
 let META=null,CUR=null,TF="15m",chart,cs,rsiC,rsiS,lines={},plines=[],SEL=0,autoT=null;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const f=(x,d)=>x==null||isNaN(x)?"—":Number(x).toLocaleString("en-IN",{maximumFractionDigits:d??(Math.abs(x)>=1000?2:Math.abs(x)>=1?2:6)});
+// price precision by level: >=100 -> 2, >=10 -> 3, >=1 -> 4 (XRP 2.1834), <1 -> 6; below 10 the decimals are always shown
+const DP=x=>{const a=Math.abs(+x||0);return a>=100?2:a>=10?3:a>=1?4:6};
+const f=(x,d)=>{if(x==null||isNaN(x))return"—";const n=d??DP(x);return Number(x).toLocaleString("en-IN",{maximumFractionDigits:n,minimumFractionDigits:d==null&&Math.abs(x)<10&&x!=0?n:0})};
 const pct=x=>x==null?"—":(x>0?"+":"")+Number(x).toFixed(2)+"%";
 const dir=v=>v>0?'<span class="up">▲ bull</span>':v<0?'<span class="dn">▼ bear</span>':'<span class="nt">● flat</span>';
 const ts=t=>t?new Date(t*1000).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—";
@@ -343,6 +345,8 @@ function rChart(d,keep){
   const tz=(d.market==="NSE"||d.market==="FNO"||d.market==="MCX")?19800:0;const T=x=>x+tz;  // exchange-local time on the axis
   chart.applyOptions({watermark:{visible:true,text:`${d.symbol.split(":").pop()}  ${d.tf}`,color:t.wm,fontSize:Math.max(28,Math.min(64,Math.round(($("chart").clientWidth||600)/14))),horzAlign:"center",vertAlign:"center",fontFamily:"JetBrains Mono"}});
   cs.setData(d.candles.map(c=>({time:T(c.time),open:c.open,high:c.high,low:c.low,close:c.close})));
+  {const n=DP((d.candles[d.candles.length-1]||{}).close),pf={priceFormat:{type:"price",precision:n,minMove:Math.pow(10,-n)}};  // price axis decimals follow the price level
+   cs.applyOptions(pf);Object.entries(lines).forEach(([k,l])=>{if(k!=="vol")l.applyOptions(pf)})}
   lines.vol.setData(d.indicators.has_volume?d.candles.map(c=>({time:T(c.time),value:c.volume,color:c.close>=c.open?t.volUp:t.volDn})):[]);
   const o=d.overlays,S=(k,a,on)=>lines[k].setData(on?a.map(p=>({time:T(p.time),value:p.value})):[]);
   S("ema20",o.ema20,layerOn("ema"));S("ema50",o.ema50,layerOn("ema"));S("ema200",o.ema200,layerOn("ema"));S("vwap",o.vwap,layerOn("vwap"));
@@ -743,7 +747,7 @@ async function recNow(){toast("Recorder running… this can take a minute",60000
 init().catch(e=>{$("qual").innerHTML=`<span class="dn">Signal Lab engine could not start: ${esc(e.message)}</span>`});
 </script>
 <script>window.addEventListener('mm-lab-status',e=>{const q=document.getElementById('qual');if(q&&e.detail)q.innerHTML='<span class="spin"></span> '+e.detail});</script>
-<script src="js/position.js?v=2026.11.01-14"></script>
-<script src="js/bot.js?v=2026.11.01-13"></script>
+<script src="js/position.js?v=2026.11.01-15"></script>
+<script src="js/bot.js?v=2026.11.01-15"></script>
 </body>
 </html>

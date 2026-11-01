@@ -79,6 +79,7 @@
       const s = ch.addCandlestickSeries({ upColor: "#26a69a", downColor: "#ef5350", wickUpColor: "#26a69a", wickDownColor: "#ef5350", borderVisible: false,
         autoscaleInfoProvider: () => ({ priceRange: { minValue: lo, maxValue: hi } }) });
       s.setData(bars.map((c) => ({ time: T(c.time), open: c.open, high: c.high, low: c.low, close: c.close })));
+      { const a = Math.abs(bars[bars.length - 1].close), n = a >= 100 ? 2 : a >= 10 ? 3 : a >= 1 ? 4 : 6; s.applyOptions({ priceFormat: { type: "price", precision: n, minMove: Math.pow(10, -n) } }); }
       ch.timeScale().fitContent();
       await new Promise((r) => setTimeout(r, 80));
       const cv = ch.takeScreenshot(), ctx = cv.getContext("2d"), k = cv.width / W;

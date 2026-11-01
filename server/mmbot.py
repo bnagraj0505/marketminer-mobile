@@ -111,15 +111,20 @@ short = lambda s: str(s).split(":")[-1]              # noqa: E731
 arrow = lambda d: "▲" if d == "LONG" else "▼"        # noqa: E731
 
 
+def _dp(x: float) -> int:
+    a = abs(x)
+    return 2 if a >= 100 else 3 if a >= 10 else 4 if a >= 1 else 6
+
+
 def f(x, d=None) -> str:
+    """Prices: >=100 -> 2 decimals, >=10 -> 3, >=1 -> 4 (XRP 2.1834), <1 -> 6; below 10 the decimals are always shown."""
     if x is None:
         return "—"
     x = float(x)
-    if d is None:
-        d = 2 if abs(x) >= 1 else 6
-    s = f"{x:,.{d}f}"
+    s = f"{x:,.{d if d is not None else _dp(x)}f}"
+    if d is None and (abs(x) < 10 and x != 0):
+        return s
     return s.rstrip("0").rstrip(".") if "." in s else s
-
 
 def lv(s: dict) -> str:
     t = s["targets"]

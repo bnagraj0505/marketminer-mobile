@@ -4,7 +4,8 @@
 (function () {
   "use strict";
   const pct = (a, b) => ((b - a) / a) * 100;
-  const num = (x) => (x == null || isNaN(x) ? "—" : Number(x).toLocaleString("en-IN", { maximumFractionDigits: Math.abs(x) >= 1000 ? 2 : Math.abs(x) >= 1 ? 2 : 6 }));
+  const DPX = (x) => { const a = Math.abs(+x || 0); return a >= 100 ? 2 : a >= 10 ? 3 : a >= 1 ? 4 : 6; };
+  const num = (x) => (x == null || isNaN(x) ? "—" : Number(x).toLocaleString("en-IN", { maximumFractionDigits: DPX(x), minimumFractionDigits: Math.abs(x) < 10 && x != 0 ? DPX(x) : 0 }));
   function tag(ctx, text, x, y, bg, fg, align) {
     ctx.font = "600 11px 'JetBrains Mono', ui-monospace, monospace";
     const w = ctx.measureText(text).width + 10, h = 17;
