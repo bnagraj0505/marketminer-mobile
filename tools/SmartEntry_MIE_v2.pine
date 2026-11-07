@@ -1,0 +1,477 @@
+//@version=6
+// SmartEntry Market Intelligence Engine v2.0
+// One script for the 7 indicators on the chart:
+//   1. Kapil Session Range + Trend PRO (5 30 10 3)  -> EMA 5/30, ATR 10, Supertrend 3, session high/low, VWAP
+//   2. ZigZag++ [LD] (12 5 2)                       -> zigzag depth 12, deviation 5 ticks, backstep 2, HH/HL/LH/LL
+//   3. Vol 20                                       -> volume vs 20-bar average (filter + spike marks)
+//   4. PinBoxZones (14 0.9 ... 0.3 0.1 ... 200)     -> pin-bar zones, retest triggers
+//   5. Wick Box Liquidity (50 200 0.05 1.5 0.7 ...) -> big-wick liquidity boxes, sweep triggers
+//   6. Price/Time Cycles (28)                       -> time cycle every 28 bars from the last zigzag pivot
+//   7. GANN Price Time Square (45 360)              -> square-of-9 price levels every 45 deg, time marks every 45 bars
+// The third-party scripts are closed-source; their parameters are read from the chart legend and rebuilt here.
+// Analysis only. Not investment advice.
+indicator("SmartEntry Market Intelligence Engine v2.0", "SmartEntry MIE v2", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=500)
+
+//====================================================
+// INPUTS
+//====================================================
+gT = "01. Session Range + Trend PRO"
+fastLen      = input.int(5, "Fast EMA", minval=1, group=gT)
+slowLen      = input.int(30, "Slow EMA", minval=2, group=gT)
+atrLen       = input.int(10, "ATR Length", minval=1, group=gT)
+stFactor     = input.float(3.0, "Supertrend Factor", minval=0.1, step=0.1, group=gT)
+sessionInput = input.session("0915-1530", "Session (ignored for crypto: whole day)", group=gT)
+sessionTZin  = input.string("", "Session timezone (blank = exchange timezone)", group=gT)
+showTrend    = input.bool(true, "Show EMAs / Supertrend / VWAP", group=gT)
+showSession  = input.bool(true, "Show session high/low", group=gT)
+
+gZ = "02. ZigZag++ structure"
+zzDepth    = input.int(12, "Depth", minval=2, group=gZ)
+zzDev      = input.int(5, "Deviation (ticks)", minval=0, group=gZ)
+zzBack     = input.int(2, "Backstep (confirmation bars)", minval=1, group=gZ)
+showZZ     = input.bool(true, "Show zigzag + HH/HL/LH/LL", group=gZ)
+showSweeps = input.bool(true, "Show swing liquidity sweeps", group=gZ)
+
+gV = "03. Volume"
+volLen       = input.int(20, "Volume SMA", minval=1, group=gV)
+useVol       = input.bool(false, "Entries need volume >= SMA", group=gV)
+showVolSpike = input.bool(true, "Mark volume spikes (>= 2x SMA)", group=gV)
+
+gP = "04. Pin Box Zones"
+pinAtrLen   = input.int(14, "ATR length", minval=1, group=gP)
+pinMinRange = input.float(0.9, "Min candle range (x ATR)", minval=0, step=0.1, group=gP)
+pinBodyMax  = input.float(0.3, "Max body (x range)", minval=0.01, maxval=1, step=0.05, group=gP)
+pinOppMax   = input.float(0.1, "Max opposite wick (x range)", minval=0, maxval=1, step=0.05, group=gP)
+pinMaxAge   = input.int(200, "Zone life (bars)", minval=5, group=gP)
+pinMaxTouch = input.int(2, "Retests before zone expires", minval=1, group=gP)
+showPins    = input.bool(true, "Show pin zones", group=gP)
+
+gW = "05. Wick Box Liquidity"
+wickRatio  = input.float(0.7, "Wick >= x candle range", minval=0.1, maxval=1, step=0.05, group=gW)
+wickMinPct = input.float(0.05, "Wick >= % of price", minval=0, step=0.01, group=gW)
+wickMaxAge = input.int(200, "Box life (bars)", minval=5, group=gW)
+showWick   = input.bool(true, "Show wick boxes", group=gW)
+
+gC = "06. Price / Time Cycles + Gann"
+cycleLen   = input.int(28, "Time cycle length (bars)", minval=2, group=gC)
+showCycles = input.bool(true, "Show cycle marks (T)", group=gC)
+gannStep   = input.int(45, "Gann step (degrees)", minval=5, maxval=180, group=gC)
+gannMaxDeg = input.int(360, "Gann time counts up to (bars)", minval=45, group=gC)
+showGannP  = input.bool(true, "Show Gann square-of-9 levels", group=gC)
+showGannT  = input.bool(true, "Show Gann time marks (G)", group=gC)
+
+gE = "07. Entry Engine"
+useVWAP     = input.bool(true, "VWAP confirmation", group=gE)
+trigSweep   = input.bool(true, "Trigger: liquidity sweep / wick-box grab", group=gE)
+trigBOS     = input.bool(true, "Trigger: break of structure", group=gE)
+trigSess    = input.bool(true, "Trigger: session high/low break", group=gE)
+trigPin     = input.bool(true, "Trigger: pin-zone retest", group=gE)
+showSignals = input.bool(true, "Show BUY/SELL signals", group=gE)
+slMult      = input.float(1.5, "Stop loss (x ATR)", minval=0.1, step=0.1, group=gE)
+targetMult  = input.float(2.0, "Target (x ATR)", minval=0.1, step=0.1, group=gE)
+showStats   = input.bool(true, "Show stats panel", group=gE)
+
+//====================================================
+// 1. TREND ENGINE
+//====================================================
+emaFast = ta.ema(close, fastLen)
+emaSlow = ta.ema(close, slowLen)
+atr     = ta.atr(atrLen)
+[superTrend, stDirection] = ta.supertrend(stFactor, atrLen)
+
+bullTrend = emaFast > emaSlow and stDirection < 0
+bearTrend = emaFast < emaSlow and stDirection > 0
+
+vwapValue = ta.vwap(hlc3)   // na where the symbol has no volume (e.g. NSE indices) -> filter is skipped
+vwapBull  = not useVWAP or na(vwapValue) or close > vwapValue
+vwapBear  = not useVWAP or na(vwapValue) or close < vwapValue
+
+plot(showTrend ? emaFast : na, "EMA Fast", color=color.orange)
+plot(showTrend ? emaSlow : na, "EMA Slow", color=color.yellow, linewidth=2)
+plot(showTrend ? superTrend : na, "Supertrend", color=stDirection < 0 ? color.lime : color.red, linewidth=2)
+plot(showTrend and useVWAP ? vwapValue : na, "VWAP", color=color.aqua, linewidth=2)
+
+//====================================================
+// SESSION RANGE
+//====================================================
+isCrypto  = syminfo.type == "crypto"
+tz        = sessionTZin == "" ? syminfo.timezone : sessionTZin
+sess      = isCrypto ? "0000-0000" : sessionInput
+inSession = not na(time(timeframe.period, sess, tz))
+newDay    = ta.change(dayofmonth(time, tz)) != 0
+newSession = inSession and (not inSession[1] or newDay)
+
+var float sessionHigh = na
+var float sessionLow  = na
+if newSession
+    sessionHigh := high
+    sessionLow  := low
+else if inSession
+    sessionHigh := math.max(nz(sessionHigh, high), high)
+    sessionLow  := math.min(nz(sessionLow, low), low)
+
+plot(showSession and inSession ? sessionHigh : na, "Session High", color=color.fuchsia, style=plot.style_linebr)
+plot(showSession and inSession ? sessionLow : na, "Session Low", color=color.fuchsia, style=plot.style_linebr)
+
+sessionBreakUp   = inSession and not newSession and not na(sessionHigh[1]) and close > sessionHigh[1] and close[1] <= sessionHigh[1]
+sessionBreakDown = inSession and not newSession and not na(sessionLow[1]) and close < sessionLow[1] and close[1] >= sessionLow[1]
+
+//====================================================
+// 2. ZIGZAG++ STRUCTURE (alternating swings, depth / deviation / backstep)
+//====================================================
+var array<float> zzPrice = array.new<float>()
+var array<int>   zzBar   = array.new<int>()
+var array<int>   zzDir   = array.new<int>()
+var array<label> zzLab   = array.new<label>()
+var array<line>  zzLine  = array.new<line>()
+
+f_tag(int dir, float price, int n) =>
+    // n = number of points with this one in place; the previous point on the same side is n - 3
+    string t = dir == 1 ? "SH" : "SL"
+    if n >= 3
+        float prev = array.get(zzPrice, n - 3)
+        t := dir == 1 ? (price > prev ? "HH" : "LH") : (price > prev ? "HL" : "LL")
+    t
+
+f_tagColor(string t) =>
+    t == "HH" or t == "HL" ? color.green : t == "LH" or t == "LL" ? color.red : color.gray
+
+f_zz(int dir, float price, int b) =>
+    int n = array.size(zzPrice)
+    if n == 0
+        array.push(zzPrice, price), array.push(zzBar, b), array.push(zzDir, dir)
+        if showZZ
+            string t = f_tag(dir, price, 1)
+            array.push(zzLab, label.new(b, price, t, style=dir == 1 ? label.style_label_down : label.style_label_up, color=f_tagColor(t), textcolor=color.white, size=size.tiny))
+    else
+        int   ld = array.last(zzDir)
+        float lp = array.last(zzPrice)
+        if ld == dir
+            // same side again: keep only the more extreme point (ZigZag behaviour)
+            if (dir == 1 and price > lp) or (dir == -1 and price < lp)
+                array.set(zzPrice, n - 1, price)
+                array.set(zzBar, n - 1, b)
+                if showZZ
+                    string t = f_tag(dir, price, n)
+                    label lb = array.last(zzLab)
+                    label.set_xy(lb, b, price)
+                    label.set_text(lb, t)
+                    label.set_color(lb, f_tagColor(t))
+                    if array.size(zzLine) > 0
+                        line.set_xy2(array.last(zzLine), b, price)
+        else if math.abs(price - lp) >= zzDev * syminfo.mintick
+            int lb0 = array.last(zzBar)
+            array.push(zzPrice, price), array.push(zzBar, b), array.push(zzDir, dir)
+            if showZZ
+                string t = f_tag(dir, price, n + 1)
+                array.push(zzLab, label.new(b, price, t, style=dir == 1 ? label.style_label_down : label.style_label_up, color=f_tagColor(t), textcolor=color.white, size=size.tiny))
+                array.push(zzLine, line.new(lb0, lp, b, price, color=color.new(color.silver, 30), width=2))
+    // keep the arrays small
+    if array.size(zzPrice) > 400
+        array.shift(zzPrice), array.shift(zzBar), array.shift(zzDir)
+    if array.size(zzLab) > 400
+        array.shift(zzLab)
+    if array.size(zzLine) > 400
+        array.shift(zzLine)
+    0
+
+f_last(int dir) =>
+    float p = na
+    int sz = array.size(zzDir)
+    if sz > 0
+        for i = sz - 1 to math.max(0, sz - 2)
+            if array.get(zzDir, i) == dir
+                p := array.get(zzPrice, i)
+                break
+    p
+
+ph = ta.pivothigh(high, zzDepth, zzBack)
+pl = ta.pivotlow(low, zzDepth, zzBack)
+if not na(ph)
+    f_zz(1, ph, bar_index - zzBack)
+if not na(pl)
+    f_zz(-1, pl, bar_index - zzBack)
+
+zzN            = array.size(zzPrice)
+lastSwingHigh  = f_last(1)
+lastSwingLow   = f_last(-1)
+lastPivotPrice = zzN > 0 ? array.last(zzPrice) : na
+int lastPivotBar = zzN > 0 ? array.last(zzBar) : na
+structTag      = zzN > 0 ? f_tag(array.last(zzDir), array.last(zzPrice), zzN) : ""
+
+bullBOS = not na(lastSwingHigh) and ta.crossover(close, lastSwingHigh)
+bearBOS = not na(lastSwingLow) and ta.crossunder(close, lastSwingLow)
+
+// swing sweeps: once per swing level
+var float sweptLow  = na
+var float sweptHigh = na
+bullSweep = not na(lastSwingLow) and low < lastSwingLow and close > lastSwingLow and (na(sweptLow) or lastSwingLow != sweptLow)
+bearSweep = not na(lastSwingHigh) and high > lastSwingHigh and close < lastSwingHigh and (na(sweptHigh) or lastSwingHigh != sweptHigh)
+if bullSweep
+    sweptLow := lastSwingLow
+if bearSweep
+    sweptHigh := lastSwingHigh
+
+//====================================================
+// 3. VOLUME (Vol 20)
+//====================================================
+volSma   = ta.sma(volume, volLen)
+hasVol   = not na(volSma) and volSma > 0
+volOK    = not useVol or not hasVol or volume >= volSma
+volSpike = hasVol and volume >= 2 * volSma
+plotshape(showVolSpike and volSpike, "Volume spike", shape.circle, location.bottom, color.new(color.yellow, 20), size=size.tiny)
+plot(volSma, "Volume SMA", display=display.data_window)
+
+//====================================================
+// CANDLE ANATOMY (shared by pin zones and wick boxes)
+//====================================================
+atrP = ta.atr(pinAtrLen)
+rng  = high - low
+body = math.abs(close - open)
+upW  = high - math.max(open, close)
+loW  = math.min(open, close) - low
+
+//====================================================
+// 4. PIN BOX ZONES
+//====================================================
+var array<box>   pzBox   = array.new<box>()
+var array<float> pzTop   = array.new<float>()
+var array<float> pzBot   = array.new<float>()
+var array<int>   pzDir   = array.new<int>()
+var array<int>   pzStart = array.new<int>()
+var array<int>   pzTouch = array.new<int>()
+
+bool bullPinRetest = false
+bool bearPinRetest = false
+int pzn = array.size(pzTop)
+if pzn > 0
+    for i = pzn - 1 to 0
+        int   d  = array.get(pzDir, i)
+        float t  = array.get(pzTop, i)
+        float bt = array.get(pzBot, i)
+        int   tc = array.get(pzTouch, i)
+        bool kill = bar_index - array.get(pzStart, i) > pinMaxAge
+        if not kill
+            if d == 1
+                if close < bt
+                    kill := true
+                else if low <= t and close > t and close > open
+                    bullPinRetest := true
+                    tc += 1
+            else
+                if close > t
+                    kill := true
+                else if high >= bt and close < bt and close < open
+                    bearPinRetest := true
+                    tc += 1
+            array.set(pzTouch, i, tc)
+            if tc >= pinMaxTouch
+                kill := true
+        if kill
+            if showPins
+                box.set_right(array.get(pzBox, i), bar_index)
+                box.set_bgcolor(array.get(pzBox, i), color.new(color.gray, 90))
+                box.set_border_color(array.get(pzBox, i), color.new(color.gray, 70))
+            array.remove(pzBox, i), array.remove(pzTop, i), array.remove(pzBot, i)
+            array.remove(pzDir, i), array.remove(pzStart, i), array.remove(pzTouch, i)
+        else if showPins
+            box.set_right(array.get(pzBox, i), bar_index)
+
+bullPin = rng > 0 and rng >= pinMinRange * atrP and body <= pinBodyMax * rng and upW <= pinOppMax * rng
+bearPin = rng > 0 and rng >= pinMinRange * atrP and body <= pinBodyMax * rng and loW <= pinOppMax * rng
+if bullPin or bearPin
+    float zt = bullPin ? math.min(open, close) : high
+    float zb = bullPin ? low : math.max(open, close)
+    color zc = bullPin ? color.teal : color.maroon
+    array.push(pzBox, showPins ? box.new(bar_index, zt, bar_index, zb, border_color=color.new(zc, 40), bgcolor=color.new(zc, 80)) : na)
+    array.push(pzTop, zt), array.push(pzBot, zb), array.push(pzDir, bullPin ? 1 : -1)
+    array.push(pzStart, bar_index), array.push(pzTouch, 0)
+    if array.size(pzTop) > 30
+        array.shift(pzBox), array.shift(pzTop), array.shift(pzBot), array.shift(pzDir), array.shift(pzStart), array.shift(pzTouch)
+
+//====================================================
+// 5. WICK BOX LIQUIDITY
+//====================================================
+var array<box>   wbBox   = array.new<box>()
+var array<float> wbTop   = array.new<float>()
+var array<float> wbBot   = array.new<float>()
+var array<int>   wbDir   = array.new<int>()   // 1 = sell-side liquidity below (lower wick), -1 = buy-side above (upper wick)
+var array<int>   wbStart = array.new<int>()
+
+bool bullGrab = false
+bool bearGrab = false
+int wbn = array.size(wbTop)
+if wbn > 0
+    for i = wbn - 1 to 0
+        int   d  = array.get(wbDir, i)
+        float t  = array.get(wbTop, i)
+        float bt = array.get(wbBot, i)
+        bool kill = bar_index - array.get(wbStart, i) > wickMaxAge
+        if not kill
+            if d == 1
+                if low < bt and close > bt
+                    bullGrab := true
+                    kill := true
+                else if close < bt
+                    kill := true
+            else
+                if high > t and close < t
+                    bearGrab := true
+                    kill := true
+                else if close > t
+                    kill := true
+        if kill
+            if showWick
+                box.set_right(array.get(wbBox, i), bar_index)
+            array.remove(wbBox, i), array.remove(wbTop, i), array.remove(wbBot, i), array.remove(wbDir, i), array.remove(wbStart, i)
+        else if showWick
+            box.set_right(array.get(wbBox, i), bar_index)
+
+minWick = close * wickMinPct / 100
+upWickBox = rng > 0 and upW >= wickRatio * rng and upW >= minWick
+loWickBox = rng > 0 and loW >= wickRatio * rng and loW >= minWick
+if upWickBox or loWickBox
+    float wt = upWickBox ? high : math.min(open, close)
+    float wb = upWickBox ? math.max(open, close) : low
+    color wc = upWickBox ? color.orange : color.aqua
+    array.push(wbBox, showWick ? box.new(bar_index, wt, bar_index, wb, border_color=color.new(wc, 30), bgcolor=color.new(wc, 85), border_style=line.style_dotted) : na)
+    array.push(wbTop, wt), array.push(wbBot, wb), array.push(wbDir, upWickBox ? -1 : 1), array.push(wbStart, bar_index)
+    if array.size(wbTop) > 30
+        array.shift(wbBox), array.shift(wbTop), array.shift(wbBot), array.shift(wbDir), array.shift(wbStart)
+
+plotshape(showSweeps and (bullSweep or bullGrab), "Bullish liquidity sweep", shape.labelup, location.belowbar, color.teal, text="SWEEP", textcolor=color.white, size=size.tiny)
+plotshape(showSweeps and (bearSweep or bearGrab), "Bearish liquidity sweep", shape.labeldown, location.abovebar, color.orange, text="SWEEP", textcolor=color.white, size=size.tiny)
+
+//====================================================
+// 6 + 7. PRICE / TIME CYCLES AND GANN SQUARE OF 9
+//====================================================
+barsFromPivot = na(lastPivotBar) ? na : bar_index - lastPivotBar   // counted from the pivot bar itself, not its confirmation
+cycleEvent = not na(barsFromPivot) and barsFromPivot > 0 and barsFromPivot % cycleLen == 0
+gannTime   = not na(barsFromPivot) and barsFromPivot > 0 and barsFromPivot <= gannMaxDeg and barsFromPivot % gannStep == 0
+plotshape(showCycles and cycleEvent, "Time cycle", shape.diamond, location.bottom, color.purple, text="T", textcolor=color.purple, size=size.tiny)
+plotshape(showGannT and gannTime, "Gann time", shape.triangleup, location.bottom, color.fuchsia, text="G", textcolor=color.fuchsia, size=size.tiny)
+
+f_sq9(float p, int k) =>
+    float s = math.sqrt(p) + k * gannStep / 180.0
+    s > 0 ? s * s : na
+
+var array<line>  gLines = array.new<line>()
+var array<label> gLabs  = array.new<label>()
+if barstate.islast and showGannP and not na(lastPivotPrice) and lastPivotPrice > 0
+    while array.size(gLines) > 0
+        line.delete(array.pop(gLines))
+    while array.size(gLabs) > 0
+        label.delete(array.pop(gLabs))
+    int kc = int(math.floor((math.sqrt(close) - math.sqrt(lastPivotPrice)) * 180.0 / gannStep))
+    for k = kc - 2 to kc + 3
+        if k != 0
+            float lv = f_sq9(lastPivotPrice, k)
+            if not na(lv)
+                color gc = lv > close ? color.new(color.red, 40) : color.new(color.green, 40)
+                array.push(gLines, line.new(bar_index - 40, lv, bar_index + 8, lv, color=gc, style=line.style_dashed))
+                array.push(gLabs, label.new(bar_index + 8, lv, (k > 0 ? "+" : "") + str.tostring(k * gannStep) + "° " + str.tostring(lv, format.mintick), style=label.style_label_left, color=color.new(color.black, 100), textcolor=gc, size=size.tiny))
+
+//====================================================
+// ENTRY ENGINE
+//====================================================
+bullTrig = (trigSweep and (bullSweep or bullGrab)) or (trigBOS and bullBOS) or (trigSess and sessionBreakUp) or (trigPin and bullPinRetest)
+bearTrig = (trigSweep and (bearSweep or bearGrab)) or (trigBOS and bearBOS) or (trigSess and sessionBreakDown) or (trigPin and bearPinRetest)
+longSignal  = barstate.isconfirmed and bullTrend and vwapBull and volOK and bullTrig
+shortSignal = barstate.isconfirmed and bearTrend and vwapBear and volOK and bearTrig
+
+//====================================================
+// ATR RISK MANAGEMENT (exits are checked before new entries, so reversals close the old trade)
+//====================================================
+var int   activeSide   = 0
+var float activeEntry  = na
+var float activeStop   = na
+var float activeTarget = na
+var int   nTrades = 0
+var int   nWins   = 0
+var float sumR    = 0.0
+
+float exitPx = na
+int   exitKind = 0      // 1 = target, 2 = stop, 3 = trend / opposite signal
+if activeSide == 1
+    if low <= activeStop
+        exitPx := activeStop, exitKind := 2
+    else if high >= activeTarget
+        exitPx := activeTarget, exitKind := 1
+    else if bearTrend or shortSignal
+        exitPx := close, exitKind := 3
+else if activeSide == -1
+    if high >= activeStop
+        exitPx := activeStop, exitKind := 2
+    else if low <= activeTarget
+        exitPx := activeTarget, exitKind := 1
+    else if bullTrend or longSignal
+        exitPx := close, exitKind := 3
+
+if exitKind != 0
+    float r = activeSide * (exitPx - activeEntry) / math.abs(activeEntry - activeStop)
+    nTrades += 1
+    nWins   += r > 0 ? 1 : 0
+    sumR    += r
+    activeSide   := 0
+    activeEntry  := na
+    activeStop   := na
+    activeTarget := na
+
+if longSignal and activeSide != 1
+    activeSide   := 1
+    activeEntry  := close
+    activeStop   := close - atr * slMult
+    activeTarget := close + atr * targetMult
+else if shortSignal and activeSide != -1
+    activeSide   := -1
+    activeEntry  := close
+    activeStop   := close + atr * slMult
+    activeTarget := close - atr * targetMult
+
+newLong  = activeSide == 1 and activeSide[1] != 1
+newShort = activeSide == -1 and activeSide[1] != -1
+
+plotshape(showSignals and newLong, "BUY", shape.labelup, location.belowbar, color.lime, text="BUY", textcolor=color.black, size=size.small)
+plotshape(showSignals and newShort, "SELL", shape.labeldown, location.abovebar, color.red, text="SELL", textcolor=color.white, size=size.small)
+plotshape(showSignals and exitKind == 1, "Exit: target", shape.xcross, location.abovebar, color.lime, text="TP", textcolor=color.lime, size=size.tiny)
+plotshape(showSignals and exitKind == 2, "Exit: stop", shape.xcross, location.belowbar, color.red, text="SL", textcolor=color.red, size=size.tiny)
+plotshape(showSignals and exitKind == 3, "Exit: trend flip", shape.xcross, location.abovebar, color.gray, text="EXIT", textcolor=color.gray, size=size.tiny)
+
+plot(activeSide != 0 ? activeStop : na, "Active Stop Loss", color=color.red, linewidth=2, style=plot.style_linebr)
+plot(activeSide != 0 ? activeTarget : na, "Active Target", color=color.lime, linewidth=2, style=plot.style_linebr)
+
+//====================================================
+// STATS PANEL
+//====================================================
+var table tb = table.new(position.top_right, 2, 7, bgcolor=color.new(color.black, 25), border_width=1, border_color=color.new(color.gray, 70))
+if showStats and barstate.islast
+    string trendTxt = bullTrend ? "▲ UP" : bearTrend ? "▼ DOWN" : "— MIXED"
+    color  trendCol = bullTrend ? color.lime : bearTrend ? color.red : color.gray
+    table.cell(tb, 0, 0, "SmartEntry MIE v2", text_color=color.white, text_size=size.small)
+    table.cell(tb, 1, 0, "", text_size=size.small)
+    table.cell(tb, 0, 1, "Trend", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 1, trendTxt, text_color=trendCol, text_size=size.small)
+    table.cell(tb, 0, 2, "Structure", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 2, structTag, text_color=structTag == "HH" or structTag == "HL" ? color.lime : color.red, text_size=size.small)
+    table.cell(tb, 0, 3, "VWAP", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 3, na(vwapValue) ? "n/a (no volume)" : close > vwapValue ? "above" : "below", text_color=color.white, text_size=size.small)
+    table.cell(tb, 0, 4, "Trades", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 4, str.tostring(nTrades), text_color=color.white, text_size=size.small)
+    table.cell(tb, 0, 5, "Win %", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 5, nTrades > 0 ? str.tostring(100.0 * nWins / nTrades, "#.0") + "%" : "—", text_color=color.white, text_size=size.small)
+    table.cell(tb, 0, 6, "Avg R", text_color=color.silver, text_size=size.small)
+    table.cell(tb, 1, 6, nTrades > 0 ? str.tostring(sumR / nTrades, "#.00") : "—", text_color=sumR >= 0 ? color.lime : color.red, text_size=size.small)
+
+//====================================================
+// ALERTS
+//====================================================
+alertcondition(newLong, "SmartEntry BUY", "SmartEntry bullish entry signal")
+alertcondition(newShort, "SmartEntry SELL", "SmartEntry bearish entry signal")
+alertcondition(exitKind != 0, "SmartEntry EXIT", "SmartEntry exit (target, stop or trend flip)")
+alertcondition(bullSweep or bullGrab, "Bullish Liquidity Sweep", "Bullish liquidity sweep / wick-box grab")
+alertcondition(bearSweep or bearGrab, "Bearish Liquidity Sweep", "Bearish liquidity sweep / wick-box grab")
+alertcondition(bullBOS, "Bullish BOS", "Bullish break of structure")
+alertcondition(bearBOS, "Bearish BOS", "Bearish break of structure")
+alertcondition(bullPinRetest, "Bullish pin-zone retest", "Price retested a bullish pin zone and closed above it")
+alertcondition(bearPinRetest, "Bearish pin-zone retest", "Price retested a bearish pin zone and closed below it")
+alertcondition(gannTime or cycleEvent, "Time cycle / Gann time", "A time-cycle or Gann time count landed on this bar")
