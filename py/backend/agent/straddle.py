@@ -96,9 +96,9 @@ async def snapshot(und: str) -> dict | None:
     return x
 
 
-def _session_bounds(now: float) -> tuple[int, int]:
-    d = dt.datetime.fromtimestamp(now, IST)
-    d0 = int(dt.datetime(d.year, d.month, d.day, tzinfo=IST).timestamp())
+def _session_bounds(now: float, tz: dt.tzinfo = IST) -> tuple[int, int]:
+    d = dt.datetime.fromtimestamp(now, tz)
+    d0 = int(dt.datetime(d.year, d.month, d.day, tzinfo=tz).timestamp())
     return d0, d0 + 86400
 
 
@@ -106,15 +106,19 @@ def _pct(a, b):
     return (b - a) / a * 100 if a else None
 
 
-def shift(und: str, now: float | None = None) -> dict:
-    """Now vs the session's first snapshot and vs 15 / 30 minutes ago, with readings. Uses the latest session on file."""
+def shift(und: str, now: float | None = None, crypto: bool = False) -> dict:
+    """Now vs the session's first snapshot and vs 15 / 30 minutes ago, with readings. Uses the latest session on file.
+    crypto=True (cstraddle.py): the session is the UTC day (00:00 UTC = 05:30 IST), as on the crypto page."""
     _init()
     now = now or time.time()
     last = db.q("SELECT t FROM straddle_snapshots WHERE und=? ORDER BY t DESC LIMIT 1", (und,), one=True)
     if not last:
-        return {"und": und, "available": False, "note": "No straddle snapshots yet: they are recorded every minute while NSE is open (needs the FYERS login)."}
-    d0, d1 = _session_bounds(last["t"])
+        return {"und": und, "available": False, "note": "No straddle snapshots yet: they are recorded every minute, around the clock, from Delta Exchange." if crypto
+                else "No straddle snapshots yet: they are recorded every minute while NSE is open (needs the FYERS login)."}
+    d0, d1 = _session_bounds(last["t"], dt.timezone.utc if crypto else IST)
     rows = db.q("SELECT * FROM straddle_snapshots WHERE und=? AND t>=? AND t<? ORDER BY t", (und, d0, d1))
+    if crypto:                                            # daily expiries roll during the day: compare like with like
+        rows = [r for r in rows if r["expiry"] == rows[-1]["expiry"]]
     cur, first = rows[-1], rows[0]
 
     def ago(m):
@@ -139,23 +143,24 @@ def shift(und: str, now: float | None = None) -> dict:
         k = since_open["centre_shift_strikes"]
         if k:
             reads.append(f"Straddle centre has shifted {'UP' if k > 0 else 'DOWN'} {abs(k)} strike(s) since "
-                         f"{dt.datetime.fromtimestamp(first['t'], IST):%H:%M} ({first['centre']:g} → {cur['centre']:g}): option prices have re-centred "
+                         f"{dt.datetime.fromtimestamp(first['t'], IST):%H:%M} IST ({first['centre']:g} → {cur['centre']:g}): option prices have re-centred "
                          f"{'higher - bullish drift' if k > 0 else 'lower - bearish drift'}.")
         else:
             reads.append(f"Straddle centre unchanged at {cur['centre']:g} since {dt.datetime.fromtimestamp(first['t'], IST):%H:%M}: no re-centring (range-like).")
         sc, sp = since_open["straddle_chg_pct"], since_open["spot_chg_pct"]
         if sc is not None:
             if sc <= -10 and abs(sp or 0) < 0.4:
-                reads.append(f"ATM straddle {sc:+.1f}% since open with the index almost flat ({sp:+.2f}%): time decay / IV falling - favours option sellers, works against buyers.")
+                reads.append(f"ATM straddle {sc:+.1f}% since open with {'the price' if crypto else 'the index'} almost flat ({sp:+.2f}%): time decay / IV falling - favours option sellers, works against buyers.")
             elif sc >= 8:
                 reads.append(f"ATM straddle {sc:+.1f}% since open: premiums expanding (IV up or a fast move) - caution for sellers.")
             else:
-                reads.append(f"ATM straddle {sc:+.1f}% since open (index {sp:+.2f}%).")
+                reads.append(f"ATM straddle {sc:+.1f}% since open ({'price' if crypto else 'index'} {sp:+.2f}%).")
+        what = und if crypto else "Index"
         if cur["spot"] > first["atm"] + first["atm_straddle"] or cur["spot"] < first["atm"] - first["atm_straddle"]:
-            reads.append(f"Index {cur['spot']:,.0f} is OUTSIDE the opening straddle's breakevens ({first['atm'] - first['atm_straddle']:,.0f} – "
+            reads.append(f"{what} {cur['spot']:,.0f} is OUTSIDE the opening straddle's breakevens ({first['atm'] - first['atm_straddle']:,.0f} – "
                          f"{first['atm'] + first['atm_straddle']:,.0f}): the opening range priced by options has been broken - short straddles are losing.")
         else:
-            reads.append(f"Index is inside the opening straddle's breakevens ({first['atm'] - first['atm_straddle']:,.0f} – {first['atm'] + first['atm_straddle']:,.0f}).")
+            reads.append(f"{what} is inside the opening straddle's breakevens ({first['atm'] - first['atm_straddle']:,.0f} – {first['atm'] + first['atm_straddle']:,.0f}).")
     if m15:
         k = m15["centre_shift_strikes"]
         s15 = m15["straddle_chg_pct"]
@@ -173,7 +178,8 @@ def shift(und: str, now: float | None = None) -> dict:
             "expected_move": 0.85 * cur["atm_straddle"], "curve": p.get("curve"), "days": p.get("days"),
             "open": {"t": first["t"], "centre": first["centre"], "atm": first["atm"], "atm_straddle": first["atm_straddle"], "spot": first["spot"]},
             "since_open": since_open, "last_15m": m15, "last_30m": m30, "readings": reads, "series": series[-400:],
-            "source": "FYERS option chain (nearest expiry), mid of bid/ask", "snapshots": len(rows)}
+            "source": ("Delta Exchange India options (nearest expiry with 2 h+ left), mid of bid/ask" if crypto
+                       else "FYERS option chain (nearest expiry), mid of bid/ask"), "snapshots": len(rows)}
 
 
 def nse_open(now: float) -> bool:

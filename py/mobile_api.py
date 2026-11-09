@@ -138,6 +138,13 @@ async def _agent(p: str, q: dict, method: str, body: dict | None = None):
     import time
     _phone_agent_defaults()
     from backend.agent import straddle as SD
+    if p == "straddle" and method == "GET" and q.get("market") == "crypto" and not _AGENT["started"]:
+        # crypto page without the agent page: snapshot BTC / ETH from Delta when the block asks (at most every minute)
+        from backend.agent import cstraddle as CS
+        if time.time() - (CS.STATUS.get("last") or 0) >= 60:
+            await CS.run_once()
+        CS.STATUS["running"] = True
+        return CS.report()
     if p == "straddle" and method == "GET" and not _AGENT["started"]:
         # dashboard without the agent page: take the snapshot when the block asks, at the budget-aware pace
         now = time.time()

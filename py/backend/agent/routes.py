@@ -327,8 +327,12 @@ async def observations(symbol: str | None = None, limit: int = Query(20, ge=1, l
 
 
 @router.get("/straddle")
-async def straddle():
-    """Straddle monitor for the options-desk indices: current ATM straddle, its centre and how both have shifted."""
+async def straddle(market: str = Query("india", pattern="^(india|crypto)$")):
+    """Straddle monitor: options-desk indices (market=india, FYERS) or BTC / ETH (market=crypto, Delta Exchange):
+    current ATM straddle, its centre and how both have shifted."""
+    if market == "crypto":
+        from . import cstraddle as CS
+        return CS.report()
     from . import straddle as SD
     return SD.report()
 
@@ -337,11 +341,16 @@ _last_refresh = {"t": 0.0}
 
 
 @router.post("/straddle/refresh")
-async def straddle_refresh(req: Request):
+async def straddle_refresh(req: Request, market: str = Query("india", pattern="^(india|crypto)$")):
     """Take a snapshot now (at most every 20 s, to protect the FYERS limits)."""
     import time as _t
     from . import straddle as SD
     _local(req)
+    if market == "crypto":
+        from . import cstraddle as CS
+        if _t.time() - (CS.STATUS.get("last") or 0) >= 20:
+            await CS.run_once()
+        return CS.report()
     if _t.time() - _last_refresh["t"] < 20:
         return SD.report()
     _last_refresh["t"] = _t.time()

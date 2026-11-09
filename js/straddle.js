@@ -1,10 +1,11 @@
 /* MarketMiner Straddle Monitor block. Usage: <div id="mmStraddle"></div><script src="/js/straddle.js"></script>
-   Data: GET /api/agent/straddle (recorded every minute while NSE is open). Information only. */
+   Indices: GET /api/agent/straddle (recorded every minute while NSE is open).
+   Crypto:  <div id="mmStraddle" data-market="crypto"> -> BTC / ETH from Delta Exchange, every minute, 24/7. Information only. */
 (function () {
   const CSS = `
 .mmsd{margin:10px 16px;border:1px solid #1b2536;border-radius:10px;background:#0d1117;padding:12px;font-family:Inter,system-ui,sans-serif;color:#e2e8f0}
 .mmsd h3{font:700 .72rem 'JetBrains Mono',ui-monospace,monospace;color:#8b9ab5;letter-spacing:.6px;text-transform:uppercase;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-.mmsd .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:10px}
+.mmsd .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:10px}
 .mmsd .c{border:1px solid #263450;border-radius:9px;background:#06080f;padding:10px;min-width:0}
 .mmsd .hd{display:flex;justify-content:space-between;align-items:baseline;gap:6px;margin-bottom:8px}
 .mmsd .hd b{font:800 1rem 'JetBrains Mono',monospace;color:#18ffff}.mmsd .hd span{font:600 .64rem 'JetBrains Mono',monospace;color:#5b6b85}
@@ -38,7 +39,7 @@
     });
     return `<path d="${d}" fill="none" stroke="${col}" stroke-width="1.6"/>`;
   }
-  function charts(x) {
+  function charts(x, cr) {
     const s = x.series || [];
     if (s.length < 2) return `<div class="lbl"><span>charts appear after two snapshots</span></div>`;
     const W = 300, H = 70;
@@ -47,7 +48,7 @@
     const mn = Math.min(...lvl), mx = Math.max(...lvl);
     return `<div class="lbl"><span>ATM straddle premium</span><span>${n(Math.min(...prem))} – ${n(Math.max(...prem))}</span></div>
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${line(prem, W, H, "#FFD700")}</svg>
-      <div class="lbl"><span><span style="color:#18ffff">━ centre (cheapest straddle)</span> <span style="color:#8b9ab5">━ index</span></span><span>${tm(s[0].t)} → ${tm(s[s.length - 1].t)}</span></div>
+      <div class="lbl"><span><span style="color:#18ffff">━ centre (cheapest straddle)</span> <span style="color:#8b9ab5">━ ${cr ? "spot" : "index"}</span></span><span>${tm(s[0].t)} → ${tm(s[s.length - 1].t)}</span></div>
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${line(s.map(p => p.spot), W, H, "#8b9ab5", mn, mx)}${line(s.map(p => p.centre), W, H, "#18ffff", mn, mx, true)}</svg>`;
   }
   function curve(x) {
@@ -63,41 +64,42 @@
     return `<div class="lbl"><span>straddle by strike (<span style="color:#18ffff">centre</span> · <span style="color:#FFD700">ATM</span>)</span><span>${n(c[0].strike, 0)} – ${n(c[c.length - 1].strike, 0)}</span></div>
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:46px">${bars}</svg>`;
   }
-  function card(x) {
+  function card(x, cr) {
     if (!x.available) return `<div class="c"><div class="hd"><b>${esc(x.und)}</b></div><div class="na">${esc(x.note)}</div></div>`;
     const so = x.since_open || {}, m15 = x.last_15m || {};
     return `<div class="c">
       <div class="hd"><div><b>${esc(x.und)}</b><span class="tag ${x.live ? "live" : "old"}">${x.live ? "LIVE" : "SESSION " + esc(x.session)}</span></div>
         <span>expiry ${esc(x.expiry)} · ${tm(x.as_of)} · ${x.snapshots} snaps</span></div>
       <div class="m">
-        <div class="k"><span>Index</span><b>${n(x.spot, 1)}</b><i>${pc(so.spot_chg_pct)} since open</i></div>
-        <div class="k"><span>ATM ${n(x.atm, 0)} straddle</span><b style="color:#FFD700">${n(x.atm_straddle, 1)}</b><i>CE ${n(x.ce)} + PE ${n(x.pe)}</i></div>
+        <div class="k"><span>${cr ? "Spot" : "Index"}</span><b>${n(x.spot, 1)}</b><i>${pc(so.spot_chg_pct)} since ${cr ? "00:00 UTC" : "open"}</i></div>
+        <div class="k"><span>ATM ${n(x.atm, 0)} straddle${cr ? " ($)" : ""}</span><b style="color:#FFD700">${n(x.atm_straddle, 1)}</b><i>CE ${n(x.ce)} + PE ${n(x.pe)}</i></div>
         <div class="k"><span>Straddle change</span><b>${pc(so.straddle_chg_pct)}</b><i>15m ${pc(m15.straddle_chg_pct)}</i></div>
         <div class="k"><span>Centre (cheapest)</span><b style="color:#18ffff">${n(x.centre, 0)}</b><i>open ${n((x.open || {}).centre, 0)} ${arrow(so.centre_shift_strikes || 0)}</i><i>15m ${arrow(m15.centre_shift_strikes || 0)} strikes</i></div>
         <div class="k"><span>Breakevens</span><b style="font-size:.72rem;white-space:nowrap">${n(x.be_low, 0)}–${n(x.be_high, 0)}</b><i>exp. move ±${n(x.expected_move, 0)}</i></div>
         <div class="k"><span>ATM IV</span><b>${n(x.iv, 1)}%</b><i>forward ${n(x.forward, 1)}</i></div>
       </div>
-      ${charts(x)}${curve(x)}
+      ${charts(x, cr)}${curve(x)}
       <ul>${(x.readings || []).map(r => `<li>${esc(r)}</li>`).join("")}</ul></div>`;
   }
   async function load(el, refresh) {
+    const cr = el.dataset.market === "crypto";
     try {
-      const r = await fetch("/api/agent/straddle" + (refresh ? "/refresh" : ""), {method: refresh ? "POST" : "GET", cache: "no-store"});
+      const r = await fetch("/api/agent/straddle" + (refresh ? "/refresh" : "") + (cr ? "?market=crypto" : ""), {method: refresh ? "POST" : "GET", cache: "no-store"});
       if (r.status === 404) throw new Error("MarketMiner is still running the previous version. Close the MarketMiner server window and start launch_marketminer.cmd again to load the straddle monitor.");
       const d = await r.json();
       if (!r.ok) throw new Error(d.detail || r.status);
       const st = d.status || {};
       const errs = Object.entries(st.errors || {}).map(([k, v]) => `${k}: ${v}`).join(" · ");
-      el.innerHTML = `<div class="mmsd"><h3><span>Straddle monitor · where the straddle is and where it is shifting</span>
-        <span><span style="color:#5b6b85;font-weight:500;text-transform:none">${st.market_open ? "recording every minute" : "market closed: last session shown"}${st.last ? " · last " + tm(st.last) : ""}</span>
+      el.innerHTML = `<div class="mmsd"><h3><span>${cr ? "Crypto straddle · BTC / ETH options" : "Straddle monitor"} · where the straddle is and where it is shifting</span>
+        <span><span style="color:#5b6b85;font-weight:500;text-transform:none">${cr ? "recording every minute, 24/7" : st.market_open ? "recording every minute" : "market closed: last session shown"}${st.last ? " · last " + tm(st.last) : ""}</span>
         <button class="btn" id="mmsdRef">↻ Snapshot now</button></span></h3>
-        <div class="g">${(d.indices || []).map(card).join("")}</div>
+        <div class="g">${(d.indices || []).map((x) => card(x, cr)).join("")}</div>
         ${errs ? `<div class="lbl"><span class="wa">${esc(errs)}</span></div>` : ""}
-        <div class="lbl"><span>Source: FYERS option chain, nearest expiry, mid of bid/ask. Centre = strike with the lowest call+put premium. Information only.</span></div></div>`;
+        <div class="lbl"><span>${cr ? "Source: Delta Exchange India options, nearest expiry with 2 h+ left (Delta settles 17:30 IST), mid of bid/ask, else mark price; day = 00:00 UTC (05:30 IST). Prices in USD." : "Source: FYERS option chain, nearest expiry, mid of bid/ask."} Centre = strike with the lowest call+put premium. Information only.</span></div></div>`;
       const b = el.querySelector("#mmsdRef");
       if (b) b.onclick = () => { b.textContent = "…"; load(el, true); };
     } catch (e) {
-      el.innerHTML = `<div class="mmsd"><h3>Straddle monitor</h3><div class="na">Straddle data unavailable: ${esc(e.message)}</div></div>`;
+      el.innerHTML = `<div class="mmsd"><h3>${cr ? "Crypto straddle" : "Straddle monitor"}</h3><div class="na">Straddle data unavailable: ${esc(e.message)}</div></div>`;
     }
   }
   function mount(el) {
@@ -110,6 +112,6 @@
     setInterval(() => load(el), 60000);
   }
   window.MMStraddle = {mount};
-  const auto = () => mount(document.getElementById("mmStraddle"));
+  const auto = () => document.querySelectorAll("#mmStraddle,[data-mmstraddle]").forEach(mount);
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", auto); else auto();
 })();

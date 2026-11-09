@@ -6,6 +6,7 @@
 "backend/agent/airisk.py",
 "backend/agent/bookings.py",
 "backend/agent/config.py",
+"backend/agent/cstraddle.py",
 "backend/agent/db.py",
 "backend/agent/diagnose.py",
 "backend/agent/execution.py",

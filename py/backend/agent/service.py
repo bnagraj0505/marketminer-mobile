@@ -449,6 +449,8 @@ def start() -> None:
     sweep.start()                                         # observe-only Market Intelligence coverage (no trades)
     from . import straddle as SD
     SD.start()                                            # straddle monitor: one chain snapshot per index per minute (NSE hours)
+    from . import cstraddle as CS
+    CS.start()                                            # crypto straddle monitor: BTC / ETH on Delta Exchange, every minute, 24/7
 
 
 async def emergency_stop(reason: str) -> dict:
