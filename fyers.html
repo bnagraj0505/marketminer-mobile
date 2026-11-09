@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.09k"></script><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script src="js/engine.js?v=2026.11.09l"></script>
+<script src="js/angel.js?v=2026.11.09l"></script><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f"><title>MarketMiner · Connections</title>
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -68,6 +69,15 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--t2);font:.7rem/1.5 v
   <div id="renewMsg" class="fine" style="margin-top:6px"></div>
 </div>
 <p class="fine" style="margin-top:10px">Data only: MarketMiner Mobile never places orders. Your FYERS details stay on this device. The day's login ends at 06:30 IST. After one full <b>Connect FYERS</b> login, renew each morning with just your FYERS PIN for the next 15 days. The PIN is sent once to FYERS and never saved.</p></div></section>
+<section class="panel full" id="angelPanel"><div class="cd-h"><span class="cd-t">⚡ Angel One · live India prices</span><span id="angelStatus" class="status"><i class="dot"></i><span>Checking…</span></span></div><div class="cd-b">
+<p class="muted" style="margin-bottom:10px">Free live prices for the Indian symbols you are looking at. While they flow, prices are not asked of FYERS, so the FYERS budget only goes on candle history. Logs in to Angel One by itself every day. <b>Data only: nothing here can place an order.</b> Whether Angel One lets a web page connect is up to Angel: press <b>Test</b> after saving to see if it works on this device (if not, FYERS keeps working as before).</p>
+<div class="row"><label class="lbl" for="agClient">Client code</label><input id="agClient" style="flex:1;min-width:140px" autocomplete="off" autocapitalize="characters" placeholder="e.g. A123456"></div>
+<div class="row"><label class="lbl" for="agKey">SmartAPI key</label><input id="agKey" style="flex:1;min-width:180px" autocomplete="off" autocapitalize="off" placeholder="app type: Market Feeds"></div>
+<div class="row"><label class="lbl" for="agMpin">MPIN</label><input id="agMpin" type="password" inputmode="numeric" style="flex:1;min-width:110px" autocomplete="new-password" placeholder="4-6 digits"></div>
+<div class="row"><label class="lbl" for="agTotp">TOTP secret</label><input id="agTotp" type="password" style="flex:1;min-width:180px" autocomplete="new-password" autocapitalize="characters" placeholder="the text behind the TOTP QR code"></div>
+<div class="row" style="margin-top:12px;flex-wrap:wrap"><button id="agSave">Save</button><button id="agTest">Test</button><label class="muted" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="agOn" checked> use for live prices</label><button id="agForget" style="margin-left:auto">Forget</button></div>
+<div id="agMsg" class="muted" style="margin-top:8px;white-space:pre-wrap"></div>
+<p class="fine" style="margin-top:10px">Set-up, once: (1) at <b>smartapi.angelone.in</b> create an app of type <b>Market Feeds</b> and copy its API key; (2) in the Angel One app turn on TOTP and keep the <b>secret</b> shown under the QR code. Everything stays on this device only; the MPIN and TOTP secret are encrypted with a key this browser cannot export. Leave a box empty to keep what is saved. Each device you use needs its own set-up.</p></div></section>
 <section class="panel full" id="cryptoPanel"><div class="cd-h"><span class="cd-t">₿ Crypto market data</span><span class="fine">Public, read-only · no API key · no orders</span></div><div class="cd-b">
 <p class="muted" style="margin-bottom:10px">Binance spot (data-api.binance.vision), Binance USD-M futures (fapi.binance.com), Delta Exchange perpetual futures (in place of Shark, which phones can't reach) and Delta Exchange India options (api.india.delta.exchange). Switch them on here, then pick the market on the Day Desk.</p>
 <div class="cards" id="cryptoCards"></div></div></section>
@@ -119,4 +129,19 @@ async function testFeed(m){const t=$('t_'+m);t.textContent='Testing…';try{cons
 loadCrypto();
 
 if(location.search.includes('connected=1'))log('FYERS login completed. You can open the Day Desk now.');
+
+// ---- Angel One (live India prices, this device)
+function angelUI(){const G=window.MM&&MM.angel;if(!G){$('angelStatus').lastElementChild.textContent='not available';return}
+  const c=G.publicCfg(),st=G.status();if(c.client_code&&!$('agClient').value)$('agClient').value=c.client_code;
+  $('agKey').placeholder=c.api_key_hint?('saved: '+c.api_key_hint):'app type: Market Feeds';$('agMpin').placeholder=c.mpin_set?'saved (leave empty to keep)':'4-6 digits';
+  $('agTotp').placeholder=c.totp_set?'saved (leave empty to keep)':'the text behind the TOTP QR code';$('agOn').checked=c.enabled;
+  const el=$('angelStatus');el.className='status '+(st.active?'ok':c.configured?'':'bad');
+  el.lastElementChild.textContent=st.active?`Live · ${st.subscribed} symbols · last tick ${st.last_tick_age_s}s ago`:c.configured?(st.state==='off'?'Ready · starts when Indian prices are on screen':st.state):'Not set up'}
+$('agSave').onclick=async()=>{$('agMsg').textContent='Saving…';try{await MM.angel.saveCfg({client_code:$('agClient').value,api_key:$('agKey').value,mpin:$('agMpin').value,totp_secret:$('agTotp').value,enabled:$('agOn').checked});
+  $('agMpin').value=$('agTotp').value=$('agKey').value='';$('agMsg').textContent='Saved on this device. Press Test to check it.';angelUI()}catch(e){$('agMsg').textContent='Not saved: '+e.message}};
+$('agOn').onchange=()=>$('agSave').onclick();
+$('agTest').onclick=async()=>{$('agMsg').textContent='Logging in to Angel One…';const r=await MM.angel.test();
+  $('agMsg').textContent=(r.ok?'✓ ':'✗ ')+[r.login&&('login '+r.login),r.master&&('instrument list '+r.master),r.nifty_token&&('NIFTY 50 token '+r.nifty_token[1]),r.stream&&('live stream '+r.stream),r.error].filter(Boolean).join('\n');angelUI()};
+$('agForget').onclick=()=>{if(!confirm('Remove the Angel One settings from this device?'))return;MM.angel.forget();$('agClient').value='';$('agMsg').textContent='Removed.';angelUI()};
+angelUI();setInterval(angelUI,5000);
 </script></body></html>

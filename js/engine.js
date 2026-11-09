@@ -685,5 +685,5 @@
     catch (e) { const st = e.status || 502; return json({ detail: e.message || String(e) }, st); }
   };
 
-  window.MM = { FY, LS, HE, getJ, cached, cryptoOptions: options, version: "2026.11.09k" };
+  window.MM = { FY, LS, HE, getJ, cached, cryptoOptions: options, version: "2026.11.09l" };
 })();
