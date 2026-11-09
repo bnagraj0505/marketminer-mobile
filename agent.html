@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>window.MM_AGENT=true</script>
+<script src="js/engine.js?v=2026.11.09"></script>
+<script src="js/desk.js?v=2026.11.09"></script>
+<script src="js/lab.js?v=2026.11.09"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06080f">
+<title>📱 MarketMiner · AI Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg0:#06080f;--bg1:#0d1117;--bg2:#131a27;--bg3:#182030;--bdr:#1b2536;--bdr2:#263450;--t1:#e2e8f0;--t2:#8b9ab5;--t3:#5b6b85;--g:#00e676;--gb:rgba(0,230,118,.08);--r:#ff5252;--rb:rgba(255,82,82,.08);--a:#ffab00;--ab:rgba(255,171,0,.08);--b:#448aff;--cy:#18ffff;--gd:#FFD700;--mono:'JetBrains Mono',ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg0);color:var(--t1);min-height:100vh;overflow-x:hidden}
+a{color:inherit}.mono{font-family:var(--mono)}
+.header{position:sticky;top:0;z-index:50;background:rgba(6,8,15,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);padding:8px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-family:var(--mono);font-weight:800;font-size:1.45rem;letter-spacing:-.5px}.logo .m{color:var(--cy)}.logo .s{color:var(--gd)}
+.logo small{font:600 .7rem var(--mono);color:var(--t3);margin-left:8px;letter-spacing:.5px}
+.hr{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--bg2);border:1px solid var(--bdr2);color:var(--t2);padding:6px 11px;border-radius:6px;cursor:pointer;font:600 .74rem var(--mono);text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--cy);color:var(--cy)}
+.btn.pri{background:rgba(24,255,255,.08);border-color:rgba(24,255,255,.35);color:var(--cy)}
+.btn.ok{background:var(--gb);border-color:rgba(0,230,118,.4);color:var(--g)}
+.btn.bad{background:var(--rb);border-color:rgba(255,82,82,.5);color:var(--r)}
+.btn.estop{background:#3a0d12;border:1px solid var(--r);color:#fff;font-weight:800;letter-spacing:.5px}
+.btn.estop:hover{background:#5a1018;color:#fff}
+.btn.sm{padding:3px 8px;font-size:.68rem}.btn:disabled{opacity:.4;cursor:not-allowed}
+.paper{font:700 .62rem var(--mono);color:var(--a);border:1px solid rgba(255,171,0,.4);background:var(--ab);padding:3px 7px;border-radius:4px;letter-spacing:.5px}
+.wrap{max-width:1500px;margin:0 auto;padding:12px 16px 80px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--bdr);margin-bottom:12px}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--t3);padding:8px 12px;font:700 .74rem var(--mono);cursor:pointer;letter-spacing:.4px}
+.tabs button.on{color:var(--gd);border-bottom-color:var(--gd)}
+.seg{display:inline-flex;border:1px solid var(--bdr2);border-radius:6px;overflow:hidden}
+.seg button{background:var(--bg1);border:0;border-right:1px solid var(--bdr2);color:var(--t2);padding:6px 10px;font:600 .72rem var(--mono);cursor:pointer}
+.seg button:last-child{border-right:0}.seg button.on{background:rgba(255,215,0,.12);color:var(--gd)}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;align-items:start}
+.g2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px;align-items:start}
+@media(max-width:1000px){.g2{grid-template-columns:1fr}}
+.cd{background:var(--bg1);border:1px solid var(--bdr);border-radius:9px;padding:12px;min-width:0;margin-bottom:10px}
+.cd h3{font:700 .7rem var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.statebar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:10px 12px;border:1px solid var(--bdr);border-radius:9px;background:var(--bg1);margin-bottom:10px}
+.pill{font:800 .78rem var(--mono);padding:5px 10px;border-radius:5px;letter-spacing:.6px}
+.pill.run{color:var(--g);background:var(--gb);border:1px solid rgba(0,230,118,.4)}
+.pill.stop{color:var(--t2);background:var(--bg2);border:1px solid var(--bdr2)}
+.pill.bad{color:#fff;background:#5a1018;border:1px solid var(--r)}
+.kv{font:500 .72rem var(--mono);color:var(--t3)}.kv b{color:var(--t1);font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:600 .68rem var(--mono);padding:5px 8px;border-radius:6px;border:1px solid var(--bdr2);background:var(--bg2);color:var(--t2)}
+.chip b{color:var(--t1)}.chip.okc{border-color:rgba(0,230,118,.35)}.chip.badc{border-color:rgba(255,82,82,.45);color:var(--r)}
+.metric{display:flex;flex-direction:column;gap:3px;padding:9px;border:1px solid var(--bdr);border-radius:7px;background:var(--bg2)}
+.metric span{font:600 .62rem var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+.metric b{font:700 1.05rem var(--mono)}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:7px}
+.bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:4px}.bar i{display:block;height:100%;background:var(--g)}
+.bar i.w{background:var(--a)}.bar i.x{background:var(--r)}
+table{width:100%;border-collapse:collapse;font:500 .72rem var(--mono)}
+th{text-align:left;color:var(--t3);font-weight:600;padding:6px;border-bottom:1px solid var(--bdr);white-space:nowrap}
+td{padding:6px;border-bottom:1px solid var(--bdr);vertical-align:top}
+tr.clk{cursor:pointer}tr.clk:hover td{background:var(--bg2)}
+.tw{overflow-x:auto}
+.up{color:var(--g)}.dn{color:var(--r)}.wa{color:var(--a)}.mu{color:var(--t3)}
+.tag{font:700 .6rem var(--mono);padding:2px 6px;border-radius:4px;letter-spacing:.4px;white-space:nowrap}
+.tag.ap{color:var(--g);background:var(--gb)}.tag.rj{color:var(--r);background:var(--rb)}.tag.ob{color:var(--b);background:rgba(68,138,255,.1)}.tag.dc{color:var(--t3);background:var(--bg3)}
+.checks{display:grid;gap:3px;margin:6px 0}
+.checks div{font:500 .7rem var(--mono);color:var(--t2);display:grid;grid-template-columns:18px 190px 1fr;gap:6px}
+.checks .f{color:var(--r)}.checks .s{color:var(--a)}
+.det{background:var(--bg0);border:1px solid var(--bdr);border-radius:7px;padding:10px;margin:4px 0 8px}
+.log{font:500 .7rem var(--mono);max-height:560px;overflow:auto}
+.log div{padding:4px 6px;border-bottom:1px solid var(--bdr);display:grid;grid-template-columns:70px 90px 1fr;gap:8px}
+.log .warn{color:var(--a)}.log .error{color:var(--r)}
+.set{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.set label{font:600 .68rem var(--mono);color:var(--t3);display:flex;flex-direction:column;gap:4px}
+.set input,.set select,textarea{background:var(--bg0);border:1px solid var(--bdr2);color:var(--t1);padding:6px 8px;border-radius:6px;font:600 .78rem var(--mono)}
+textarea{width:100%;min-height:70px}
+.note{font:500 .7rem var(--mono);color:var(--t3);line-height:1.5}
+.empty{padding:16px;text-align:center;color:var(--t3);font:500 .74rem var(--mono)}
+.toast{position:fixed;bottom:16px;right:16px;background:var(--bg2);border:1px solid var(--bdr2);color:var(--t1);padding:10px 14px;border-radius:8px;font:600 .74rem var(--mono);z-index:99;max-width:420px;display:none}
+svg.eq{width:100%;height:90px}
+.hide{display:none}
+.capg{display:grid;grid-template-columns:1fr 1fr;gap:12px}.capg>.note{grid-column:1/-1}
+.capg .mgrid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+@media(max-width:900px){.capg{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo"><span class="m">MARKET</span><span class="s">MINER</span><small>AI AGENT</small> <span class="paper" style="color:#18ffff;border-color:rgba(24,255,255,.4);background:rgba(24,255,255,.06)">📱 RUNS WHILE THIS PAGE IS OPEN</span><span class="paper">PAPER ONLY</span></div>
+  <div class="hr">
+    <a class="btn" href="index.html">← Dashboard</a>
+    <a class="btn" href="lab.html">◎ Signal Lab</a>
+    <a class="btn" href="perf.html?src=agent">📊 Paper P&amp;L</a>
+    <a class="btn" href="desk.html">Day Desk</a>
+    <a class="btn" href="fyers.html">Connections</a>
+  </div>
+</div>
+<div class="wrap">
+  <div class="statebar" id="statebar"><span class="pill stop">LOADING…</span></div>
+  <div class="tabs" id="tabs">
+    <button data-t="overview" class="on">OVERVIEW</button><button data-t="intel">MARKET INTELLIGENCE</button><button data-t="perf">PERFORMANCE</button>
+    <button data-t="diag" style="color:var(--a)">⚠ WHERE IT'S FAILING</button><button data-t="learn">LEARNING CENTRE</button><button data-t="ml">ML &amp; WORKBENCH</button><button data-t="log">ACTIVITY LOG</button><button data-t="settings">SETTINGS</button>
+  </div>
+
+  <section id="t-overview">
+    <div class="cd"><h3>Capital protection <span id="haltBox"></span></h3><div class="capg" id="capital"></div></div>
+    <div class="cd"><h3>Active positions</h3><div class="tw" id="positions"></div></div>
+    <div id="mmBookings"></div>
+    <div class="cd"><h3>AI trade opportunities <span class="note">every decision, approved or not · click a row for the Risk Guardian's checks</span></h3><div class="tw" id="opps"></div></div>
+  </section>
+
+  <section id="t-intel" class="hide"><div id="mmRetrace" style="margin:0 -16px"></div><div id="mmPbook" style="margin:0 -16px"></div><div id="mmStraddle" style="margin:0 -16px"></div><div id="intel"></div></section>
+  <section id="t-perf" class="hide"><div id="perf"></div></section>
+  <section id="t-diag" class="hide"><div id="diag"><div class="cd"><div class="note">Analysing…</div></div></div></section>
+  <section id="t-learn" class="hide"><div id="learn"></div></section>
+  <section id="t-ml" class="hide"><div id="mlbench"></div></section>
+  <section id="t-log" class="hide">
+    <div class="cd"><h3>Agent activity log <span class="hr"><select id="logKind" class="btn sm"><option value="">all</option><option>guardian</option><option>execution</option><option>analysis</option><option>review</option><option>learning</option><option>research</option><option>data</option><option>monitor</option><option>control</option><option>emergency</option><option>error</option></select></span></h3><div class="log" id="log"></div></div>
+  </section>
+  <section id="t-settings" class="hide"><div id="settings"></div></section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = "/api/agent";
+const S = {tab: "overview", status: null, open: {}, settingsDirty: false};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const num = (x, d = 2) => x === null || x === undefined || isNaN(x) ? "–" : Number(x).toLocaleString("en-IN", {maximumFractionDigits: d, minimumFractionDigits: 0});
+const px = x => x === null || x === undefined ? "–" : Math.abs(x) >= 1000 ? num(x, 2) : Math.abs(x) >= 1 ? num(x, 4) : num(x, 6);
+const sgn = x => x > 0 ? "up" : x < 0 ? "dn" : "mu";
+const ago = t => { if (!t) return "–"; const s = Math.round(Date.now() / 1000 - t); return s < 60 ? s + "s ago" : s < 3600 ? Math.round(s / 60) + "m ago" : s < 86400 ? Math.round(s / 3600) + "h ago" : Math.round(s / 86400) + "d ago"; };
+const tm = t => t ? new Date(t * 1000).toLocaleString("en-IN", {day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false}) : "–";
+function toast(m, bad) { const t = $("toast"); t.textContent = m; t.style.display = "block"; t.style.borderColor = bad ? "var(--r)" : "var(--bdr2)"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 5000); }
+async function get(p) { const r = await fetch(API + p, {cache: "no-store"}); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.status); return r.json(); }
+async function post(p, body) {
+  const r = await fetch(API + p, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { toast(j.detail || ("HTTP " + r.status), true); throw new Error(j.detail); }
+  return j;
+}
+
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
+  S.tab = b.dataset.t;
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("hide", s.id !== "t-" + S.tab));
+  refresh(true);
+});
+$("logKind").onchange = () => loadLog();
+
+// ---------------------------------------------------------------- A. status bar
+function renderStatus(s) {
+  const cls = s.state === "RUNNING" ? "run" : s.state === "STOPPED" ? "stop" : "bad";
+  const syms = Object.entries(s.symbols || {});
+  const oc = s.config.options || {};
+  const scanM = ((s.options || {}).scan || {}).movers || [];
+  const watch = (s.config.symbols || []).concat(oc.enabled ? [...(oc.index || []), ...(oc.stocks || []), ...scanM].filter((x, i, a) => a.indexOf(x) === i).map(u => "OPT:" + u) : []);
+  const chips = watch.map(sym => {
+    const k = sym + "|" + s.config.tf, x = (s.symbols || {})[k];
+    if (!x) return `<span class="chip" title="not analysed yet (market closed or waiting for the next candle)">${esc(sym.replace("OPT:", "⚙ "))} <span class="mu">waiting</span></span>`;
+    if (x.state === "DATA UNAVAILABLE") return `<span class="chip badc" title="${esc(x.detail)}">${esc(sym)} DATA UNAVAILABLE</span>`;
+    return `<span class="chip ${x.quality_ok ? "okc" : "badc"}" title="source ${esc(x.source)} · as of ${tm(x.as_of)}${x.quality_blocks && x.quality_blocks.length ? " · " + esc(x.quality_blocks.join("; ")) : ""}">${esc(sym.replace("OPT:", "⚙ "))} <b>${esc(x.regime || "")}</b> · ${esc(x.bias || "")} · ${x.quality_ok ? "data ✓" : "data ✗"} · ${ago(x.t)}</span>`;
+  }).join("");
+  $("statebar").innerHTML = `
+    <span class="pill ${cls}">${esc(s.state)}</span>
+    <span class="seg" id="modeSeg">
+      <button data-m="intelligence" class="${s.mode === "intelligence" ? "on" : ""}" title="Analyse and explain; no orders">INTELLIGENCE</button>
+      <button data-m="paper" class="${s.mode === "paper" ? "on" : ""}" title="Autonomous paper trading">PAPER</button>
+      <button disabled title="${esc((s.live.missing || []).join(" · "))}">LIVE 🔒</button>
+    </span>
+    ${s.config.enabled ? `<button class="btn" onclick="ctl('stop')">■ Stop</button>` : `<button class="btn ok" onclick="ctl('start')" ${s.emergency.on ? "disabled" : ""}>▶ Start</button>`}
+    <button class="btn" onclick="runNow()" ${s.emergency.on ? "disabled" : ""}>Run cycle now</button>
+    ${s.emergency.on ? `<button class="btn" onclick="clearEmergency()">Clear emergency stop</button>` : `<button class="btn estop" onclick="emergency()">⛔ EMERGENCY STOP</button>`}
+    <span class="kv">timeframe <b>${esc(s.config.tf)}</b></span>
+    <span class="kv">last cycle <b>${ago(s.loop.last_cycle)}</b></span>
+    <span class="kv">open <b>${s.open_positions}/${s.risk.max_open}</b></span>
+    ${s.loop.last_error ? `<span class="kv dn">error: ${esc(s.loop.last_error)}</span>` : ""}
+    ${s.emergency.on ? `<span class="kv dn">EMERGENCY: ${esc(s.emergency.reason)} (${tm(s.emergency.t)})</span>` : ""}
+    <div class="chips" style="flex-basis:100%">${chips || '<span class="mu note">no symbols</span>'}</div>
+    <div class="note" style="flex-basis:100%">⚙ = options desk underlying${scanM.length ? " · F&O scan movers: " + esc(((s.options.scan || {}).detail || []).map(m => m.underlying + " " + num(m.chp, 2) + "%").join(", ")) : ""}${((s.options || {}).scan || {}).error ? ' · <span class="dn">scan: ' + esc(s.options.scan.error) + "</span>" : ""}</div>`;
+  document.querySelectorAll("#modeSeg button[data-m]").forEach(b => b.onclick = async () => { await post("/mode", {mode: b.dataset.m}); refresh(true); });
+}
+async function ctl(x) { await post("/" + x); refresh(true); }
+async function runNow() { toast("Running one cycle…"); const r = await post("/run"); toast(`Cycle done: ${Object.keys(r.symbols || {}).length} symbol(s) analysed, ${r.positions_closed.length} position(s) closed`); refresh(true); }
+async function emergency() {
+  const reason = prompt("EMERGENCY STOP\n\nCloses every open agent paper position at market, blocks all new entries and pauses the Telegram paper bot.\n\nReason:", "manual");
+  if (reason === null) return;
+  const r = await post("/emergency-stop", {reason});
+  toast(`Emergency stop ON · ${r.exits.length} position(s) closed · ${r.bot}`, true); refresh(true);
+}
+async function clearEmergency() { if (!confirm("Clear the emergency stop? The agent stays stopped until you press Start.")) return; await post("/emergency-clear"); await post("/stop"); refresh(true); }
+
+// ---------------------------------------------------------------- F. capital protection
+function renderCapital(s, p) {
+  const r = s.risk, out = [];
+  for (const cur of ["INR", "USD"]) {
+    const e = (p.equity || {})[cur]; if (!e) continue;
+    const inr = cur === "INR", x0 = (s.rules || {})[cur] || {};
+    const dl = inr ? (x0.part_budget || 0) : e.capital * r.daily_loss_pct / 100, wl = e.capital * r.weekly_loss_pct / 100;
+    const du = Math.max(0, -e.day_pnl) / dl * 100, wu = Math.max(0, -e.week_pnl) / wl * 100, ddu = e.drawdown_pct / r.max_drawdown_pct * 100;
+    const b = v => `<div class="bar"><i class="${v >= 100 ? "x" : v >= 60 ? "w" : ""}" style="width:${Math.min(100, v)}%"></i></div>`;
+    out.push(`<div><div class="mgrid">
+      <div class="metric"><span>${cur} equity (paper)</span><b>${num(e.equity, 0)}</b><span class="mu">capital ${num(e.capital, 0)} · peak ${num(e.peak, 0)}</span></div>
+      <div class="metric"><span>Risk per trade</span><b>${num(inr ? (x0.per_trade || 0) : e.equity * r.risk_pct / 100, 0)}</b><span class="mu">${inr ? "AI-decided (base, neutral setup)" : r.risk_pct + "% of equity"}</span></div>
+      <div class="metric"><span>Today</span><b class="${sgn(e.day_pnl)}">${num(e.day_pnl, 0)}</b><span class="mu">${inr ? "AI day stop" : "limit"} −${num(dl, 0)}${inr ? " · losing trades " + (x0.losses_today ?? 0) : ""}</span>${b(du)}</div>
+      <div class="metric"><span>This week</span><b class="${sgn(e.week_pnl)}">${num(e.week_pnl, 0)}</b><span class="mu">limit −${num(wl, 0)}</span>${b(wu)}</div>
+      <div class="metric"><span>Drawdown</span><b class="${e.drawdown_pct > 0 ? "dn" : ""}">${num(e.drawdown_pct, 2)}%</b><span class="mu">halt at ${r.max_drawdown_pct}%</span>${b(ddu)}</div>
+    </div></div>`);
+  }
+  const RU = s.rules || {};
+  for (const cur of ["INR", "USD"]) {
+    const x = RU[cur]; if (!x) continue;
+    const used = (x.open_risk + x.day_loss_used) / x.part_budget * 100;
+    const status = x.day_closed ? `<span class="dn">· DAY CLOSED: ${esc(x.day_closed)}</span>` : x.can_open ? '<span class="up">· can open a new trade</span>' : '<span class="wa">· no room for a new trade until a runner reaches breakeven or the day recovers</span>';
+    if (x.rule === "ai") out.push(`<div class="note" style="grid-column:1/-1"><b>INR:</b> capital ${num(r.capital_inr, 0)} · day capital <b>${num(r.inr_day_capital, 0)}</b> (fixed; in use ${num(x.capital_used || 0, 0)}) ·
+      <b>AI decides</b> stop, risk and lots per trade: now <b>${num(x.per_trade, 0)}</b> for an average setup · AI day stop <b>${num(x.part_budget, 0)}</b> (losing trades today ${x.losses_today}) ·
+      open risk ${num(x.open_risk, 0)} + today's loss ${num(x.day_loss_used, 0)} → room ${num(x.room, 0)} ${status}
+      ${(x.ai_factors || []).length ? `<div class="mu">${x.ai_factors.map(esc).join(" · ")}</div>` : ""}
+      <div class="bar"><i class="${used >= 100 ? "x" : used >= 60 ? "w" : ""}" style="width:${Math.min(100, used)}%"></i></div></div>`);
+    else out.push(`<div class="note" style="grid-column:1/-1"><b>${cur} rules:</b> equity ÷ ${r.capital_parts} = trading part <b>${num(x.part, 0)}</b> ·
+      ${r.part_risk_pct}% budget <b>${num(x.part_budget, 0)}</b> · per trade <b>${num(x.per_trade, 0)}</b> (${r.risk_slices} slices${x.derisked ? ", halved after losses" : ""}) ·
+      open risk ${num(x.open_risk, 0)} + today's loss ${num(x.day_loss_used, 0)} → room ${num(x.room, 0)} ${status}
+      <div class="bar"><i class="${used >= 100 ? "x" : used >= 60 ? "w" : ""}" style="width:${Math.min(100, used)}%"></i></div></div>`);
+  }
+  out.push(`<div class="note">Lots: as many as fit the risk and capital left; with 2+ lots half book at 1:${r.first_target_r} after costs and the rest go to breakeven and trail; a single lot moves to breakeven at 1:${r.first_target_r} and trails · concurrent positions ${s.open_positions}/${r.max_open} · max ${r.max_per_group} per correlated group · min reward:risk ${r.min_rr}R after costs ·
+    ${r.loss_streak_lockout} losses in a row lock the day · risk halves after ${r.derisk_after_losses} losses · ${r.cooldown_min} min cooldown per symbol after a loss ·
+    no martingale, no averaging, no unhedged option selling. Capital figures are PAPER equity.</div>`);
+  $("capital").innerHTML = out.join("");
+  $("haltBox").innerHTML = s.halt.on ? `<span class="dn">HALTED: ${esc(s.halt.reason)}</span> <button class="btn sm" onclick="clearHalt()">Clear halt</button>` : "";
+}
+async function clearHalt() { if (!confirm("Clear the drawdown halt? Review the Learning Centre first.")) return; await post("/halt-clear"); refresh(true); }
+
+// ---------------------------------------------------------------- C. opportunities
+const verdictTag = d => d.verdict === "APPROVED" ? `<span class="tag ap">${d.stage === "executed" ? "EXECUTED" : d.stage === "execution_skipped" ? "APPROVED · SKIPPED" : "APPROVED"}</span>`
+  : d.verdict === "REJECTED" ? `<span class="tag rj">REJECTED</span>` : d.verdict === "OBSERVE" ? `<span class="tag ob">OBSERVE</span>` : `<span class="tag dc">DECLINED</span>`;
+function renderOpps(rows) {
+  if (!rows.length) { $("opps").innerHTML = `<div class="empty">No decisions yet. Start the agent, or press "Run cycle now". Most candles qualify for nothing; that is normal.</div>`; return; }
+  $("opps").innerHTML = `<table><tr><th>When</th><th>Instrument</th><th>Side</th><th>Strategy</th><th>Entry</th><th>Stop</th><th>T1 / T2</th><th>Size</th><th>R:R net</th><th>Score</th><th>Guardian</th></tr>
+  ${rows.map(d => { const s = d.setup || {}, c = d.checks || {}, z = c.sizing || {};
+    return `<tr class="clk" onclick="toggleOpp(${d.id})"><td>${tm(d.t)}</td><td>${esc(d.symbol)}</td><td class="${s.direction === "LONG" ? "up" : "dn"}">${esc(s.direction)}</td>
+      <td>${esc(s.strategy_name || s.name || d.strategy)}</td>${s.options ? `<td colspan="3">${optCell(s.options, z)}</td>` : `<td>${px(s.entry)}</td><td>${px(s.stop)}</td><td>${s.targets && s.targets.length > 1 ? px(s.targets[0]) + " / " + px(s.targets[1]) : "–"}</td>`}
+      <td>${z.qty ? num(z.qty, 4) : "–"}</td><td>${z.rr_net ?? "–"}</td><td>${s.score !== undefined ? num(s.score, 0) : "–"}</td><td>${verdictTag(d)}${d.outcome ? `<div class="mu">${esc(d.outcome)}</div>` : ""}</td></tr>
+      ${S.open[d.id] ? `<tr><td colspan="11">${oppDetail(d)}</td></tr>` : ""}`; }).join("")}</table>`;
+}
+function optCell(o, z) {
+  const st = o.structure || {}, p = o.plan || {};
+  const legs = (st.legs || []).map(l => `<span class="${l.side === "BUY" ? "up" : "dn"}">${l.side === "BUY" ? "+" : "−"}${num(l.strike, 2)}${esc(l.type)}</span> ${px(l.side === "BUY" ? l.ask : l.bid)}`).join(" · ");
+  return `<b>${esc(st.label || "")}</b> ${esc(st.expiry || "")} <span class="mu">(${esc(st.iv_state || "")} IV, ${num(st.days, 1)}d)</span><div class="mu">${legs}</div>
+    <div class="mu">net ${p.v0 > 0 ? "debit" : "credit"} ${num(Math.abs(p.v0), 2)} · stop value ${num(p.sl_value, 2)} · lot 1 at ${num(p.tp1_value ?? p.tp_value, 2)} (1:2) · lot 2 trails ${num(p.trail_unit, 2)}${z && z.structural_max_loss ? " · worst case " + num(z.structural_max_loss, 0) : ""}</div>`;
+}
+function toggleOpp(id) { S.open[id] = !S.open[id]; loadOverview(); }
+function oppDetail(d) {
+  const s = d.setup || {}, c = d.checks || {}, ev = s.evidence || {};
+  const checks = (c.checks || []).map(k => `<div class="${k.ok ? "" : k.hard ? "f" : "s"}"><span>${k.ok ? "✓" : k.hard ? "✗" : "!"}</span><b>${esc(k.check)}</b><span>${esc(k.detail)}</span></div>`).join("");
+  return `<div class="det">
+    ${c.why ? `<div class="note"><b>Declined:</b> ${esc(c.why)}</div>` : ""}
+    <div class="note"><b>Regime:</b> ${esc(s.regime_label)} · volatility ${esc(s.volatility)} · <b>expected hold</b> ${esc(s.expected_hold)} · <b>data</b> ${esc(s.data_source)} as of ${tm(s.data_as_of)}</div>
+    <div class="note"><b>Invalidation:</b> ${esc(s.invalidation)}</div>
+    <div class="note"><b>Evidence for:</b> ${esc((s.reasons_for || []).join(" · "))}</div>
+    <div class="note"><b>Against:</b> ${esc((s.reasons_against || []).join(" · ") || "none recorded")}</div>
+    <div class="note"><b>Independent evidence families:</b> agree ${esc((ev.agree || []).join(", ") || "–")} · oppose ${esc((ev.oppose || []).join(", ") || "–")} · unavailable ${esc((ev.unavailable || []).join(", ") || "–")}</div>
+    ${s.seller_lens ? `<div class="note"><b>Seller's view:</b> <span class="${s.seller_lens.view === "bullish" ? "up" : s.seller_lens.view === "bearish" ? "dn" : "wa"}">${esc(s.seller_lens.view)}</span> (${esc(s.seller_lens.basis)}) · ${esc((s.seller_lens.reads || []).join(" · "))}</div>` : ""}
+    ${s.options ? `<div class="note"><b>Payoff (verified at expiry):</b> worst ${num((s.options.plan || {}).max_loss_unit, 2)}/unit · best ${num(((s.options.plan || {}).payoff || {}).max_gain, 2)}/unit · breakevens ${esc((((s.options.plan || {}).payoff || {}).breakevens || []).join(", "))} · ${((s.options.plan || {}).payoff || {}).unbounded ? '<span class="dn">UNBOUNDED</span>' : "loss capped"}</div>` : ""}
+    ${c.sizing && c.sizing.qty && c.sizing.kind ? `<div class="note"><b>Sizing:</b> ${c.sizing.lots} lot(s) × ${c.sizing.lot} = ${c.sizing.qty} units · planned loss ${num(c.sizing.max_loss)} of ${num(c.sizing.budget)} INR · worst case ${num(c.sizing.structural_max_loss)} · fees ${num(c.sizing.fees)} · premium ${num(c.sizing.premium, 0)}</div>` : ""}
+    ${c.sizing && c.sizing.qty && !c.sizing.kind ? `<div class="note"><b>Sizing:</b> ${num(c.sizing.qty, 4)} units · max loss ${num(c.sizing.max_loss)} of ${num(c.sizing.budget)} ${esc(c.sizing.currency)} (fees ${num(c.sizing.fees_at_stop)}, slippage ${num(c.sizing.slippage_cost)}, gap allowance ${num(c.sizing.gap_allowance)}) · notional ${num(c.sizing.notional, 0)}</div>` : ""}
+    <div class="note mu">${esc(s.confidence_note || "")}</div>
+    ${checks ? `<div class="checks">${checks}</div>` : ""}</div>`;
+}
+
+// ---------------------------------------------------------------- D. positions
+function renderPositions(rows) {
+  if (!rows.length) { $("positions").innerHTML = `<div class="empty">No open agent positions. Cash is a position.</div>`; return; }
+  $("positions").innerHTML = `<table><tr><th>#</th><th>Instrument</th><th>Side</th><th>Qty</th><th>Entry</th><th>Price</th><th>Unrealised</th><th>Stop now</th><th>Targets</th><th>Plan</th><th></th></tr>
+  ${rows.map(t => `<tr><td>${t.id}</td><td>${esc(t.structure || t.symbol)}<div class="mu">${esc(t.strategy)} · ${esc(t.tf)}</div>${t.legs ? `<div class="mu">${t.legs.map(l => `${l.side === "BUY" ? "+" : "−"}${num(l.strike, 2)}${esc(l.type)} @ ${px(l.entry_px)}`).join(" · ")}</div>` : ""}</td><td class="${t.side === "LONG" ? "up" : "dn"}">${esc(t.side)}</td><td>${num(t.qty, 4)}</td>
+    <td>${px(t.entry)}</td><td>${t.price ? px(t.price) + `<div class="mu">${ago(t.price_as_of)}</div>` : `<span class="dn">${esc(t.price_error || "–")}</span>`}</td>
+    <td class="${sgn(t.unrealised)}">${t.unrealised !== undefined ? num(t.unrealised) + ` <span class="mu">(${t.unrealised_r}R)</span>` : "–"}</td>
+    <td>${px(t.stop_now)}${t.value_now !== undefined && t.value_now !== null ? `<div class="mu">value now ${px(t.value_now)}</div>` : ""}</td><td>${t.legs ? "TP value " + px(t.take_profit) : (t.targets || []).map(px).join(" / ")}<div class="mu">hit: ${esc(((t.payload || {}).hit || []).join(", ") || "none")}</div></td>
+    <td>${esc(t.exit_hint || "")}<div class="mu">${t.lots_left !== undefined ? (t.lots_left === 2 ? "open · 1:2 point pending" : "1:2 done · trailing") : ((t.payload || {}).hit || []).length ? "1:2 done · trailing" : (t.payload || {}).tp1 ? "open · 1:2 at " + px(t.payload.tp1) : ""}</div>${t.monitor_gap ? `<div class="dn">monitoring data unavailable: ${esc(t.monitor_gap.error)}</div>` : ""}<div class="mu">risk ${num(t.risk_amount)} ${esc(t.currency)}</div></td>
+    <td><button class="btn sm bad" onclick="closePos(${t.id})">Close</button></td></tr>`).join("")}</table>`;
+}
+async function closePos(id) { if (!confirm(`Close paper position #${id} at market?`)) return; const r = await post(`/positions/${id}/close`); toast(r.ok ? `Closed at ${px(r.exit)}` : r.why, !r.ok); refresh(true); }
+
+// ---------------------------------------------------------------- B. market intelligence
+function intelCard(o) {
+  {
+    const d = o.data || {}, p = d.picture || {}, rg = d.regime || {}, st = d.structure || {}, op = d.options || {}, q = d.quality || {}, v = p.volatility_detail || {}, tr = p.trend || {}, mo = p.momentum || {};
+    const lv = p.levels || {};
+    return `<div class="cd"><h3>${esc(o.symbol)} · ${esc(o.tf)} <span class="mu">candle ${tm(o.bar_time)} · ${esc(p.source)}</span></h3>
+      <div class="mgrid">
+        <div class="metric"><span>Regime</span><b>${esc(rg.label || "–")}</b><span class="mu">${esc((rg.states || []).join(" · "))}</span></div>
+        <div class="metric"><span>Bias (weighted)</span><b class="${p.bias === "bullish" ? "up" : p.bias === "bearish" ? "dn" : ""}">${esc(p.bias || "–")}</b><span class="mu">bull ${num(p.bull, 0)} / bear ${num(p.bear, 0)}</span></div>
+        <div class="metric"><span>Close</span><b>${px(p.close)}</b><span class="mu">VWAP ${px(p.vwap)}</span></div>
+        <div class="metric"><span>Volatility</span><b>${esc(p.volatility || "–")}</b><span class="mu">ATR ${px(v.atr)} (${num(v.atr_pct, 2)}%) ${v.squeeze ? "· squeeze" : ""}</span></div>
+        <div class="metric"><span>Trend</span><b>ADX ${num((tr.adx || {}).adx, 1)}</b><span class="mu">EMA20 ${px((tr.ema || {})[20])} · EMA50 ${px((tr.ema || {})[50])} · EMA200 ${px((tr.ema || {})[200])}</span></div>
+        <div class="metric"><span>Momentum</span><b>RSI ${num(mo.rsi, 1)}</b><span class="mu">MACD hist ${num((mo.macd || {}).hist, 3)} ${mo.mfi ? "· MFI " + num(mo.mfi, 0) : ""}</span></div>
+        <div class="metric"><span>Higher TF</span><b>${esc(((st.higher || {}).tf) || "–")} ${(st.higher || {}).bias > 0 ? "▲" : (st.higher || {}).bias < 0 ? "▼" : "–"}</b><span class="mu">intermediate ${esc(((st.intermediate || {}).tf) || "–")} ${(st.intermediate || {}).bias > 0 ? "▲" : (st.intermediate || {}).bias < 0 ? "▼" : "–"}</span></div>
+        <div class="metric"><span>Data quality</span><b class="${q.ok ? "up" : "dn"}">${q.ok ? "OK" : "BLOCKED"}</b><span class="mu">${esc((q.blocks || []).join("; ") || "closed candles, fresh, no gaps")}</span></div>
+      </div>
+      <div class="note" style="margin-top:8px"><b>Options / derivatives:</b> ${op.available ? esc((op.reads || []).join(" · ") || "available") : esc(op.note || "not available")}</div>
+      ${lv.oi_support || lv.oi_resistance ? `<div class="note"><b>OI levels:</b> support ${esc(JSON.stringify(lv.oi_support))} · resistance ${esc(JSON.stringify(lv.oi_resistance))} · max pain ${esc(lv.max_pain)}</div>` : ""}
+      ${st.prev_day ? `<div class="note"><b>Previous session:</b> low ${px(st.prev_day[0])} · high ${px(st.prev_day[1])} ${st.kill_zone ? " · kill zone " + esc(st.kill_zone) : ""}</div>` : ""}
+      <div class="note">Regime facts: ${esc(Object.entries(rg.facts || {}).map(([k, x]) => k + " " + (typeof x === "number" ? num(x, 2) : x)).join(" · "))}</div>
+      <div class="note mu">Full chart, SMC/ICT overlays, FVGs and order blocks: <a href="lab.html#${encodeURIComponent(o.symbol)}">open in Signal Lab</a></div></div>`;
+  }
+}
+
+// Overview of EVERY observed market: trading list + options desk + the observe-only sweep (all option indices,
+// every F&O stock, MCX, crypto). Click a row for the full intelligence card.
+const IG = {index: "Index options", stock: "Stock options", mcx: "MCX", crypto: "Crypto", other: "Other"};
+S.ig = S.ig || "all"; S.iq = S.iq || ""; S.iopen = S.iopen || null; S.isort = S.isort || "group";
+function igSet(k) { S.ig = k; renderIntelList(S.ilast); }
+function igSort(k) { S.isort = k; renderIntelList(S.ilast); }
+async function igOpen(sym) {
+  S.iopen = S.iopen === sym ? null : sym; renderIntelList(S.ilast);
+  if (!S.iopen) return;
+  try { const r = await get("/observations?limit=1&symbol=" + encodeURIComponent(sym)); S.icard = {sym, html: r[0] ? intelCard(r[0]) : ""}; }
+  catch (e) { S.icard = {sym, html: `<div class="note dn">${esc(e.message)}</div>`}; }
+  renderIntelList(S.ilast);
+}
+function renderIntelList(L) {
+  if (!L) return;
+  S.ilast = L;
+  const rows = L.rows || [], sw = L.sweep || {};
+  const n = k => rows.filter(r => r.group === k).length;
+  const q = S.iq.trim().toUpperCase();
+  let list = rows.filter(r => (S.ig === "all" || r.group === S.ig) && (!q || r.symbol.toUpperCase().includes(q)));
+  const order = {index: 0, stock: 1, mcx: 2, crypto: 3, other: 4};
+  const sorters = {group: (a, b) => order[a.group] - order[b.group] || a.symbol.localeCompare(b.symbol),
+                   bull: (a, b) => (b.bull ?? -1) - (a.bull ?? -1), bear: (a, b) => (b.bear ?? -1) - (a.bear ?? -1),
+                   rsi: (a, b) => (b.rsi ?? -1) - (a.rsi ?? -1), fresh: (a, b) => (b.t || 0) - (a.t || 0)};
+  list.sort(sorters[S.isort] || sorters.group);
+  const chip = (k, label, c) => `<button class="btn sm ${S.ig === k ? "pri" : ""}" onclick="igSet('${k}')">${label} <b>${c}</b></button>`;
+  const name = r => r.group === "stock" ? r.symbol.replace(/^NSE:|-EQ$/g, "") : r.symbol.replace(/^(NSE|BSE|MCX|SHARK):/, "").replace(/-INDEX$|-FUT$/, "");
+  const body = list.map(r => {
+    const bc = r.bias === "bullish" ? "up" : r.bias === "bearish" ? "dn" : "";
+    const tr = `<tr class="clk" onclick="igOpen('${esc(r.symbol)}')">
+      <td><b>${esc(name(r))}</b> <span class="mu">${esc(IG[r.group] || r.group)}${r.observe_only ? " · watch" : " · traded"}</span></td>
+      <td>${r.unavailable ? `<span class="dn">DATA UNAVAILABLE</span>` : esc(r.regime || "–")}</td>
+      <td class="${bc}">${esc(r.bias || "–")} <span class="mu">${num(r.bull, 0)}/${num(r.bear, 0)}</span></td>
+      <td>${px(r.close)}</td><td>${num(r.rsi, 1)}</td><td>${num(r.adx, 1)}</td><td>${esc(r.volatility || "–")} <span class="mu">${num(r.atr_pct, 2)}%</span></td>
+      <td class="mu">${esc((r.options || []).join(" · ") || (r.group === "crypto" ? "–" : "no chain"))}</td>
+      <td class="${r.quality_ok ? "up" : "dn"}" title="${esc((r.quality_blocks || []).join("; ") || r.unavailable || "")}">${r.quality_ok ? "OK" : "BLOCKED"}</td>
+      <td class="mu">${tm(r.bar_time || r.t)}</td></tr>`;
+    const open = S.iopen === r.symbol ? `<tr><td colspan="10">${S.icard && S.icard.sym === r.symbol ? S.icard.html : `<div class="note">Loading…</div>`}</td></tr>` : "";
+    return tr + open;
+  }).join("");
+  const sweepTxt = sw.running ? `Sweep: ${sw.covered || 0}/${sw.universe || 0} markets fresh (2 h)` + (sw.fno_count ? ` · ${sw.fno_count} F&O stocks` : "")
+    + (sw.waiting ? ` · ${esc(sw.waiting)}` : sw.last_symbol ? ` · last ${esc(sw.last_symbol)}` : "") + (sw.last_error ? ` · <span class="dn">${esc(sw.last_error)}</span>` : "")
+    : "Sweep starts with the agent";
+  const th = (k, l) => `<th style="cursor:pointer" onclick="igSort('${k}')">${l}${S.isort === k ? " ▾" : ""}</th>`;
+  $("intel").innerHTML = `<div class="cd"><h3>Market intelligence · ${esc(L.tf)} · ${rows.length} markets <span class="note">${sweepTxt}</span></h3>
+    <div class="chips" style="margin-bottom:8px">${chip("all", "All", rows.length)}${chip("index", "Index options", n("index"))}${chip("stock", "Stock options", n("stock"))}${chip("mcx", "MCX", n("mcx"))}${chip("crypto", "Crypto", n("crypto"))}
+      <input id="iq" placeholder="Search symbol" value="${esc(S.iq)}" style="background:var(--bg2);border:1px solid var(--bdr2);color:var(--t1);border-radius:6px;padding:4px 8px;font:600 .72rem var(--mono)" oninput="S.iq=this.value;renderIntelList(S.ilast);const e=$('iq');e.focus();e.setSelectionRange(e.value.length,e.value.length)"></div>
+    <div class="note mu" style="margin-bottom:6px">“traded” = in the agent's trading list / options desk. “watch” = observe-only coverage: analysed and explained, never traded. F&amp;O stocks refresh in rotation within the FYERS request limit, so check each row's candle time.</div>
+    <div class="tw"><table><tr>${th("group", "Market")}<th>Regime</th>${th("bull", "Bias bull/bear")}<th>Close</th>${th("rsi", "RSI")}<th>ADX</th><th>Volatility</th><th>Options / derivatives</th><th>Data</th>${th("fresh", "Candle")}</tr>
+    ${body || `<tr><td colspan="10" class="empty">No observations yet. The agent records them once it is started.</td></tr>`}</table></div></div>`;
+}
+
+// ---------------------------------------------------------------- performance
+function curveSvg(c) {
+  if (!c || c.length < 2) return `<div class="note">Equity curve appears after two closed trades.</div>`;
+  const ys = c.map(p => p.equity), mn = Math.min(...ys), mx = Math.max(...ys), w = 600, h = 90;
+  const pts = ys.map((y, i) => `${(i / (ys.length - 1) * w).toFixed(1)},${(h - 6 - (mx === mn ? 0.5 : (y - mn) / (mx - mn)) * (h - 12)).toFixed(1)}`).join(" ");
+  return `<svg class="eq" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline fill="none" stroke="var(--cy)" stroke-width="1.6" points="${pts}"/></svg>
+    <div class="note">${num(mn, 0)} – ${num(mx, 0)}</div>`;
+}
+function breakdown(title, g) {
+  const rows = Object.entries(g || {});
+  if (!rows.length) return "";
+  return `<div class="cd"><h3>${esc(title)}</h3><div class="tw"><table><tr><th></th><th>Trades</th><th>Win %</th><th>Expectancy R</th><th>95% CI</th><th>PF</th><th>Total R</th><th>Max DD R</th></tr>
+    ${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v.trades}</td><td>${v.win_rate ?? "–"}</td><td class="${sgn(v.expectancy_r)}">${v.expectancy_r ?? "–"}</td>
+      <td class="mu">${v.expectancy_r_ci95 ? v.expectancy_r_ci95.map(x => x ?? "–").join(" … ") : "–"}</td><td>${v.profit_factor ?? "–"}</td><td>${v.total_r ?? "–"}</td><td>${v.max_drawdown_r ?? "–"}</td></tr>`).join("")}</table></div></div>`;
+}
+function renderPerf(p) {
+  const m = (l, v, c) => `<div class="metric"><span>${l}</span><b class="${c || ""}">${v}</b></div>`;
+  const money = Object.entries(p.money || {}).map(([cur, x]) => `${cur}: P&L ${num(x.pnl)} · avg profit ${num(x.avg_profit)} · avg loss ${num(x.avg_loss)} · costs ${num(x.costs)}`).join("<br>");
+  const util = Object.entries(p.capital_utilisation || {}).map(([cur, x]) => `${cur}: avg risk ${x.avg_risk_pct_of_equity}% of equity · avg notional ${x.avg_notional_x}x`).join("<br>");
+  $("perf").innerHTML = `<div class="cd"><h3>Agent paper performance <span class="note">${esc(p.note || "")}</span></h3>
+    ${p.trades ? `<div class="mgrid">
+      ${m("Trades", p.trades)}${m("Wins / losses", p.wins + " / " + p.losses)}${m("Win rate", p.win_rate + "%")}
+      ${m("Expectancy", p.expectancy_r + "R", sgn(p.expectancy_r))}${m("95% CI", (p.expectancy_r_ci95 || []).map(x => x ?? "–").join(" … "))}
+      ${m("Profit factor", p.profit_factor ?? "–")}${m("Avg win", p.avg_win_r + "R", "up")}${m("Avg loss", p.avg_loss_r + "R", "dn")}
+      ${m("Total", p.total_r + "R", sgn(p.total_r))}${m("Max DD", p.max_drawdown_r + "R / " + p.max_drawdown_pct + "%", "dn")}
+      ${m("Sharpe / trade", p.sharpe_per_trade ?? "–")}${m("Sortino / trade", p.sortino_per_trade ?? "–")}
+      ${m("Best streak", p.max_win_streak)}${m("Worst streak", p.max_loss_streak)}${m("Entry slippage", (p.avg_entry_slippage_r ?? "–") + "R")}
+    </div><div class="note" style="margin-top:8px">${money}<br>${util}</div>` : `<div class="empty">No closed agent trades yet. Win rate alone is never used to judge a strategy; expectancy and its confidence interval need a real sample.</div>`}
+  </div>
+  <div class="grid">${Object.entries(p.equity || {}).map(([cur, e]) => `<div class="cd"><h3>${cur} equity curve</h3>${curveSvg(e.curve)}</div>`).join("")}</div>
+  ${breakdown("By strategy", p.by_strategy)}${breakdown("By instrument", p.by_symbol)}${breakdown("By market regime", p.by_regime)}${breakdown("By timeframe", p.by_tf)}${breakdown("By session", p.by_session)}`;
+}
+
+// ---------------------------------------------------------------- E. learning centre
+function renderLearn(L) {
+  const cls = Object.entries(L.classifications || {}).map(([k, n]) => `<span class="chip">${esc(k)} <b>${n}</b></span>`).join("") || `<span class="note">no reviews yet</span>`;
+  const un = (L.untaken_outcomes || []).map(u => `<tr><td>${esc(u.stage)}</td><td>${esc(u.outcome)}</td><td>${u.n}</td><td>${num(u.r, 2)}</td></tr>`).join("");
+  const strat = (L.strategies || []).map(s => `<tr><td>${esc(s.strategy)}</td><td class="${s.status === "suspended" ? "dn" : "up"}">${esc(s.status)}</td><td>${esc(s.reason)}</td><td>${tm(s.t)}</td>
+    <td><button class="btn sm" onclick="setStrat('${esc(s.strategy)}','${s.status === "suspended" ? "active" : "suspended"}')">${s.status === "suspended" ? "Resume" : "Suspend"}</button></td></tr>`).join("");
+  const exps = (L.experiments || []).map(e => `<tr><td>#${e.id}</td><td>${tm(e.t)}</td><td>${esc(e.symbol)} ${esc(e.tf)}</td><td>${esc(e.strategy)}</td><td>${esc(e.kind)} ${esc(JSON.stringify(e.params || {}))}</td>
+    <td class="${e.status === "eligible" ? "wa" : e.status === "approved" ? "up" : "mu"}">${esc(e.status)}</td>
+    <td class="note">${esc(((e.verdict || {}).reasons || []).join(" · "))}</td>
+    <td>${e.status === "eligible" ? `<button class="btn sm ok" onclick="approve(${e.id})">Approve</button> <button class="btn sm" onclick="rejectExp(${e.id})">Reject</button>` : ""}</td></tr>`).join("");
+  const hist = (L.history || []).filter(h => h.key === "agent_thresholds").map(h => `<tr><td>#${h.id}</td><td>${tm(h.t)}</td><td>${esc(h.who)}</td><td class="note">${esc(h.after)}</td>
+    <td><button class="btn sm" onclick="rollback(${h.id})">Roll back</button></td></tr>`).join("");
+  const rev = (L.reviews || []).map(r => `<div class="det"><div class="note"><b>#${r.trade_id} · ${esc(r.classification)}</b> · ${tm(r.t)} · <span class="mu">${esc(r.narrative_source)}</span></div>
+    <div class="note">${esc(r.narrative)}</div>
+    <details><summary class="note">10-question review</summary>${Object.entries(r.answers || {}).map(([k, v]) => `<div class="note"><b>${esc(k.replace(/^\d+_/, "").replace(/_/g, " "))}:</b> ${esc(v)}</div>`).join("")}</details></div>`).join("");
+  $("learn").innerHTML = `
+    <div class="g2"><div>
+      <div class="cd"><h3>Recent trade reviews</h3><div class="chips" style="margin-bottom:8px">${cls}</div>${rev || `<div class="empty">Each closed trade gets a review built from recorded data only.</div>`}</div>
+      <div class="cd"><h3>Rejected and declined setups: what happened next</h3>${un ? `<table><tr><th>Stage</th><th>Outcome</th><th>Count</th><th>Avg R</th></tr>${un}</table>
+        <div class="note">"T1 first" = a missed opportunity; "stop first" = a good rejection. Measured on closed candles, gross of costs.</div>` : `<div class="empty">Builds up as the agent turns setups down.</div>`}</div>
+    </div><div>
+      <div class="cd"><h3>Strategy status</h3>${strat ? `<table><tr><th>Strategy</th><th>Status</th><th>Reason</th><th>Since</th><th></th></tr>${strat}</table>` : `<div class="note">All strategies active. A strategy is suspended automatically when its last 15 agent trades average below −0.15R with profit factor under 0.8.</div>`}
+        <div class="hr" style="margin-top:8px"><input id="stratKey" class="btn sm" placeholder="strategy key, e.g. ote" style="width:180px"><button class="btn sm" onclick="setStrat($('stratKey').value,'suspended')">Suspend</button><button class="btn sm" onclick="setStrat($('stratKey').value,'active')">Resume</button></div></div>
+      <div class="cd"><h3>Approved threshold changes (version history)</h3>${hist ? `<table>${hist}</table>` : `<div class="note">None yet.</div>`}
+        <div class="note">Current per-strategy minimum scores: ${esc(JSON.stringify(L.thresholds || {}))}</div></div>
+      <div class="cd"><h3>Degradation alerts and research log</h3>${(L.alerts || []).slice(0, 15).map(a => `<div class="note ${a.level === "warn" ? "wa" : ""}">${tm(a.t)} · ${esc(a.text)}</div>`).join("") || `<div class="note">none</div>`}</div>
+    </div></div>
+    <div class="cd"><h3>Strategy experiments <span class="hr"><button class="btn sm pri" onclick="research()">Run research now</button></span></h3>
+      <div class="note" style="margin-bottom:6px">Experiments use the Signal Lab backtester (next-open entries, costs, train/validation/test split, walk-forward, Monte Carlo). An experiment is "eligible" only after it passes every promotion rule, including the overfitting checks. Nothing changes until you approve it.</div>
+      ${exps ? `<div class="tw"><table><tr><th>#</th><th>When</th><th>Market</th><th>Strategy</th><th>Change</th><th>Status</th><th>Rules</th><th></th></tr>${exps}</table></div>` : `<div class="empty">No experiments yet.</div>`}</div>`;
+}
+async function setStrat(k, st) { if (!k) return; const reason = prompt(`${st === "active" ? "Resume" : "Suspend"} ${k}: reason?`, "manual"); if (reason === null) return; await post(`/strategies/${encodeURIComponent(k)}`, {status: st, reason}); loadLearn(); }
+async function approve(id) { if (!confirm(`Approve experiment #${id}? The change is versioned and can be rolled back.`)) return; await post(`/research/${id}/approve`); loadLearn(); }
+async function rejectExp(id) { await post(`/research/${id}/reject`); loadLearn(); }
+async function rollback(id) { if (!confirm(`Roll back change #${id}?`)) return; await post(`/rollback/${id}`); loadLearn(); }
+async function research() { const r = await post("/research/run", {}); toast(`Research started for ${r.symbols.join(", ")} (${r.tf}). Results appear here as experiments.`); }
+
+// ---------------------------------------------------------------- G. log
+async function loadLog() {
+  const k = $("logKind").value;
+  const rows = await get(`/log?limit=300${k ? "&kind=" + k : ""}`);
+  $("log").innerHTML = rows.map(r => `<div class="${esc(r.level)}"><span class="mu">${tm(r.t)}</span><span>${esc(r.kind)}${r.symbol ? "<br><span class='mu'>" + esc(r.symbol) + "</span>" : ""}</span><span>${esc(r.text)}</span></div>`).join("") || `<div class="empty">No activity yet.</div>`;
+}
+
+// ---------------------------------------------------------------- settings
+function renderSettings(s) {
+  if (S.settingsDirty) return;
+  const r = s.risk, c = s.config;
+  const f = (k, label, step) => `<label>${label}<input data-r="${k}" type="number" step="${step || "any"}" value="${r[k]}"></label>`;
+  $("settings").innerHTML = `
+    <div class="cd"><h3>Agent</h3><div class="set">
+      <label>Watch-list (one per line)<textarea id="cSyms">${esc((c.symbols || []).join("\n"))}</textarea></label>
+      <label>Execution timeframe<select id="cTf">${["5m", "15m", "30m", "1h"].map(t => `<option ${t === c.tf ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+      <label>Loop seconds<input id="cLoop" type="number" value="${c.loop_seconds}"></label>
+      <label>Nightly research<select id="cRes"><option value="0" ${!c.research_enabled ? "selected" : ""}>off</option><option value="1" ${c.research_enabled ? "selected" : ""}>on</option></select></label>
+      <label>Research hour (IST)<input id="cResH" type="number" value="${c.research_hour_ist}"></label>
+      <label>LLM review narratives<select id="cLlm"><option value="0" ${!c.llm_reviews ? "selected" : ""}>off</option><option value="1" ${c.llm_reviews ? "selected" : ""}>on (needs AI in .env)</option></select></label>
+    </div><div class="note" style="margin-top:6px">Direct watch-list: crypto (Shark, Delta perpetuals, Binance spot), MCX futures and other non-index symbols. Indices are ALWAYS traded as options: an index future or index you type here is moved to the options desk automatically. Yahoo symbols and Delta options are analysed but never traded.</div></div>
+    <div class="cd"><h3>Options desk <span class="note">index + stock options · buying and HEDGED selling only (every short leg has a long wing) · intraday, closed by 15:15 IST</span></h3><div class="set">
+      <label>Options desk<select id="oEn"><option value="1" ${(c.options || {}).enabled ? "selected" : ""}>on</option><option value="0" ${!(c.options || {}).enabled ? "selected" : ""}>off</option></select></label>
+      <label>Index options<input id="oIdx" value="${esc(((c.options || {}).index || []).join(", "))}" title="NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY, SENSEX, BANKEX"></label>
+      <label>Stock options (fixed list)<input id="oStk" value="${esc(((c.options || {}).stocks || []).join(", "))}"></label>
+      <label>Scan all F&O stocks<select id="oScan"><option value="1" ${(c.options || {}).scan_all ? "selected" : ""}>on</option><option value="0" ${!(c.options || {}).scan_all ? "selected" : ""}>off</option></select></label>
+      <label>Movers analysed per candle<input id="oTop" type="number" value="${(c.options || {}).scan_top}"></label>
+      ${["long_option", "debit_spread", "credit_spread", "iron_condor"].map(k => `<label>${k.replace("_", " ")}<select data-os="${k}"><option value="1" ${((c.options || {}).structures || {})[k] ? "selected" : ""}>on</option><option value="0" ${!((c.options || {}).structures || {})[k] ? "selected" : ""}>off</option></select></label>`).join("")}
+    </div><div class="set" style="margin-top:8px">
+      ${f("opt_short_delta", "Short-strike delta (spreads)")}${f("opt_condor_delta", "Iron condor short delta")}${f("opt_wing_strikes", "Wing distance (strikes)", 1)}
+      ${f("opt_min_dte_sell", "Min days to expiry for selling")}${f("opt_min_credit_ratio", "Min credit / width")}${f("opt_credit_tp_pct", "Credit take-profit %")}
+      ${f("opt_long_stop_pct", "Max long-premium stop %")}${f("opt_min_stop_pct", "Min long-premium stop %")}${f("opt_sell_stop_frac", "Selling stop (fraction of credit)")}
+      ${f("opt_wall_writing_ratio", "Writer-dominance ratio (seller's view)")}${f("opt_iv_high_rank", "IV rank = high at")}${f("opt_iv_low_rank", "IV rank = low at")}
+      ${f("opt_max_leg_spread_pct", "Max leg spread % (index)")}${f("opt_max_leg_spread_pct_stock", "Max leg spread % (stock)")}${f("opt_last_entry_min", "Last entry (min after midnight IST)", 1)}${f("opt_max_chain_age_s", "Max price age (s)", 1)}
+    </div><div class="note" style="margin-top:6px">Thinks like a seller first: reads the call-writing wall, put-writing wall, fresh OI writing and PCR. Writers against your direction → no trade.
+      IV low → buy ATM/ITM (only if the 1:2 target is short of the writers' wall) · IV normal → debit spread selling the strike at the wall · IV high → credit spread with the short strike at the supporting wall · writers boxing a range → iron condor at the walls. Planned loss ≤ risk budget; worst case at expiry ≤ "Long option premium x budget" × budget. Lot sizes are real (e.g. NIFTY 65, RELIANCE 500), so small paper capital fits few or no option trades.</div></div>
+    <div class="cd"><h3>Risk policy <span class="note">every value is clamped to a safe range on the server · paper equity, not your real capital</span></h3><div class="set">
+      ${f("capital_inr", "Paper capital INR", 1000)}${f("inr_day_capital", "INR capital usable per day (fixed)", 1000)}
+      ${f("ai_base_risk_pct", "AI: base risk % of day capital")}${f("ai_min_risk_pct", "AI: min risk %")}${f("ai_max_risk_pct", "AI: max risk %")}
+      ${f("ai_day_loss_trades", "AI: day stop = N x base risk")}${f("ai_profit_lock", "AI: give back share that locks the day")}
+      ${f("capital_usd", "Paper capital USD", 100)}
+      ${f("capital_parts", "USD: divide capital into N parts", 1)}${f("part_risk_pct", "USD: risk % of the trading part", 0.25)}${f("risk_slices", "USD: split the risk across N trades", 1)}
+      <label>Lots per trade<input value="decided per trade (min 1)" disabled></label>
+      <label>= USD risk per trade (% of equity)<input value="${r.risk_pct}" disabled></label>
+      ${f("first_target_r", "Lot 1 target (R after costs)")}${f("trail_atr", "Lot 2 trail (ATR, futures/crypto)")}${f("opt_trail_r", "Lot 2 trail (R, options)")}
+      ${f("daily_loss_pct", "USD: max daily loss %")}
+      ${f("weekly_loss_pct", "Max weekly loss %")}${f("max_drawdown_pct", "Max drawdown % (halt)")}${f("max_open", "Max concurrent positions", 1)}${f("max_per_group", "Max per correlated group", 1)}
+      ${f("min_rr", "Min reward:risk (net)")}${f("min_score", "Min setup score", 1)}${f("min_independent_evidence", "Min independent evidence families", 1)}${f("max_opposing_evidence", "Max opposing families", 1)}
+      ${f("loss_streak_lockout", "Loss-streak lockout", 1)}${f("derisk_after_losses", "Halve risk after N losses", 1)}${f("cooldown_min", "Cooldown after a loss (min)", 1)}${f("max_notional_x", "Max notional x equity")}
+      ${f("max_cost_share", "Max costs / max loss")}${f("gap_allowance_atr", "Gap allowance (ATR)")}${f("max_volume_share", "Max share of candle volume")}${f("option_premium_risk_x", "Long option premium x budget")}
+      ${f("india_no_entry_last_min", "No India entries in last N min", 1)}${f("time_stop_x", "Time stop x expected hold")}
+      <label>Require backtest-validated strategy<select data-r="require_validated"><option value="false" ${!r.require_validated ? "selected" : ""}>no (paper: experimental allowed)</option><option value="true" ${r.require_validated ? "selected" : ""}>yes</option></select></label>
+    </div><div class="hr" style="margin-top:10px"><button class="btn pri" onclick="saveSettings()">Save settings</button><button class="btn" onclick="S.settingsDirty=false;refresh(true)">Discard</button></div></div>
+    <div class="cd"><h3>Live trading (Mode 3) readiness</h3><div class="note">Live execution is disabled in this build and cannot be switched on from here. What is missing:</div>
+      ${(s.live.missing || []).map(m => `<div class="note dn">✗ ${esc(m)}</div>`).join("")}</div>`;
+  $("settings").querySelectorAll("input,select,textarea").forEach(el => el.addEventListener("input", () => S.settingsDirty = true));
+}
+async function saveSettings() {
+  const risk = {};
+  $("settings").querySelectorAll("[data-r]").forEach(el => { const k = el.dataset.r; risk[k] = k === "require_validated" ? el.value === "true" : Number(el.value); });
+  const agent = {symbols: $("cSyms").value.split(/\s+/).filter(Boolean), tf: $("cTf").value, loop_seconds: Number($("cLoop").value),
+    research_enabled: $("cRes").value === "1", research_hour_ist: Number($("cResH").value), llm_reviews: $("cLlm").value === "1",
+    options: {enabled: $("oEn").value === "1", index: $("oIdx").value.split(/[\s,]+/).filter(Boolean), stocks: $("oStk").value.split(/[\s,]+/).filter(Boolean),
+      scan_all: $("oScan").value === "1", scan_top: Number($("oTop").value),
+      structures: Object.fromEntries([...$("settings").querySelectorAll("[data-os]")].map(el => [el.dataset.os, el.value === "1"]))}};
+  await post("/config", {agent, risk});
+  S.settingsDirty = false; toast("Settings saved (out-of-range values were clamped)"); refresh(true);
+}
+
+// ---------------------------------------------------------------- refresh loop
+async function loadOverview() {
+  const [opps, pos] = await Promise.all([get("/opportunities?limit=60"), get("/positions")]);
+  renderOpps(opps); renderPositions(pos);
+  if (window.MMBookings) MMBookings.load();
+}
+async function loadLearn() { renderLearn(await get("/learning")); }
+async function refresh(force) {
+  try {
+    const s = await get("/status"); S.status = s; renderStatus(s);
+    if (S.tab === "overview") { const p = await get("/performance"); renderCapital(s, p); await loadOverview(); }
+    else if (S.tab === "intel") { if (document.activeElement && document.activeElement.id === "iq") return; renderIntelList(await get("/observations/latest")); }
+    else if (S.tab === "perf") renderPerf(await get("/performance"));
+    else if (S.tab === "learn" && (force || !document.activeElement || document.activeElement.tagName !== "INPUT")) await loadLearn();
+    else if (S.tab === "diag") { if (window.MMDiag) force ? MMDiag.load(false) : MMDiag.maybe(); }
+    else if (S.tab === "log") await loadLog();
+    else if (S.tab === "ml") { if (force && window.MMBench) MMBench.load(); }
+    else if (S.tab === "settings") renderSettings(s);
+  } catch (e) {
+    $("statebar").innerHTML = `<span class="pill bad">AGENT API UNAVAILABLE</span><span class="kv">${esc(e.message)} · is MarketMiner running?</span>`;
+  }
+}
+refresh(true);
+setInterval(() => refresh(false), 10000);
+</script>
+<script src="js/straddle.js?v=2026.11.09"></script>
+<script src="js/retrace.js?v=2026.11.09"></script>
+<script src="js/bookings.js?v=2026.11.09"></script>
+<script src="js/pbook.js?v=2026.11.09"></script>
+<script src="js/mlbench.js?v=2026.11.09"></script>
+<script src="js/diagnose.js?v=2026.11.09"></script>
+<script src="js/hider.js?v=2026.11.09"></script>
+</body>
+</html>

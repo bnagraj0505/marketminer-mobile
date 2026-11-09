@@ -62,6 +62,7 @@ tr:hover td{background:var(--bg2)}
   <div class="hr">
     <a class="btn" href="index.html">⌂ DASHBOARD</a>
     <a class="btn" href="lab.html">◎ SIGNAL LAB</a>
+    <a class="btn" href="agent.html">🧠 AI AGENT</a>
     <button class="btn" onclick="load()">↻ Refresh</button>
   </div>
 </div>
@@ -77,10 +78,10 @@ tr:hover td{background:var(--bg2)}
 "use strict";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const SRC=[["bot","🤖 Auto bot"],["manual","✋ Manual"],["all","All paper"]];   // phone: the AI agent runs on the PC only
+const SRC=[["bot","🤖 Auto bot"],["agent","🧠 AI agent"],["manual","✋ Manual"],["all","All paper"]];
 const SYM={INR:"₹",USD:"$"};
 const ls=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}};
-let source=(x=>["bot","manual","all"].includes(x)?x:"bot")(new URLSearchParams(location.search).get("src")||ls("perf.src")), cur=ls("perf.cur")||"", R=null, filt={period:"all",q:"",res:"all"};
+let source=(x=>["bot","agent","manual","all"].includes(x)?x:"bot")(new URLSearchParams(location.search).get("src")||ls("perf.src")), cur=ls("perf.cur")||"", R=null, filt={period:"all",q:"",res:"all"};
 const n=(x,d=2)=>x==null||isNaN(x)?"—":(+x).toLocaleString("en-IN",{minimumFractionDigits:d,maximumFractionDigits:d});
 const money=(x,c,sign=true)=>x==null?"—":(sign&&x>0?"+":x<0?"−":"")+(SYM[c]||"")+n(Math.abs(x));
 const cls=x=>x>0?"up":x<0?"dn":"";

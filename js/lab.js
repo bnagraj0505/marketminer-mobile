@@ -62,6 +62,11 @@
       py.registerJsModule("mmbridge", bridge);
       await py.runPythonAsync("import sys\nsys.path.insert(0, '/app')\nimport mobile_api");
       PY = py; say(null);
+      if (window.MM_AGENT) {                     // AI Agent page: start the agent loop; ML needs scikit-learn (loaded in the background)
+        try { await py.runPythonAsync("mobile_api.start_agent()"); } catch (e) { console.warn("agent start", e); }
+        MM.mlReady = py.loadPackage(["numpy", "scikit-learn"]).catch((e) => console.warn("scikit-learn", e));
+        setInterval(() => sync(py, false), 30000);   // the agent writes in the background: save to this device every 30 s
+      }
       return py;
     })();
     boot.catch((e) => { boot = null; say("Signal Lab engine failed to start: " + e.message); });
@@ -71,6 +76,7 @@
 
   async function route(p, q, method, body) {
     const py = await start();
+    if (/^\/api\/lab\/agent\/(ml|workbench)/.test(p) && MM.mlReady) await MM.mlReady;   // ML / workbench need scikit-learn
     const k = "_mm_req_" + (++n);
     py.globals.set(k, JSON.stringify({ path: p, query: Object.fromEntries(q), method, body }));
     let out;

@@ -667,7 +667,7 @@
       const qq = new URLSearchParams(q); qq.set("bot_ids", JSON.stringify(Object.fromEntries(Object.entries(ids).map(([k, v]) => [k, { name: v.name, tf: v.tf }]))));
       return window.MM.lab("/api/lab/perf", qq, "GET", {});
     }
-    if (/^\/api\/agent\/(straddle|straddle\/refresh|retrace|pbook|bookings)$/.test(p)) {   // dashboard blocks: the PC's agent modules in the phone engine
+    if (p.startsWith("/api/agent/") || p === "/api/agent") {   // the PC's AI agent (backend/agent) in the phone engine
       if (!window.MM.lab) throw new HE(503, "The analysis engine is still loading.");
       return window.MM.lab("/api/lab/agent/" + p.slice("/api/agent/".length), q, method, body());
     }

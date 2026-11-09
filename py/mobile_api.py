@@ -98,37 +98,55 @@ async def _route(path: str, q: dict, method: str, body: dict):
         ids = json.loads(q.get("bot_ids") or "{}")
         return await perf.report(q.get("source") or "bot", ids)
     if p.startswith("/agent/"):                            # dashboard blocks (the PC's agent modules, information only)
-        return await _agent(p[len("/agent/"):], q, method)
+        return await _agent(p[len("/agent/"):], q, method, body)
     if p == "/fyers_store":
         from backend.brokers.fyers import client as FC
         return FC.rate_status()
     raise SV.BadRequest(404, "Not available in the phone version: /api/lab" + p)
 
 
-async def _agent(p: str, q: dict, method: str):
+# ---------------------------------------------------------------- AI agent (the PC's backend/agent package)
+_AGENT = {"phone_defaults": False, "started": False}
+
+
+def _phone_agent_defaults() -> None:
+    """Phone differences, applied once: crypto through Delta perpetuals (Shark does not answer phone browsers), and
+    the observe-only sweep / all-F&O scan off by default (they would use most of the FYERS budget from one phone)."""
+    if _AGENT["phone_defaults"]:
+        return
+    from backend.agent import config as CFG, sweep as SW, retrace as RT
+    CFG.AGENT_DEFAULTS["symbols"] = ["DELTAF:BTCUSD", "DELTAF:ETHUSD"]
+    CFG.AGENT_DEFAULTS["intel_sweep"] = {"enabled": False}
+    CFG.AGENT_DEFAULTS["options"]["scan_all"] = False
+    SW.CRYPTO = ["DELTAF:BTCUSD", "DELTAF:ETHUSD", "DELTAF:SOLUSD", "DELTAF:XRPUSD"]
+    RT.CRYPTO = [("BTC", "DELTAF:BTCUSD"), ("ETH", "DELTAF:ETHUSD")]
+    _AGENT["phone_defaults"] = True
+
+
+def start_agent() -> dict:
+    """Called by js/lab.js on the AI Agent page: the agent loop (it trades only after you press Start), the straddle
+    recorder and the sweep (off by default on the phone) run while the page is open."""
+    _phone_agent_defaults()
+    from backend.agent import service as AS
+    if not _AGENT["started"]:
+        AS.start()
+        _AGENT["started"] = True
+    return {"started": True}
+
+
+async def _agent(p: str, q: dict, method: str, body: dict | None = None):
     import time
+    _phone_agent_defaults()
     from backend.agent import straddle as SD
-    if p in ("straddle", "straddle/refresh"):
-        # the PC records a snapshot every minute in the background; the phone records when the block asks, at the
-        # same budget-aware pace (and at most every 20 s when you tap refresh)
+    if p == "straddle" and method == "GET" and not _AGENT["started"]:
+        # dashboard without the agent page: take the snapshot when the block asks, at the budget-aware pace
         now = time.time()
-        last = SD.STATUS.get("last") or 0
-        due = SD.budget_interval(60) if p == "straddle" else 20
-        if SD.nse_open(now) and now - last >= due:
+        if SD.nse_open(now) and now - (SD.STATUS.get("last") or 0) >= SD.budget_interval(60):
             await SD.run_once()
         SD.STATUS["running"] = True
         return SD.report()
-    if p == "retrace":
-        from backend.agent import retrace as RT
-        RT.CRYPTO = [("BTC", "DELTAF:BTCUSD"), ("ETH", "DELTAF:ETHUSD")]     # Shark is not reachable from a phone
-        return await RT.report("crypto" if q.get("market") == "crypto" else "india")
-    if p == "pbook":
-        from backend.agent import pbook as PB
-        return await PB.report()
-    if p == "bookings":
-        from backend.agent import bookings as BK
-        return BK.report(int(q.get("limit") or 100))
-    raise SV.BadRequest(404, "Not available in the phone version: /api/agent/" + p)
+    from backend.agent import routes as AR
+    return await AR.router.dispatch(method, "/api/agent/" + p if p else "/api/agent/", q, body or {})
 
 
 async def handle_json(req: str) -> str:
