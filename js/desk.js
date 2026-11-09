@@ -341,7 +341,7 @@
     DELTAF: ["BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD", "BNBUSD", "DOGEUSD", "AVAXUSD", "LTCUSD", "ADAUSD", "LINKUSD"].map((s) => `DELTAF:${s}`),
   };
   const NSE_RE = /^(NSE|BSE):[A-Z0-9&_.\-]{1,30}-(EQ|BE|INDEX)$/, FO_RE = /^(NSE|BSE|MCX):[A-Z0-9&_\-]{2,40}$/, PAIR_RE = /^[A-Z0-9]{3,20}$/,
-    DELTA_RE = /^([CP]-[A-Z0-9]{2,10}-[0-9]+(\.[0-9]+)?-[0-9]{6}|[A-Z0-9]{2,10}-ATM-(CE|PE))$/;
+    DELTA_RE = /^([CP]-[A-Z0-9]{2,10}-[0-9]+(\.[0-9]+)?-[0-9]{6}|[A-Z0-9]{2,10}-ATM([UD][1-9])?-(CE|PE))$/;
   const marketOf = (s) => { const h = s.split(":")[0]; return ["BINANCE", "BINANCEF", "DELTAF", "SHARK", "DELTA", "MCX"].includes(h) ? h : NSE_RE.test(s) ? "NSE" : "FNO"; };
   const isOption = (s) => { s = s.toUpperCase(); return s.endsWith("CE") || s.endsWith("PE") || s.startsWith("DELTA:C-") || s.startsWith("DELTA:P-"); };
   const pairOf = (s) => s.split(":").slice(1).join(":");
@@ -468,9 +468,13 @@
       const m = marketOf(s);
       if (s.endsWith("-FUT")) { const [ex, rest] = s.split(":"); return (await frontFuture(ex, rest.slice(0, -4))).symbol; }
       if (m === "DELTA") {
-        const [coin, , side] = pairOf(s).split("-"), { info, spot } = await deltaCoin(coin), cut = Date.now() + 864e5;
+        const dm = pairOf(s).match(/^(.+)-ATM(?:([UD])([1-9]))?-(CE|PE)$/), coin = dm[1], side = dm[4], off = dm[2] ? (dm[2] === "D" ? -1 : 1) * +dm[3] : 0;
+        const { info, spot } = await deltaCoin(coin), cut = Date.now() + 864e5;
         const opts = Object.values(info).filter((v) => v.kind === side && v.expiry_ms > cut); if (!opts.length) throw new HE(400, `No live ${coin} options on Delta Exchange`);
-        const exp = Math.min(...opts.map((v) => v.expiry_ms)); return "DELTA:" + opts.filter((v) => v.expiry_ms === exp).reduce((a, v) => (Math.abs(v.strike - spot) < Math.abs(a.strike - spot) ? v : a)).pair;
+        const exp = Math.min(...opts.map((v) => v.expiry_ms)), rows = opts.filter((v) => v.expiry_ms === exp).sort((a, b) => a.strike - b.strike);
+        const i = rows.reduce((bi, v, k) => (Math.abs(v.strike - spot) < Math.abs(rows[bi].strike - spot) ? k : bi), 0) + off;
+        if (i < 0 || i >= rows.length) throw new HE(400, `${coin} has no strike ${Math.abs(off)} ${off > 0 ? "above" : "below"} ATM on Delta Exchange`);
+        return "DELTA:" + rows[i].pair;
       }
       const [ex, rest] = s.split(":"), mm = rest.match(/^(.+)-ATM(?:([UD])([1-9]))?-(CE|PE)$/), und = mm[1], side = mm[4];
       const off = mm[2] ? (mm[2] === "D" ? -1 : 1) * +mm[3] : 0, ch = await chain(ex, und);
