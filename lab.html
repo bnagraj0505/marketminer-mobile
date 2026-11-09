@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.09e"></script>
-<script src="js/desk.js?v=2026.11.09e"></script>
-<script src="js/lab.js?v=2026.11.09e"></script>
+<script src="js/engine.js?v=2026.11.09f"></script>
+<script src="js/desk.js?v=2026.11.09f"></script>
+<script src="js/lab.js?v=2026.11.09f"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>MarketMiner · Signal Lab</title>
@@ -129,7 +129,7 @@ td.r,th.r{text-align:right}
   <div class="ctl">
     <select id="grp" onchange="fillWatch(true)"></select>
     <select id="symSel" onchange="pickSym(this.value)" title="Markets in this group"></select>
-    <input id="sym" list="symList" placeholder="or type any symbol, e.g. SHARK:XRPUSDT" autocomplete="off" style="max-width:230px">
+    <input id="sym" list="symList" placeholder="or type any symbol, e.g. DELTAF:XAUTUSD" autocomplete="off" style="max-width:230px">
     <datalist id="symList"></datalist>
     <div class="seg" id="tfs"></div>
     <button class="btn pri" onclick="run()">▶ Analyse</button>
@@ -167,8 +167,10 @@ td.r,th.r{text-align:right}
 </main>
 <div class="toast" id="toast"></div>
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-<script src="js/srzones.js?v=2026.11.09"></script>
-<script src="js/auction.js?v=2026.11.09"></script>
+<script src="js/srzones.js?v=2026.11.09f"></script>
+<script src="js/markets.js?v=2026.11.09f"></script>
+<script src="js/auction.js?v=2026.11.09f"></script>
+<script src="js/chartctl.js?v=2026.11.09f"></script>
 <script>
 const TABS=[["intel","Intelligence"],["deriv","Derivatives"],["mtf","Multi-timeframe"],["bt","Backtest"],["paper","Paper & risk"],["bot","Auto bot"],["journal","Journal"],["alerts","Alerts"],["settings","Settings"]];
 const TFS=["1m","3m","5m","15m","30m","1h","4h","1d","1w"];
@@ -197,9 +199,9 @@ async function init(){
   $("tabs").innerHTML=TABS.map(([k,l])=>`<button data-k="${k}" onclick="tab('${k}')">${l}</button>`).join("");
   $("tfs").innerHTML=TFS.map(t=>`<button data-t="${t}" onclick="setTF('${t}')">${t}</button>`).join("");
   META=await api("/api/lab/meta");
-  const groups={...META.watch};if(META.user_watch.length)groups["My watch-list"]=META.user_watch;
-  loadAllCrypto();
+  const groups={...MMK.GROUPS,...Object.fromEntries(Object.entries(META.watch||{}).filter(([k])=>/^(US|Forex)/.test(k)))};   // js/markets.js: India = FYERS, gold + crypto + options = Delta Exchangeif(META.user_watch.length)groups["My watch-list"]=META.user_watch;
   $("grp").innerHTML=Object.keys(groups).map(g=>`<option>${esc(g)}</option>`).join("");META._groups=groups;
+  MMK.loadDelta().then(o=>{Object.assign(META._groups,o);const g=$("grp").value;$("grp").innerHTML=Object.keys(META._groups).map(k=>`<option ${k===g?"selected":""}>${esc(k)}</option>`).join("");syncPicker()});
   let s=null,t=null,tb="intel";try{s=localStorage.getItem("lab.sym");t=localStorage.getItem("lab.tf");tb=localStorage.getItem("lab.tab")||"intel"}catch(e){}
   fillWatch();$("sym").value=s||"NSE:NIFTY50-INDEX";setTF(t||"15m",true);tab(location.hash==="#bot"?"bot":tb);if(location.hash==="#bot")setTimeout(goBot,600);
   $("minS").textContent=`signal ≥ ${META.protection.min_score}`;
@@ -212,7 +214,7 @@ async function init(){
 // market picker: a real drop-down with every market of the chosen group (the text box stays for any other symbol)
 function fillWatch(go){const l=META._groups[$("grp").value]||[],cur=$("sym").value.trim().toUpperCase();
   $("symList").innerHTML=Object.values(META._groups).flat().map(s=>`<option value="${esc(s)}">`).join("");
-  $("symSel").innerHTML=(l.includes(cur)?"":`<option value="">— pick a market (${l.length}) —</option>`)+l.map(s=>`<option value="${esc(s)}" ${s===cur?"selected":""}>${esc(s.split(":").pop())} · ${esc(s.split(":")[0])}</option>`).join("");
+  $("symSel").innerHTML=(l.includes(cur)?"":`<option value="">— pick a market (${l.length}) —</option>`)+l.map(s=>`<option value="${esc(s)}" ${s===cur?"selected":""}>${esc(MMK.label(s))}</option>`).join("");
   if(go&&l.length){$("sym").value=l[0];$("symSel").value=l[0];run()}}
 // every live Delta Exchange perpetual as its own group (the phone's crypto data comes from Delta)
 async function loadAllCrypto(){
@@ -343,7 +345,8 @@ function mkChart(){
   applyTheme();
   const tzf=()=>CUR&&["NSE","FNO","MCX"].includes(CUR.market)?19800:0;
   try{window.SRH=MMSR.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("srBar"),symbol:()=>CUR&&CUR.symbol,tz:tzf})}catch(e){}
-  try{window.AFH=MMAF.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("afBar"),read:$("afRead"),symbol:()=>CUR&&CUR.symbol,tz:tzf})}catch(e){}
+  try{window.AFH=MMAF.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("afBar"),read:$("afRead"),symbol:()=>CUR&&CUR.symbol,tz:tzf,page:"lab",defaults:{master:false}})}catch(e){}
+  try{if(window.CTL)CTL.detach();window.CTL=MMCTL.attach(chart,{box:$("chartBox"),plot:$("chart"),also:[rsiC],fsOffset:112,pos:"mid"})}catch(e){}
 }
 function rsiCalc(c,n=14){const o=Array(c.length).fill(null);let g=0,l=0;for(let i=1;i<c.length;i++){const d=c[i]-c[i-1],G=Math.max(d,0),Ls=Math.max(-d,0);if(i<=n){g+=G;l+=Ls;if(i===n){g/=n;l/=n;o[i]=l===0?100:100-100/(1+g/l)}}else{g=(g*(n-1)+G)/n;l=(l*(n-1)+Ls)/n;o[i]=l===0?100:100-100/(1+g/l)}}return o}
 let WMON=(()=>{try{return localStorage.getItem("lab.setupBox")!=="hide"}catch(e){return true}})();

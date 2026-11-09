@@ -9,20 +9,23 @@
   "use strict";
   const LAYERS = [["va", "Value (VAH/VAL/POC)", true], ["dev", "Developing", true], ["bal", "Balance areas", true], ["imb", "Imbalance", true],
     ["fail", "Failed auctions", true], ["nodes", "HVN / LVN", true], ["proj", "Next balance", true], ["prof", "Profile", true], ["conf", "Confluence", false]];
-  const KEY = "mmaf.on";
+  const KEY = "mmaf.on2";                               // v2: new clean defaults (older saved choices were "everything on")
+  // detail presets: Clean = today's + yesterday's value, the developing balance and naked POCs only
+  const PRESETS = { clean: { va: true, dev: true, bal: true, imb: false, fail: false, nodes: false, proj: false, prof: false, conf: false },
+    std: { va: true, dev: true, bal: true, imb: true, fail: true, nodes: false, proj: true, prof: true, conf: false },
+    full: { va: true, dev: true, bal: true, imb: true, fail: true, nodes: true, proj: true, prof: true, conf: true } };
   const C = { vah: "37,99,235", val: "37,99,235", poc: "217,119,6", bal: "99,102,241", dev: "13,148,136", bull: "8,153,129", bear: "242,54,69",
     hvn: "234,88,12", lvn: "147,51,234", proj: "14,165,233", fail: "220,38,38", conf: "202,138,4", tpo: "100,116,139" };
   const cache = {};
   const num = (x) => (x == null || isNaN(x) ? "—" : Number(x).toLocaleString("en-IN", { maximumFractionDigits: Math.abs(x) >= 1000 ? 1 : Math.abs(x) >= 10 ? 2 : 4 }));
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  function loadOn() {
-    const d = { master: true, src: "vp" };
-    LAYERS.forEach(([k, , v]) => (d[k] = v));
-    try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (v && typeof v === "object") return { ...d, ...v }; } catch (e) { /* private mode */ }
+  function loadOn(page, dflt) {
+    const d = { master: true, src: "vp", lvl: "clean", ...PRESETS.clean, ...(dflt || {}) };
+    try { const v = JSON.parse(localStorage.getItem(KEY + (page ? "." + page : "")) || "null"); if (v && typeof v === "object") return { ...d, ...v }; } catch (e) { /* private mode */ }
     return d;
   }
-  function saveOn(on) { try { localStorage.setItem(KEY, JSON.stringify(on)); } catch (e) { /* ignore */ } }
+  function saveOn(on, page) { try { localStorage.setItem(KEY + (page ? "." + page : ""), JSON.stringify(on)); } catch (e) { /* ignore */ } }
 
   async function load(symbol, force, params) {
     const key = symbol + (params || "");
@@ -79,7 +82,7 @@
 
     // multi-day + intraday balance areas
     if (on.bal) {
-      (d.multiday || []).forEach((b) => {
+      (on.lvl === "clean" ? [] : d.multiday || []).forEach((b) => {
         const lv = b[src] || b; if (!lv || lv.vah == null) return;
         const x0 = clampX(X(b.start), 0), x1 = b.status === "developing" ? W : clampX(X(b.end), W), y0 = Y(lv.vah), y1 = Y(lv.val);
         if (y0 == null || y1 == null || x1 < 0 || x0 > W) return;
@@ -89,6 +92,7 @@
       (d.balances || []).forEach((b) => {
         const lv = b[src] || b; if (!lv || lv.vah == null) return;
         const dev = b.status === "developing";
+        if (on.lvl === "clean" && !dev) return;
         const x0 = clampX(X(b.start), 0), x1 = dev ? W : clampX(X(b.end), W);
         if (x1 < 0 || x0 > W) return;
         const yh = Y(lv.vah), yl = Y(lv.val), yp = Y(lv.poc), yH = Y(b.high), yL = Y(b.low);
@@ -105,9 +109,11 @@
     }
     // session value areas (historical) and the developing value of the current session
     const ss = d.sessions || [];
+    const keep = on.lvl === "full" ? 1e9 : on.lvl === "std" ? 5 : 2;     // how many recent sessions get their value lines
     if (on.va) {
       ss.forEach((s, i) => {
         const lv = s[src + "_lv"]; if (!lv) return;
+        if (i < ss.length - keep && !s.naked_poc) return;
         const cur = i === ss.length - 1;
         if (cur && on.dev) return;                          // the developing lines show today's value
         const x0 = clampX(X(s.start), 0), x1 = cur ? W : clampX(X(s.last_t), W);
@@ -229,16 +235,20 @@
     st.bar.innerHTML = `<span style="display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap;font-size:.66rem">
       <label style="display:inline-flex;gap:4px;align-items:center;cursor:pointer;font-weight:700"><input type="checkbox" data-af="master" ${on.master ? "checked" : ""}>AuctionFlow</label>
       <span style="display:inline-flex;border:1px solid rgba(148,163,184,.5);border-radius:5px;overflow:hidden">${["vp", "tpo"].map((s) => `<button type="button" data-afsrc="${s}" style="font:700 .64rem 'JetBrains Mono',monospace;padding:2px 7px;border:0;cursor:pointer;background:${on.src === s ? "rgba(13,148,136,.2)" : "transparent"};color:inherit">${s.toUpperCase()}</button>`).join("")}</span>
-      ${LAYERS.map(([k, l]) => chip(k, l)).join("")}
+      <span style="display:inline-flex;border:1px solid rgba(148,163,184,.5);border-radius:5px;overflow:hidden">${[["clean", "Clean"], ["std", "Standard"], ["full", "Full"]].map(([k, l]) => `<button type="button" data-aflvl="${k}" style="font:700 .64rem 'JetBrains Mono',monospace;padding:2px 8px;border:0;cursor:pointer;background:${on.lvl === k ? "#0d9488" : "transparent"};color:${on.lvl === k ? "#fff" : "inherit"}">${l}</button>`).join("")}</span>
+      <button type="button" data-afmore style="font:600 .64rem 'JetBrains Mono',monospace;padding:2px 7px;border-radius:5px;cursor:pointer;border:1px solid rgba(148,163,184,.4);background:transparent;color:inherit">${st.more ? "▴ layers" : "▾ layers"}</button>
+      ${st.more ? LAYERS.map(([k, l]) => chip(k, l)).join("") : ""}
       <span style="opacity:.65">${st.err ? "unavailable: " + esc(String(st.err).slice(0, 90)) : st.loading ? "loading…" : d ? `${d.tf} · bin ${num(d.bin)} · volume: ${esc(d.volume_source)}` : ""}</span></span>`;
     st.bar.querySelectorAll("[data-af]").forEach((el) => {
       el.onclick = (ev) => {
         const k = el.dataset.af;
         if (k === "master") on.master = el.checked; else { on[k] = !on[k]; ev.preventDefault(); }
-        saveOn(on); st.key = ""; renderBar(st);
+        saveOn(on, st.page); st.key = ""; renderBar(st);
       };
     });
-    st.bar.querySelectorAll("[data-afsrc]").forEach((el) => { el.onclick = () => { on.src = el.dataset.afsrc; saveOn(on); st.key = ""; renderBar(st); renderRead(st); }; });
+    st.bar.querySelectorAll("[data-aflvl]").forEach((el) => { el.onclick = () => { Object.assign(on, PRESETS[el.dataset.aflvl], { lvl: el.dataset.aflvl }); saveOn(on, st.page); st.key = ""; renderBar(st); }; });
+    const mo = st.bar.querySelector("[data-afmore]"); if (mo) mo.onclick = () => { st.more = !st.more; renderBar(st); };
+    st.bar.querySelectorAll("[data-afsrc]").forEach((el) => { el.onclick = () => { on.src = el.dataset.afsrc; saveOn(on, st.page); st.key = ""; renderBar(st); renderRead(st); }; });
   }
 
   function renderRead(st) {
@@ -271,7 +281,7 @@
     const cv = document.createElement("canvas");
     cv.style.cssText = "position:absolute;top:0;left:0;z-index:1;pointer-events:none";
     box.appendChild(cv);
-    const st = { chart, series, bar: o.bar, read: o.read, on: loadOn(), data: null, sym: null, key: "", err: null, loading: false, alive: true };
+    const st = { chart, series, bar: o.bar, read: o.read, page: o.page || "", on: loadOn(o.page, o.defaults), more: false, cw: 0, ch: 0, data: null, sym: null, key: "", err: null, loading: false, alive: true };
     async function refresh(force) {
       const s = o.symbol(); if (!s) return;
       st.loading = !st.data || st.sym !== s; renderBar(st);
@@ -293,7 +303,9 @@
           if (k !== st.key) {
             st.key = k;
             const r = window.devicePixelRatio || 1;
-            cv.width = W * r; cv.height = H * r; cv.style.width = W + "px"; cv.style.height = H + "px";
+            if (st.cw !== W * r || st.ch !== H * r) {          // re-allocate the canvas only when its size changes (not on every zoom/scroll frame)
+              st.cw = cv.width = W * r; st.ch = cv.height = H * r; cv.style.width = W + "px"; cv.style.height = H + "px";
+            }
             const ctx = cv.getContext("2d"); ctx.setTransform(r, 0, 0, r, 0, 0); ctx.clearRect(0, 0, W, H);
             if (st.on.master && st.data && !st.data.error) {
               const plotW = chart.timeScale().width();

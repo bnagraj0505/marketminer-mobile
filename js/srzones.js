@@ -13,13 +13,13 @@
   const EDGE = { "1w": 0.85, "1d": 0.75, "4h": 0.6, "1h": 0.5, "15m": 0.42 };
   const LW = { "1w": 2, "1d": 1.5, "4h": 1, "1h": 1, "15m": 1 };
   const COL = { support: [8, 153, 129], resistance: [242, 54, 69], "at price": [217, 119, 6] };
-  const KEY = "mmsr.on";
+  const KEY = "mmsr.on2";                                // v2: lighter defaults (weekly + daily)
   const cache = {};
   const num = (x) => (x == null || isNaN(x) ? "—" : Number(x).toLocaleString("en-IN", { maximumFractionDigits: Math.abs(x) >= 1000 ? 0 : Math.abs(x) >= 10 ? 2 : 4 }));
 
   function loadOn() {
     try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (v && typeof v === "object") return v; } catch (e) { /* private mode */ }
-    return { "1w": true, "1d": true, "4h": true, "1h": true, "15m": false, master: true };
+    return { "1w": true, "1d": true, "4h": false, "1h": false, "15m": false, master: true };
   }
   function saveOn(on) { try { localStorage.setItem(KEY, JSON.stringify(on)); } catch (e) { /* ignore */ } }
 
@@ -144,7 +144,7 @@
           if (k !== st.key) {
             st.key = k;
             const r = window.devicePixelRatio || 1;
-            cv.width = W * r; cv.height = H * r; cv.style.width = W + "px"; cv.style.height = H + "px";
+            if (st.cw !== W * r || st.ch !== H * r) { st.cw = cv.width = W * r; st.ch = cv.height = H * r; cv.style.width = W + "px"; cv.style.height = H + "px"; }
             const ctx = cv.getContext("2d"); ctx.setTransform(r, 0, 0, r, 0, 0); ctx.clearRect(0, 0, W, H);
             if (st.on.master && st.data) {
               ctx.save(); ctx.beginPath(); ctx.rect(0, 0, chart.timeScale().width(), H); ctx.clip();
