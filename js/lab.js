@@ -88,7 +88,7 @@
 
   // Signal Lab, MM Trend, P&L and AI Agent need the engine at once. The Dashboard and Crypto pages only need it for a
   // few blocks: there it starts after the page's own data has loaded, so the page itself is not slowed down.
-  const EAGER = !!window.MM_AGENT || /\/(lab|trend|perf|agent)\.html$/.test(location.pathname);
+  const EAGER = !!window.MM_AGENT || /\/(lab|trend|perf|agent|auction)\.html$/.test(location.pathname);
   let calm = null;
   const settled = () => calm || (calm = new Promise((res) => {
     const go = () => setTimeout(res, 2500);

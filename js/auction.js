@@ -24,17 +24,18 @@
   }
   function saveOn(on) { try { localStorage.setItem(KEY, JSON.stringify(on)); } catch (e) { /* ignore */ } }
 
-  async function load(symbol, force) {
-    const c = cache[symbol];
+  async function load(symbol, force, params) {
+    const key = symbol + (params || "");
+    const c = cache[key];
     if (!force && c && c.d && Date.now() - c.t < 120000) return c.d;
     if (c && c.p) return c.p;
-    const p = fetch("/api/lab/auction?symbol=" + encodeURIComponent(symbol)).then(async (r) => {
+    const p = fetch("/api/lab/auction?symbol=" + encodeURIComponent(symbol) + (params || "")).then(async (r) => {
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.detail || r.statusText);
-      cache[symbol] = { t: Date.now(), d: j };
+      cache[key] = { t: Date.now(), d: j };
       return j;
-    }).finally(() => { if (cache[symbol]) delete cache[symbol].p; });
-    cache[symbol] = { ...(c || { t: 0 }), p };
+    }).finally(() => { if (cache[key]) delete cache[key].p; });
+    cache[key] = { ...(c || { t: 0 }), p };
     return p;
   }
 
@@ -274,7 +275,7 @@
     async function refresh(force) {
       const s = o.symbol(); if (!s) return;
       st.loading = !st.data || st.sym !== s; renderBar(st);
-      try { const d = await load(s, force); if (o.symbol() === s) { st.data = d; st.err = null; st.key = ""; } }
+      try { const d = await load(s, force, o.params ? o.params() : ""); if (o.symbol() === s) { st.data = d; st.err = null; st.key = ""; if (o.onData) o.onData(d); } }
       catch (e) { if (o.symbol() === s) { st.data = null; st.err = e.message; } }
       st.loading = false; renderBar(st); renderRead(st);
     }
@@ -283,7 +284,8 @@
       try {
         if (!document.body.contains(box)) { st.alive = false; return; }
         const s = o.symbol();
-        if (s && s !== st.sym) { st.sym = s; st.data = null; refresh(false); }
+        const sk = s + (o.params ? o.params() : "");
+        if (s && sk !== st.sym) { st.sym = sk; st.data = null; refresh(false); }
         if (document.visibilityState === "visible") {
           const W = plot.clientWidth, H = Math.max(0, plot.clientHeight - chart.timeScale().height());
           const tz = (o.tz && o.tz()) || 0, vr = chart.timeScale().getVisibleLogicalRange();
