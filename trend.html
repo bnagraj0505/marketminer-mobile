@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.09j"></script>
-<script src="js/desk.js?v=2026.11.09j"></script>
-<script src="js/lab.js?v=2026.11.09j"></script>
+<script src="js/engine.js?v=2026.11.09k"></script>
+<script src="js/desk.js?v=2026.11.09k"></script>
+<script src="js/lab.js?v=2026.11.09k"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>MarketMiner · MM Trend</title>
@@ -76,10 +76,10 @@ th{color:var(--t3);font-size:.64rem;text-transform:uppercase}tr.row{cursor:point
 </main>
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <script src="js/mmtrend.js?v=2026.11.01-16"></script>
-<script src="js/srzones.js?v=2026.11.09j"></script>
-<script src="js/markets.js?v=2026.11.09j"></script>
-<script src="js/auction.js?v=2026.11.09j"></script>
-<script src="js/chartctl.js?v=2026.11.09j"></script>
+<script src="js/srzones.js?v=2026.11.09k"></script>
+<script src="js/markets.js?v=2026.11.09k"></script>
+<script src="js/auction.js?v=2026.11.09k"></script>
+<script src="js/chartctl.js?v=2026.11.09k"></script>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -101,7 +101,7 @@ function mkChart(){
   const tzf=()=>LAST&&["NSE","FNO","MCX"].includes(LAST.market)?19800:0;
   try{window.SRH=MMSR.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("srBar"),symbol:()=>LAST&&LAST.symbol,tz:tzf})}catch(e){}
   try{window.AFH=MMAF.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("afBar"),read:$("afRead"),symbol:()=>LAST&&LAST.symbol,tz:tzf,page:"trend",defaults:{master:false}})}catch(e){}
-  try{if(window.CTL)CTL.detach();window.CTL=MMCTL.attach(chart,{box:$("chartBox"),plot:$("chart")})}catch(e){}
+  try{if(window.CTL)CTL.detach();window.CTL=MMCTL.attach(chart,{box:$("chartBox"),plot:$("chart"),last:()=>LAST&&LAST.candles&&LAST.candles.length?{time:LAST.candles[LAST.candles.length-1].time,tf:LAST.tf,market:LAST.market}:null})}catch(e){}
 }
 function draw(d,keep){
   const tz=["NSE","FNO","MCX"].includes(d.market)?19800:0,T=x=>x+tz,n=d.candles.length;

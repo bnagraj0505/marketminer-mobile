@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.09j"></script>
-<script src="js/desk.js?v=2026.11.09j"></script>
-<script src="js/lab.js?v=2026.11.09j"></script>
+<script src="js/engine.js?v=2026.11.09k"></script>
+<script src="js/desk.js?v=2026.11.09k"></script>
+<script src="js/lab.js?v=2026.11.09k"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>MarketMiner · AuctionFlow</title>
@@ -102,9 +102,9 @@ td.r,th.r{text-align:right}
   </div>
 </main>
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-<script src="js/markets.js?v=2026.11.09j"></script>
-<script src="js/auction.js?v=2026.11.09j"></script>
-<script src="js/chartctl.js?v=2026.11.09j"></script>
+<script src="js/markets.js?v=2026.11.09k"></script>
+<script src="js/auction.js?v=2026.11.09k"></script>
+<script src="js/chartctl.js?v=2026.11.09k"></script>
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
@@ -139,7 +139,7 @@ function mkChart(){
   new ResizeObserver(()=>chart.applyOptions({width:$("chart").clientWidth,height:$("chart").clientHeight})).observe($("chart"));
   AFH=MMAF.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("afBar"),read:$("afRead"),symbol:()=>LAST&&LAST.symbol,
     tz:()=>LAST&&["NSE","FNO","MCX"].includes(LAST.market)?19800:0,params:()=>`&tf=${tfOf()}&days=${DY}`,onData:d=>{AF=d;panels(d)},page:"page"});
-  try{MMCTL.attach(chart,{box:$("chartBox"),plot:$("chart")})}catch(e){}
+  try{MMCTL.attach(chart,{box:$("chartBox"),plot:$("chart"),last:()=>LAST&&LAST.candles&&LAST.candles.length?{time:LAST.candles[LAST.candles.length-1].time,tf:LAST.tf,market:LAST.market}:null})}catch(e){}
 }
 async function load(force){
   clearTimeout(timer);$("busy").textContent="loading…";
