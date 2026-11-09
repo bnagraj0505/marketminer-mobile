@@ -667,6 +667,10 @@
       const qq = new URLSearchParams(q); qq.set("bot_ids", JSON.stringify(Object.fromEntries(Object.entries(ids).map(([k, v]) => [k, { name: v.name, tf: v.tf }]))));
       return window.MM.lab("/api/lab/perf", qq, "GET", {});
     }
+    if (/^\/api\/agent\/(straddle|straddle\/refresh|retrace|pbook|bookings)$/.test(p)) {   // dashboard blocks: the PC's agent modules in the phone engine
+      if (!window.MM.lab) throw new HE(503, "The analysis engine is still loading.");
+      return window.MM.lab("/api/lab/agent/" + p.slice("/api/agent/".length), q, method, body());
+    }
     if (p.startsWith("/api/lab/")) { if (!window.MM.lab) throw new HE(503, "Open the Signal Lab page to use it."); return window.MM.lab(p, q, method, body()); }
     if (p.startsWith("/api/desk/")) { if (!window.MM.desk) throw new HE(503, "Open the Day Desk page to use it."); return window.MM.desk(p, q, method, body()); }
     if (p.startsWith("/api/ai/")) throw new HE(503, "AI analysis needs the PC server (it holds the API key).");

@@ -17,6 +17,7 @@ from . import regime as R
 from . import strategies as ST
 from . import scoring as SC
 from . import ict as ICT
+from . import mlfeat as MF
 
 MTF = {"1m": ("15m", "1h"), "3m": ("15m", "1h"), "5m": ("15m", "1h"), "15m": ("1h", "4h"), "30m": ("1h", "1d"),
        "1h": ("4h", "1d"), "4h": ("1d", "1w"), "1d": ("1w", "1w"), "1w": (None, None)}
@@ -26,6 +27,8 @@ IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 class Engine:
     def __init__(self, bars: list[Candle], tf: str, market: str, session_of, anchor_min: int = 0,
                  itf_bars: list[Candle] | None = None, htf_bars: list[Candle] | None = None):
+        from . import custom as CU
+        CU.ensure()                                # your workbench strategies (cheap when unchanged)
         self.F = Features(bars, tf, session_of, anchor_min)
         self.tf, self.market, self.session_of = tf, market, session_of
         itf, htf = MTF[tf]
@@ -88,6 +91,10 @@ class Engine:
             s.update(SC.setup_score(s, dscore, ctx, quality))
             s["regime"] = ctx["regime"]
             s["htf_bias"], s["itf_bias"] = ctx["htf_bias"], ctx["itf_bias"]
+            try:                                   # ML inputs (same function as the training data set)
+                s["ml_features"] = MF.features(self.F, i, ctx, dscore, s)
+            except Exception:                      # noqa: BLE001 - features must never break analysis
+                s["ml_features"] = None
             out.append(s)
         out.sort(key=lambda s: -s["score"])
         return {"ctx": ctx, "score": dscore, "setups": out, "rejected": rejected}

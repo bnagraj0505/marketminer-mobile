@@ -47,5 +47,12 @@ async def data_get(path, params):
     return await _raw_get(path, params)
 
 
+_PER_DAY = 5000
+
+
+def day_used():
+    return _usage["used"]
+
+
 def rate_status():
     return {"today": _usage["used"], "per_day_cap": _usage["cap"], "store": STORE.status()}

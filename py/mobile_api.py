@@ -97,10 +97,38 @@ async def _route(path: str, q: dict, method: str, body: dict):
         from backend.bot import perf
         ids = json.loads(q.get("bot_ids") or "{}")
         return await perf.report(q.get("source") or "bot", ids)
+    if p.startswith("/agent/"):                            # dashboard blocks (the PC's agent modules, information only)
+        return await _agent(p[len("/agent/"):], q, method)
     if p == "/fyers_store":
         from backend.brokers.fyers import client as FC
         return FC.rate_status()
     raise SV.BadRequest(404, "Not available in the phone version: /api/lab" + p)
+
+
+async def _agent(p: str, q: dict, method: str):
+    import time
+    from backend.agent import straddle as SD
+    if p in ("straddle", "straddle/refresh"):
+        # the PC records a snapshot every minute in the background; the phone records when the block asks, at the
+        # same budget-aware pace (and at most every 20 s when you tap refresh)
+        now = time.time()
+        last = SD.STATUS.get("last") or 0
+        due = SD.budget_interval(60) if p == "straddle" else 20
+        if SD.nse_open(now) and now - last >= due:
+            await SD.run_once()
+        SD.STATUS["running"] = True
+        return SD.report()
+    if p == "retrace":
+        from backend.agent import retrace as RT
+        RT.CRYPTO = [("BTC", "DELTAF:BTCUSD"), ("ETH", "DELTAF:ETHUSD")]     # Shark is not reachable from a phone
+        return await RT.report("crypto" if q.get("market") == "crypto" else "india")
+    if p == "pbook":
+        from backend.agent import pbook as PB
+        return await PB.report()
+    if p == "bookings":
+        from backend.agent import bookings as BK
+        return BK.report(int(q.get("limit") or 100))
+    raise SV.BadRequest(404, "Not available in the phone version: /api/agent/" + p)
 
 
 async def handle_json(req: str) -> str:

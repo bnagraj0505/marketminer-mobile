@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <script src="js/engine.js?v=2026.11.09"></script>
+<script src="js/desk.js?v=2026.11.09"></script>
+<script src="js/lab.js?v=2026.11.09"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>📱 MARKETMINER — Indian Markets Dashboard</title>
 <meta name="theme-color" content="#06080f">
@@ -601,6 +603,8 @@ img, canvas, svg { max-width:100%; }
     <div class="gf-ts" id="gfTs"></div>
   </div>
 </div>
+<div id="mmRetrace"></div><script src="js/retrace.js?v=2026.11.09"></script><div id="mmPbook"></div><script src="js/pbook.js?v=2026.11.09"></script>
+<div id="mmStraddle"></div><script src="js/straddle.js?v=2026.11.09"></script>
 
 <!-- SETTINGS MODAL -->
 <div class="modal-overlay" id="settingsModal">
@@ -4167,5 +4171,6 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(err => console.warn('PWA service worker:', err)));
 }
 </script>
+<script src="js/hider.js?v=2026.11.09"></script>
 </body>
 </html>
