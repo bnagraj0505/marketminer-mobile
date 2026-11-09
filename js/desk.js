@@ -463,7 +463,7 @@
   });
   async function resolve(symbol) {
     const s = symbol.toUpperCase();
-    if (!/(-FUT|-ATM-CE|-ATM-PE)$/.test(s)) return s;
+    if (!/(-FUT|-ATM([UD][1-9])?-(CE|PE))$/.test(s)) return s;     // NSE:NIFTY-ATMU2-CE = 2 strikes above ATM, -ATMD3-PE = 3 below
     return cached("alias:" + s, 60e3, async () => {
       const m = marketOf(s);
       if (s.endsWith("-FUT")) { const [ex, rest] = s.split(":"); return (await frontFuture(ex, rest.slice(0, -4))).symbol; }
@@ -472,10 +472,14 @@
         const opts = Object.values(info).filter((v) => v.kind === side && v.expiry_ms > cut); if (!opts.length) throw new HE(400, `No live ${coin} options on Delta Exchange`);
         const exp = Math.min(...opts.map((v) => v.expiry_ms)); return "DELTA:" + opts.filter((v) => v.expiry_ms === exp).reduce((a, v) => (Math.abs(v.strike - spot) < Math.abs(a.strike - spot) ? v : a)).pair;
       }
-      const [ex, rest] = s.split(":"), und = rest.slice(0, -7), side = rest.slice(-2), ch = await chain(ex, und);
+      const [ex, rest] = s.split(":"), mm = rest.match(/^(.+)-ATM(?:([UD])([1-9]))?-(CE|PE)$/), und = mm[1], side = mm[4];
+      const off = mm[2] ? (mm[2] === "D" ? -1 : 1) * +mm[3] : 0, ch = await chain(ex, und);
       const spotSym = ch.spot_symbol || (ch.futures[0] || {}).symbol; if (!spotSym) throw new HE(400, `No price reference for ${und}`);
       const px = await spot(spotSym), rows = ch.strikes.filter((r) => r[side]); if (!rows.length) throw new HE(400, `No ${und} ${side} options listed for ${ch.expiry}`);
-      return rows.reduce((a, r) => (Math.abs(r.strike - px) < Math.abs(a.strike - px) ? r : a))[side];
+      rows.sort((a, b) => a.strike - b.strike);
+      const atm = rows.reduce((bi, r, k) => (Math.abs(r.strike - px) < Math.abs(rows[bi].strike - px) ? k : bi), 0), i = atm + off;
+      if (i < 0 || i >= rows.length) throw new HE(400, `${und} has no strike ${Math.abs(off)} ${off > 0 ? "above" : "below"} ATM in ${ch.expiry}`);
+      return rows[i][side];
     });
   }
   async function spot(sym) { const d = ((await FY.quotes(sym)) || {}).d || []; for (const r of d) if (r.v && r.v.lp) return +r.v.lp; throw new HE(502, `No FYERS price for ${sym}`); }

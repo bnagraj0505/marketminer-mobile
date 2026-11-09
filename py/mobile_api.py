@@ -17,8 +17,10 @@ D.LIVE_LTP_TTL = 3.0                                  # the phone shares FYERS' 
 SV.PLATFORM.update(name="mobile", threads=False)
 SV.WATCH = {
     "India · Indices": ["NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX", "NSE:FINNIFTY-INDEX", "NSE:MIDCPNIFTY-INDEX", "BSE:SENSEX-INDEX", "BSE:BANKEX-INDEX"],
-    "India · Index options (ATM)": ["NSE:NIFTY-ATM-CE", "NSE:NIFTY-ATM-PE", "NSE:BANKNIFTY-ATM-CE", "NSE:BANKNIFTY-ATM-PE", "NSE:FINNIFTY-ATM-CE",
-                                    "NSE:FINNIFTY-ATM-PE", "BSE:SENSEX-ATM-CE", "BSE:SENSEX-ATM-PE"],
+    # India index options: ATM and 4 strikes either side (NSE:NIFTY-ATMU2-CE = 2 above ATM, -ATMD3-PE = 3 below)
+    **{f"India · {u} options (ATM ±4)": [f"{ex}:{u}-{'ATM' if k == 0 else f'ATM{'UD'[k < 0]}{abs(k)}'}-{s}"
+                                        for k in range(-4, 5) for s in ("CE", "PE")]
+       for ex, u in (("NSE", "NIFTY"), ("NSE", "BANKNIFTY"), ("NSE", "FINNIFTY"), ("BSE", "SENSEX"))},
     "India · Index futures": ["NSE:NIFTY-FUT", "NSE:BANKNIFTY-FUT", "NSE:FINNIFTY-FUT", "NSE:MIDCPNIFTY-FUT", "BSE:SENSEX-FUT"],
     "India · Stocks": ["NSE:RELIANCE-EQ", "NSE:HDFCBANK-EQ", "NSE:ICICIBANK-EQ", "NSE:SBIN-EQ", "NSE:INFY-EQ", "NSE:TCS-EQ"],
     "India · MCX": ["MCX:GOLD-FUT", "MCX:SILVER-FUT", "MCX:CRUDEOIL-FUT", "MCX:NATURALGAS-FUT"],
