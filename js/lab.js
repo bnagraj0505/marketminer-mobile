@@ -53,18 +53,30 @@
       py.FS.mkdirTree("/data");
       try { py.FS.mount(py.FS.filesystems.IDBFS, {}, "/data"); await sync(py, true); } catch (e) { console.warn("Signal Lab: device storage unavailable, data lasts until the page closes", e); }
       say("Loading Signal Lab code…");
-      const files = await (await fetch(`py/files.json?v=${V}`, { cache: "no-cache" })).json();
-      await Promise.all(files.map(async (f) => {
-        const r = await fetch(`py/${f}?v=${V}`, { cache: "no-cache" });
-        if (!r.ok) throw new HE(503, "Missing Signal Lab file " + f);
-        const path = "/app/" + f; py.FS.mkdirTree(path.slice(0, path.lastIndexOf("/"))); py.FS.writeFile(path, await r.text());
-      }));
+      // one request for all the Python (py/bundle.json, built by tools/bundle_py.py); the version in the URL makes the
+      // browser cache safe to use, so a normal reload costs nothing here
+      let bundle = null;
+      try { const r = await fetch(`py/bundle.json?v=${V}`); if (r.ok) bundle = await r.json(); } catch (e) { bundle = null; }
+      if (!bundle) {
+        const files = await (await fetch(`py/files.json?v=${V}`)).json();
+        bundle = {};
+        await Promise.all(files.map(async (f) => {
+          const r = await fetch(`py/${f}?v=${V}`);
+          if (!r.ok) throw new HE(503, "Missing Signal Lab file " + f);
+          bundle[f] = await r.text();
+        }));
+      }
+      for (const [f, text] of Object.entries(bundle)) { const path = "/app/" + f; py.FS.mkdirTree(path.slice(0, path.lastIndexOf("/"))); py.FS.writeFile(path, text); }
       py.registerJsModule("mmbridge", bridge);
       await py.runPythonAsync("import sys\nsys.path.insert(0, '/app')\nimport mobile_api");
       PY = py; say(null);
       if (window.MM_AGENT) {                     // AI Agent page: start the agent loop; ML needs scikit-learn (loaded in the background)
         try { await py.runPythonAsync("mobile_api.start_agent()"); } catch (e) { console.warn("agent start", e); }
-        MM.mlReady = py.loadPackage(["numpy", "scikit-learn"]).catch((e) => console.warn("scikit-learn", e));
+        // scikit-learn (about 20 MB with numpy/scipy) only when the ML model is in use, or when you open ML & Workbench
+        let mlMode = "off";
+        try { mlMode = String(await py.runPythonAsync("from backend.agent import ml as _ml\n_ml.cfg()['mode']")); } catch (e) { /* ignore */ }
+        MM.needML = () => (MM.mlReady = MM.mlReady || py.loadPackage(["numpy", "scikit-learn"]).catch((e) => console.warn("scikit-learn", e)));
+        if (mlMode !== "off") MM.needML();
         setInterval(() => sync(py, false), 30000);   // the agent writes in the background: save to this device every 30 s
       }
       return py;
@@ -74,9 +86,18 @@
   }
   function persist() { clearTimeout(persistT); persistT = setTimeout(() => PY && sync(PY, false), 1200); }
 
+  // Signal Lab, MM Trend, P&L and AI Agent need the engine at once. The Dashboard and Crypto pages only need it for a
+  // few blocks: there it starts after the page's own data has loaded, so the page itself is not slowed down.
+  const EAGER = !!window.MM_AGENT || /\/(lab|trend|perf|agent)\.html$/.test(location.pathname);
+  let calm = null;
+  const settled = () => calm || (calm = new Promise((res) => {
+    const go = () => setTimeout(res, 2500);
+    if (document.readyState === "complete") go(); else window.addEventListener("load", go, { once: true });
+  }));
   async function route(p, q, method, body) {
+    if (!PY && !EAGER) await settled();
     const py = await start();
-    if (/^\/api\/lab\/agent\/(ml|workbench)/.test(p) && MM.mlReady) await MM.mlReady;   // ML / workbench need scikit-learn
+    if (/^\/api\/lab\/agent\/(ml|workbench)/.test(p) && MM.needML) await MM.needML();   // ML / workbench need scikit-learn
     const k = "_mm_req_" + (++n);
     py.globals.set(k, JSON.stringify({ path: p, query: Object.fromEntries(q), method, body }));
     let out;
@@ -98,6 +119,6 @@
       clearTimeout(recT); recT = setTimeout(recorderTick, Math.max(5, (m.recorder && m.recorder.interval_min) || 15) * 60e3);
     } catch (e) { clearTimeout(recT); recT = setTimeout(recorderTick, 15 * 60e3); }
   }
-  setTimeout(() => start().then(() => { recT = setTimeout(recorderTick, 60e3); }).catch(() => {}), 0);
+  if (EAGER) setTimeout(() => start().then(() => { if (/\/lab\.html$/.test(location.pathname)) recT = setTimeout(recorderTick, 60e3); }).catch(() => {}), 0);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && PY) sync(PY, false); });
 })();
