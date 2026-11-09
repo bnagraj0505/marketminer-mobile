@@ -27,13 +27,12 @@ def _strikes(ex: str, und: str) -> list[str]:
 SV.WATCH = {
     "India · Indices": ["NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX", "NSE:FINNIFTY-INDEX", "NSE:MIDCPNIFTY-INDEX", "BSE:SENSEX-INDEX", "BSE:BANKEX-INDEX"],
     # India index options: ATM and 4 strikes either side (NSE:NIFTY-ATMU2-CE = 2 above ATM, -ATMD3-PE = 3 below)
-    **{f"India · {u} options (ATM ±4)": _strikes(ex, u) for ex, u in (("NSE", "NIFTY"), ("NSE", "BANKNIFTY"), ("NSE", "FINNIFTY"), ("BSE", "SENSEX"))},
+    **{f"India · {u} options": _strikes(ex, u) for ex, u in (("NSE", "NIFTY"), ("NSE", "BANKNIFTY"), ("NSE", "FINNIFTY"), ("BSE", "SENSEX"))},
     "India · Index futures": ["NSE:NIFTY-FUT", "NSE:BANKNIFTY-FUT", "NSE:FINNIFTY-FUT", "NSE:MIDCPNIFTY-FUT", "BSE:SENSEX-FUT"],
     "India · Stocks": ["NSE:RELIANCE-EQ", "NSE:HDFCBANK-EQ", "NSE:ICICIBANK-EQ", "NSE:SBIN-EQ", "NSE:INFY-EQ", "NSE:TCS-EQ"],
     "India · MCX": ["MCX:GOLD-FUT", "MCX:SILVER-FUT", "MCX:CRUDEOIL-FUT", "MCX:NATURALGAS-FUT"],
     "Gold & Crypto · Delta": ["DELTAF:XAUTUSD", "DELTAF:BTCUSD", "DELTAF:ETHUSD", "DELTAF:SOLUSD", "DELTAF:XRPUSD", "DELTAF:BNBUSD", "DELTAF:DOGEUSD"],
-    "Gold options · Delta (ATM)": ["DELTA:XAUT-ATM-CE", "DELTA:XAUT-ATM-PE"],
-    **{f"{c} options · Delta (ATM ±4)": _strikes("DELTA", c) for c in ("BTC", "ETH")},
+    **{f"{'Gold' if c == 'XAUT' else c} options · Delta": _strikes("DELTA", c) for c in ("BTC", "ETH", "XAUT")},
     "US / Global (PC only)": ["YF:^GSPC", "YF:^NDX", "YF:AAPL", "YF:EURUSD=X"],
 }
 recorder.DEFAULTS.update(symbols=["NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX", "DELTAF:BTCUSD", "DELTAF:ETHUSD"])
