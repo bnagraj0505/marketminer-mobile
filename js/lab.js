@@ -42,9 +42,43 @@
   const sync = (py, populate) => new Promise((res) => { try { py.FS.syncfs(populate, (err) => res(err)); } catch (e) { res(e); } });
   let boot = null, PY = null, n = 0, persistT = null;
 
+  // ---------------------------------------------------------------- engine in a background thread (js/labworker.js)
+  // Python runs in a Web Worker so the page never freezes while it starts. If a worker cannot be started, it runs on
+  // the page as before (startMain).
+  let W = null, wid = 0;
+  const wwait = new Map();
+  function startWorker() {
+    return new Promise((resolve, reject) => {
+      let w;
+      try { w = new Worker(`js/labworker.js?v=${V}`); } catch (e) { reject(e); return; }
+      w.onmessage = async (ev) => {
+        const m = ev.data || {};
+        if (m.t === "say") say(m.m);
+        else if (m.t === "ready") { W = w; resolve(w); }
+        else if (m.t === "fail") { w.terminate(); reject(new Error(m.m)); }
+        else if (m.t === "bridge") {
+          const raw = bridge[m.name] ? await bridge[m.name](...m.args) : JSON.stringify({ ok: false, status: 404, message: "no bridge " + m.name });
+          w.postMessage({ t: "bres", id: m.id, raw });
+        } else if (m.t === "res" || m.t === "synced") { const r = wwait.get(m.id); wwait.delete(m.id); if (r) r(m); }
+      };
+      w.onerror = (e) => { if (!W) { w.terminate(); reject(new Error(e.message || "worker error")); } };
+      w.postMessage({ t: "init", v: V, idx: IDX, agent: !!window.MM_AGENT });
+    });
+  }
+  const wcall = (msg) => new Promise((res) => { const id = ++wid; wwait.set(id, res); W.postMessage({ ...msg, id }); });
+
   function start() {
     if (boot) return boot;
-    boot = (async () => {
+    boot = (typeof Worker === "undefined" ? Promise.reject(new Error("no Worker")) : startWorker()).catch((e) => {
+      console.warn("Analysis engine: background thread unavailable, running on the page", e);
+      W = null; return startMain();
+    });
+    boot.catch((e) => { boot = null; say("Signal Lab engine failed to start: " + e.message); });
+    return boot;
+  }
+
+  function startMain() {
+    return (async () => {
       say("Downloading the analysis engine (about 10 MB the first time, then cached)…");
       if (!window.loadPyodide) await script(IDX + "pyodide.js");
       const py = await window.loadPyodide({ indexURL: IDX });
@@ -81,10 +115,8 @@
       }
       return py;
     })();
-    boot.catch((e) => { boot = null; say("Signal Lab engine failed to start: " + e.message); });
-    return boot;
   }
-  function persist() { clearTimeout(persistT); persistT = setTimeout(() => PY && sync(PY, false), 1200); }
+  function persist() { clearTimeout(persistT); persistT = setTimeout(() => { if (W) wcall({ t: "sync" }); else if (PY) sync(PY, false); }, 1200); }
 
   // Signal Lab, MM Trend, P&L and AI Agent need the engine at once. The Dashboard and Crypto pages only need it for a
   // few blocks: there it starts after the page's own data has loaded, so the page itself is not slowed down.
@@ -95,8 +127,16 @@
     if (document.readyState === "complete") go(); else window.addEventListener("load", go, { once: true });
   }));
   async function route(p, q, method, body) {
-    if (!PY && !EAGER) await settled();
+    if (!boot && !EAGER) await settled();
     const py = await start();
+    if (W) {
+      const r = await wcall({ t: "req", path: p, query: Object.fromEntries(q), method, body });
+      if (r.err) throw new HE(500, r.err);
+      const o = JSON.parse(r.out);
+      persist();
+      if (o.status >= 400) throw new HE(o.status, o.body.detail);
+      return o.body;
+    }
     if (/^\/api\/lab\/agent\/(ml|workbench)/.test(p) && MM.needML) await MM.needML();   // ML / workbench need scikit-learn
     const k = "_mm_req_" + (++n);
     py.globals.set(k, JSON.stringify({ path: p, query: Object.fromEntries(q), method, body }));
@@ -120,5 +160,5 @@
     } catch (e) { clearTimeout(recT); recT = setTimeout(recorderTick, 15 * 60e3); }
   }
   if (EAGER) setTimeout(() => start().then(() => { if (/\/lab\.html$/.test(location.pathname)) recT = setTimeout(recorderTick, 60e3); }).catch(() => {}), 0);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && PY) sync(PY, false); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState !== "hidden") return; if (W) wcall({ t: "sync" }); else if (PY) sync(PY, false); });
 })();
