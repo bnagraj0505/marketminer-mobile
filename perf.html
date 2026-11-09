@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/engine.js?v=2026.11.09"></script>
+<script src="js/desk.js?v=2026.11.09"></script>
+<script src="js/lab.js?v=2026.11.09"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06080f">
+<title>📱 MarketMiner · Paper P&amp;L</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg0:#06080f;--bg1:#0d1117;--bg2:#131a27;--bdr:#1b2536;--bdr2:#263450;--t1:#e2e8f0;--t2:#8b9ab5;--t3:#5b6b85;--g:#00e676;--r:#ff5252;--a:#ffab00;--ab:rgba(255,171,0,.08);--cy:#18ffff;--gd:#FFD700;--mono:'JetBrains Mono',ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg0);color:var(--t1);min-height:100vh;overflow-x:hidden}
+a{color:inherit}
+.header{position:sticky;top:0;z-index:50;background:rgba(6,8,15,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);padding:8px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-family:var(--mono);font-weight:800;font-size:1.45rem;letter-spacing:-.5px}.logo .m{color:var(--cy)}.logo .s{color:var(--gd)}
+.logo small{font:600 .7rem var(--mono);color:var(--t3);margin-left:8px;letter-spacing:.5px}
+.hr{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--bg2);border:1px solid var(--bdr2);color:var(--t2);padding:6px 11px;border-radius:6px;cursor:pointer;font:600 .74rem var(--mono);text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--cy);color:var(--cy)}.btn.sm{padding:3px 8px;font-size:.68rem}
+.paper{font:700 .62rem var(--mono);color:var(--a);border:1px solid rgba(255,171,0,.4);background:var(--ab);padding:3px 7px;border-radius:4px;letter-spacing:.5px}
+.wrap{max-width:1500px;margin:0 auto;padding:12px 16px 80px}
+.seg{display:inline-flex;border:1px solid var(--bdr2);border-radius:6px;overflow:hidden}
+.seg button{background:var(--bg1);border:0;border-right:1px solid var(--bdr2);color:var(--t2);padding:6px 10px;font:600 .74rem var(--mono);cursor:pointer}
+.seg button:last-child{border-right:0}.seg button.on{background:rgba(255,215,0,.12);color:var(--gd)}
+.ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.ctl input,.ctl select{background:var(--bg1);border:1px solid var(--bdr2);color:var(--t1);padding:6px 9px;border-radius:6px;font:600 .78rem var(--mono)}
+.cd select,.cd input{background:var(--bg0);border:1px solid var(--bdr2);color:var(--t1);padding:5px 8px;border-radius:6px;font:600 .72rem var(--mono)}
+.cd{background:var(--bg1);border:1px solid var(--bdr);border-radius:9px;padding:12px;min-width:0}
+.cd h3{font:700 .7rem var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:10px}
+.kpi{background:var(--bg1);border:1px solid var(--bdr);border-radius:9px;padding:11px 12px}
+.kpi .l{font:700 .62rem var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.6px}
+.kpi .v{font:800 1.35rem var(--mono);margin-top:5px;letter-spacing:-.5px}
+.kpi .s{font:500 .68rem var(--mono);color:var(--t2);margin-top:3px}
+.kpi.hero{border-color:rgba(255,215,0,.35)}
+.two{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px;margin-bottom:10px}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
+@media(max-width:1000px){.two,.three{grid-template-columns:1fr}}
+.up{color:var(--g)}.dn{color:var(--r)}.nt{color:var(--t3)}.am{color:var(--a)}.gd{color:var(--gd)}
+.scroll{overflow:auto}
+table{width:100%;border-collapse:collapse;font:500 .72rem var(--mono)}
+th{color:var(--t3);font-weight:700;text-align:left;padding:6px 7px;border-bottom:1px solid var(--bdr2);position:sticky;top:0;background:var(--bg1);white-space:nowrap;text-transform:uppercase;font-size:.62rem;letter-spacing:.4px}
+td{padding:6px 7px;border-bottom:1px solid var(--bdr);white-space:nowrap}
+td.r,th.r{text-align:right}
+tr:hover td{background:var(--bg2)}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto}
+.tip{position:absolute;pointer-events:none;background:#0b111c;border:1px solid var(--bdr2);border-radius:6px;padding:6px 8px;font:600 .7rem var(--mono);color:var(--t1);white-space:nowrap;display:none;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.empty{padding:28px;text-align:center;color:var(--t3);font:500 .8rem var(--mono)}
+.note{font:500 .7rem var(--mono);color:var(--t3);line-height:1.55;margin-top:8px}
+.tag{font:700 .6rem var(--mono);padding:2px 5px;border-radius:4px;border:1px solid var(--bdr2);color:var(--t2)}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="hr"><a href="index.html" class="logo" style="text-decoration:none"><span class="m">MARKET</span><span class="s">MINER</span><small>PAPER P&amp;L</small></a><span class="paper">PAPER TRADING ONLY</span></div>
+  <div class="hr">
+    <a class="btn" href="index.html">⌂ DASHBOARD</a>
+    <a class="btn" href="lab.html">◎ SIGNAL LAB</a>
+    <button class="btn" onclick="load()">↻ Refresh</button>
+  </div>
+</div>
+<div class="wrap">
+  <div class="ctl">
+    <div class="seg" id="src"></div>
+    <div class="seg" id="cur"></div>
+    <span class="nt mono" id="stamp" style="font:500 .7rem var(--mono)"></span>
+  </div>
+  <div id="body"><div class="empty">Loading… <span class="nt" id="labSay"></span><br><span class="nt">The P&amp;L is read from the Signal Lab ledger on this device (the first open downloads the analysis engine, about 10 MB, then it is cached).</span></div></div>
+</div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const SRC=[["bot","🤖 Auto bot"],["manual","✋ Manual"],["all","All paper"]];   // phone: the AI agent runs on the PC only
+const SYM={INR:"₹",USD:"$"};
+const ls=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}};
+let source=(x=>["bot","manual","all"].includes(x)?x:"bot")(new URLSearchParams(location.search).get("src")||ls("perf.src")), cur=ls("perf.cur")||"", R=null, filt={period:"all",q:"",res:"all"};
+const n=(x,d=2)=>x==null||isNaN(x)?"—":(+x).toLocaleString("en-IN",{minimumFractionDigits:d,maximumFractionDigits:d});
+const money=(x,c,sign=true)=>x==null?"—":(sign&&x>0?"+":x<0?"−":"")+(SYM[c]||"")+n(Math.abs(x));
+const cls=x=>x>0?"up":x<0?"dn":"";
+const short=s=>String(s).split(":").pop();
+const ts=t=>t?new Date(t*1000).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Kolkata"}):"—";
+const dur=(a,b)=>{const s=(b||Date.now()/1000)-a;return s<3600?Math.round(s/60)+"m":s<86400?(s/3600).toFixed(1)+"h":(s/86400).toFixed(1)+"d"};
+const SRCN={bot:"bot",agent:"agent",manual:"manual"};
+
+function segs(){
+  $("src").innerHTML=SRC.map(([k,l])=>`<button class="${k===source?"on":""}" onclick="setSrc('${k}')">${l}</button>`).join("");
+  const cs=(R&&R.currencies)||[];
+  $("cur").style.display=cs.length?"":"none";
+  $("cur").innerHTML=cs.map(c=>`<button class="${c===cur?"on":""}" onclick="setCur('${c}')">${c==="INR"?"₹ INR · India/MCX":"$ USD · crypto/US"}</button>`).join("");
+}
+function setSrc(k){source=k;ls("perf.src",k);load()}
+function setCur(c){cur=c;ls("perf.cur",c);render()}
+
+async function load(){
+  try{
+    const r=await fetch("/api/bot/performance?source="+source);
+    if(!r.ok)throw new Error((await r.json().catch(()=>({}))).detail||r.statusText);
+    R=await r.json();
+    if(!R.currencies.includes(cur))cur=R.currencies.includes("INR")&&R.by_currency.INR.closed.trades?"INR":R.currencies[0];
+    $("stamp").textContent="updated "+new Date().toLocaleTimeString("en-IN")+" · refreshes every 30 s";
+    render();
+  }catch(e){segs();$("body").innerHTML=`<div class="cd"><div class="empty dn">Could not load the P&amp;L: ${esc(e.message)}<br><span class="nt">The Signal Lab engine on this device could not answer. Reload the page; if it persists, open Signal Lab once.</span></div></div>`}
+}
+
+function kpi(l,v,s,c="",hero=false){return `<div class="kpi${hero?" hero":""}"><div class="l">${l}</div><div class="v ${c}">${v}</div>${s?`<div class="s">${s}</div>`:""}</div>`}
+
+function render(){
+  segs();
+  const B=R.by_currency[cur];
+  const rows=R.trades.filter(t=>t.currency===cur), open=R.open.filter(t=>t.currency===cur);
+  if(!B||(!rows.length&&!open.length)){
+    $("body").innerHTML=`<div class="cd"><div class="empty">No ${source==="all"?"":esc(SRC.find(s=>s[0]===source)[1])+" "}paper trades yet${R.currencies.length?" in "+cur:""}.<br><span class="nt">${source==="bot"?"Start the Auto bot in Signal Lab → Auto bot on this device. Its paper trades show up here as they open and close.":"Trades appear here as soon as they are taken."}</span></div></div>`;return}
+  const s=B.closed, p=B.periods, o=B.open;
+  const pf=s.profit_factor==null?"—":s.profit_factor>=999?"∞":n(s.profit_factor);
+  let h=`<div class="kpis">
+    ${kpi("Net P&L · all time",money(s.pnl||0,cur),`${s.trades||0} closed${B.return_pct!=null?` · ${B.return_pct>0?"+":""}${n(B.return_pct)}% of ${SYM[cur]}${n(B.capital,0)}`:""}`,cls(s.pnl),true)}
+    ${kpi("Today · closed",money(p.today.pnl,cur),`${p.today.trades} trades${p.today.trades?` · win ${p.today.win_rate}%`:""}${o.trades?` · plus open ${money(o.upnl,cur)}`:""}`,cls(p.today.pnl))}
+    ${kpi("This week",money(p.week.pnl,cur),`${p.week.trades} trades${p.week.trades?` · win ${p.week.win_rate}%`:""}`,cls(p.week.pnl))}
+    ${kpi("This month",money(p.month.pnl,cur),`${p.month.trades} trades${p.month.trades?` · win ${p.month.win_rate}%`:""}`,cls(p.month.pnl))}
+    ${kpi("Open P&L",o.trades?money(o.upnl,cur):"—",o.trades?`${o.trades} open · ${o.risk>0?`at risk ${SYM[cur]}${n(o.risk)}`:"no risk left (stops at breakeven+)"}${o.unpriced?` · ${o.unpriced} unpriced`:""}`:"no open trades",cls(o.upnl))}
+    ${kpi("Win rate",s.trades?n(s.win_rate,1)+"%":"—",s.trades?`${s.wins} W · ${s.losses} L · streak ${s.streak>0?s.streak+"W":(-s.streak)+"L"}`:"")}
+    ${kpi("Profit factor",pf,s.trades?`avg win ${money(s.avg_win,cur,false)} · avg loss ${money(Math.abs(s.avg_loss),cur,false)}`:"",s.profit_factor>=1?"up":s.profit_factor!=null?"dn":"")}
+    ${kpi("Expectancy",s.trades?(s.avg_r>0?"+":"")+n(s.avg_r)+"R":"—",s.trades?`per trade · total ${s.total_r>0?"+":""}${n(s.total_r)}R`:"",cls(s.avg_r))}
+    ${kpi("Max drawdown",s.trades?money(s.max_dd,cur):"—",s.trades?`best ${money(s.best,cur)} · worst ${money(s.worst,cur)}`:"",s.max_dd<0?"dn":"")}
+    ${kpi("Costs paid",s.trades?SYM[cur]+n(s.costs):"—",s.trades?`gross ${money(s.gross,cur)} before costs`:"","am")}
+  </div>`;
+  h+=`<div class="two">
+    <div class="cd"><h3><span>Equity curve · closed P&amp;L after costs, trade by trade</span><span class="nt">${cur}</span></h3><div class="chart" id="eq"></div></div>
+    <div class="cd"><h3><span>Daily P&amp;L</span><span class="nt">IST days</span></h3><div class="chart" id="daily"></div></div>
+  </div>`;
+  h+=`<div class="cd" style="margin-bottom:10px"><h3><span>Open positions · live P&amp;L</span><span class="nt">booked part + rest at latest price, before exit costs</span></h3>${openTable(open)}</div>`;
+  const G=(f,t)=>`<div class="cd"><h3><span>${t}</span><span class="nt">${cur}</span></h3>${grp(group(rows,f))}</div>`;
+  h+=`<div class="three">${G(t=>t.strategy||"—","By strategy")}${G(t=>t.symbol,"By market")}${G(t=>t.exit_reason||"—","By exit")}</div>`;
+  h+=`<div class="three">${G(t=>t.side,"Long vs short")}${G(t=>t.tf||"—","By timeframe")}${source==="all"?G(t=>t.src,"By source"):G(t=>["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][new Date((t.opened_at+19800)*1000).getUTCDay()],"By weekday (opened)")}</div>`;
+  h+=`<div class="cd"><h3><span>Closed trades</span><span class="hr">
+      <select id="fPer" onchange="filt.period=this.value;rTrades()">${[["all","All time"],["today","Today"],["week","This week"],["month","This month"]].map(([k,l])=>`<option value="${k}" ${filt.period===k?"selected":""}>${l}</option>`).join("")}</select>
+      <select id="fRes" onchange="filt.res=this.value;rTrades()">${[["all","Wins + losses"],["win","Wins"],["loss","Losses"]].map(([k,l])=>`<option value="${k}" ${filt.res===k?"selected":""}>${l}</option>`).join("")}</select>
+      <input id="fQ" placeholder="Filter symbol / strategy" value="${esc(filt.q)}" oninput="filt.q=this.value;rTrades()" style="width:190px">
+      <button class="btn sm" onclick="csv()">⬇ CSV</button></span></h3><div id="trades" class="scroll" style="max-height:560px"></div>
+    <div class="note">Closed P&amp;L is after brokerage, taxes and slippage (the ledger's cost model). R = P&amp;L ÷ the risk to the first stop. Money is never added across ₹ and $; the All-currency R line: ${R.all_r.trades?`${R.all_r.trades} trades · win ${R.all_r.win_rate}% · ${R.all_r.avg_r>0?"+":""}${n(R.all_r.avg_r)}R per trade · ${R.all_r.total_r>0?"+":""}${n(R.all_r.total_r)}R total`:"none yet"}.</div></div>`;
+  $("body").innerHTML=h;
+  drawEq(B.curve); drawDaily(B.daily); rTrades();
+}
+
+function openTable(L){
+  if(!L.length)return '<div class="nt" style="font:500 .74rem var(--mono)">No open trades.</div>';
+  return `<div class="scroll"><table><tr><th>#</th>${source==="all"?"<th>Src</th>":""}<th>Opened</th><th>Market</th><th>Strategy</th><th>Side</th><th class="r">Qty</th><th class="r">Entry</th><th class="r">Now</th><th class="r">Stop</th><th>Hit</th><th class="r">Open P&amp;L</th><th class="r">R</th><th class="r">Held</th></tr>
+  ${L.map(t=>`<tr><td>${t.id}</td>${source==="all"?`<td><span class="tag">${SRCN[t.src]}</span></td>`:""}<td>${ts(t.opened_at)}</td><td>${esc(short(t.symbol))}</td><td>${esc(t.strategy)}</td><td class="${t.side==="LONG"?"up":"dn"}">${t.side==="LONG"?"▲":"▼"} ${t.side}</td><td class="r">${n(t.qty,t.qty<10?4:0)}</td><td class="r">${n(t.entry)}</td><td class="r">${t.price==null?'<span class="am">no price</span>':n(t.price)}</td><td class="r">${n(t.stop_now)}</td><td>${(t.hit||[]).join(" ")||"—"}</td><td class="r ${cls(t.upnl)}"><b>${money(t.upnl,t.currency)}</b></td><td class="r ${cls(t.ur)}">${t.ur==null?"—":(t.ur>0?"+":"")+n(t.ur)+"R"}</td><td class="r">${dur(t.opened_at)}</td></tr>`).join("")}</table></div>`;
+}
+
+function group(rows,f){
+  const g={};rows.forEach(t=>{(g[f(t)]=g[f(t)]||[]).push(t)});
+  return Object.entries(g).map(([k,v])=>({key:k,trades:v.length,win_rate:100*v.filter(t=>t.pnl>0).length/v.length,
+    pnl:{[cur]:v.reduce((a,t)=>a+(t.pnl||0),0)},avg_r:v.reduce((a,t)=>a+(t.r||0),0)/v.length,total_r:v.reduce((a,t)=>a+(t.r||0),0)})).sort((a,b)=>b.pnl[cur]-a.pnl[cur]);
+}
+function grp(L){
+  if(!L||!L.length)return '<div class="nt" style="font:500 .74rem var(--mono)">No closed trades.</div>';
+  const mx=Math.max(...L.map(g=>Math.abs(g.total_r)),0.01);
+  return `<div class="scroll" style="max-height:300px"><table><tr><th>${""}</th><th class="r">Trades</th><th class="r">Win%</th><th class="r">P&amp;L</th><th class="r">Total R</th></tr>
+  ${L.map(g=>`<tr title="avg ${n(g.avg_r)}R per trade"><td style="white-space:normal;min-width:110px">${esc(g.key.includes(":")?short(g.key):SRCN[g.key]||g.key)}</td><td class="r">${g.trades}</td><td class="r">${n(g.win_rate,0)}%</td>
+  <td class="r">${Object.entries(g.pnl).map(([c,v])=>`<span class="${cls(v)}">${money(v,c)}</span>`).join("<br>")}</td>
+  <td class="r ${cls(g.total_r)}"><span style="display:inline-block;width:${Math.round(34*Math.abs(g.total_r)/mx)}px;height:6px;border-radius:3px;margin-right:5px;vertical-align:middle;background:${g.total_r>=0?"var(--g)":"var(--r)"};opacity:.7"></span>${g.total_r>0?"+":""}${n(g.total_r)}</td></tr>`).join("")}</table></div>`;
+}
+
+function filtered(){
+  const IST=19800e3, now=Date.now(), today=Math.floor((now+IST)/864e5)*864e5-IST, dow=(new Date(today+IST).getUTCDay()+6)%7;
+  const dm=new Date(today+IST), wk=today-dow*864e5, mo=Date.UTC(dm.getUTCFullYear(),dm.getUTCMonth(),1)-IST;
+  const start={all:0,today,week:wk,month:mo}[filt.period]/1000, q=filt.q.trim().toLowerCase();
+  return R.trades.filter(t=>t.currency===cur&&t.closed_at>=start&&(filt.res==="all"||(filt.res==="win"?t.pnl>0:t.pnl<=0))
+    &&(!q||(t.symbol+" "+t.strategy+" "+(t.exit_reason||"")).toLowerCase().includes(q)));
+}
+function rTrades(){
+  const L=filtered(), el=$("trades"); if(!el)return;
+  const tot=L.reduce((a,t)=>a+(t.pnl||0),0), w=L.filter(t=>t.pnl>0).length;
+  el.innerHTML=L.length?`<table><tr><th>#</th>${source==="all"?"<th>Src</th>":""}<th>Closed</th><th>Market</th><th>Strategy</th><th>TF</th><th>Side</th><th class="r">Entry</th><th class="r">Exit</th><th>Exit reason</th><th class="r">Gross</th><th class="r">Costs</th><th class="r">Net P&amp;L</th><th class="r">R</th><th class="r">Held</th></tr>
+    ${L.map(t=>`<tr><td>${t.id}</td>${source==="all"?`<td><span class="tag">${SRCN[t.src]}</span></td>`:""}<td>${ts(t.closed_at)}</td><td>${esc(short(t.symbol))}</td><td>${esc(t.strategy)}</td><td>${esc(t.tf)}</td><td class="${t.side==="LONG"?"up":"dn"}">${t.side==="LONG"?"▲":"▼"} ${t.side}</td><td class="r">${n(t.entry)}</td><td class="r">${n(t.exit)}</td><td>${esc(t.exit_reason||"")}${(t.hit||[]).length?` <span class="nt">(${t.hit.join(" ")})</span>`:""}</td><td class="r ${cls(t.gross)}">${money(t.gross,cur)}</td><td class="r am">${n(t.costs)}</td><td class="r ${cls(t.pnl)}"><b>${money(t.pnl,cur)}</b></td><td class="r ${cls(t.r)}">${(t.r>0?"+":"")+n(t.r)}</td><td class="r">${dur(t.opened_at,t.closed_at)}</td></tr>`).join("")}
+    <tr><td colspan="${source==="all"?12:11}" class="nt">${L.length} trades · ${w} wins (${n(100*w/L.length,0)}%)</td><td class="r ${cls(tot)}"><b>${money(tot,cur)}</b></td><td colspan="2"></td></tr></table>`
+    :'<div class="nt" style="font:500 .74rem var(--mono);padding:8px 0">No closed trades match.</div>';
+}
+
+function csv(){
+  const L=filtered(), head=["id","source","opened","closed","symbol","strategy","tf","side","qty","entry","exit","exit_reason","gross","costs","net_pnl","r","currency"];
+  const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const body=L.map(t=>[t.id,t.src,ts(t.opened_at),ts(t.closed_at),t.symbol,t.strategy,t.tf,t.side,t.qty,t.entry,t.exit,t.exit_reason,t.gross,t.costs,t.pnl,t.r,t.currency].map(q).join(","));
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([[head.join(","),...body].join("\n")],{type:"text/csv"}));
+  a.download=`marketminer-paper-${source}-${cur}-${new Date().toISOString().slice(0,10)}.csv`;a.click();
+}
+
+/* ---- charts: hand-drawn SVG, one series each, hover tooltip ---- */
+let W=640;const H=220,PL=62,PR=10,PT=12,PB=24;
+function axis(min,max){const span=max-min||1,step=Math.pow(10,Math.floor(Math.log10(span/4)));const m=[1,2,5,10].find(k=>span/(k*step)<=5)*step;const t=[];for(let v=Math.ceil(min/m)*m;v<=max+1e-9;v+=m)t.push(v);return t}
+function fmtAx(v){const a=Math.abs(v);return (v<0?"−":"")+(SYM[cur]||"")+(a>=1e5?(a/1e5).toFixed(a>=1e6?0:1)+"L":a>=1e3?(a/1e3).toFixed(a>=1e4?0:1)+"k":a.toFixed(a<10&&a>0?1:0))}
+function frame(el,min,max){
+  const ty=axis(min,max),y=v=>PT+(H-PT-PB)*(1-(v-min)/((max-min)||1));
+  return {y,svg:ty.map(v=>`<line x1="${PL}" x2="${W-PR}" y1="${y(v)}" y2="${y(v)}" stroke="${v===0?"#3a4a66":"#1b2536"}" stroke-width="1"/><text x="${PL-6}" y="${y(v)+3.5}" text-anchor="end" fill="#5b6b85" font-family="JetBrains Mono" font-size="10">${fmtAx(v)}</text>`).join("")};
+}
+function tipOn(el,html,x,y){const t=el.querySelector(".tip");t.innerHTML=html;t.style.display="block";const w=el.clientWidth;let lx=x+12;if(lx+t.offsetWidth>w)lx=x-t.offsetWidth-12;t.style.left=Math.max(0,lx)+"px";t.style.top=Math.max(0,y-30)+"px"}
+function drawEq(C){
+  const el=$("eq");if(!el)return;W=Math.max(280,el.clientWidth);
+  if(!C.length){el.innerHTML='<div class="empty">No closed trades yet.</div>';return}
+  const pts=[{t:C[0].t-1,cum:0},...C];const vs=pts.map(p=>p.cum);let min=Math.min(0,...vs),max=Math.max(0,...vs);const pad=(max-min)*.08||1;min-=pad;max+=pad;
+  const w=W,{y,svg}=frame(el,min,max),x=i=>PL+(w-PL-PR)*i/(pts.length-1||1);
+  const d=pts.map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(p.cum).toFixed(1)}`).join("");
+  const last=pts[pts.length-1].cum,col=last>=0?"#00e676":"#ff5252";
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="height:${H}px">${svg}
+    <path d="${d}L${x(pts.length-1)},${y(0)}L${x(0)},${y(0)}Z" fill="${col}" opacity=".07"/>
+    <path d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    <line id="eqX" y1="${PT}" y2="${H-PB}" stroke="#8b9ab5" stroke-dasharray="3 3" opacity="0" vector-effect="non-scaling-stroke"/>
+    <circle id="eqD" r="4" fill="${col}" stroke="#0d1117" stroke-width="2" opacity="0"/>
+    <text x="${PL}" y="${H-6}" fill="#5b6b85" font-family="JetBrains Mono" font-size="10">${esc(ts(C[0].t))}</text><text x="${W-PR}" y="${H-6}" text-anchor="end" fill="#5b6b85" font-family="JetBrains Mono" font-size="10">${esc(ts(C[C.length-1].t))}</text>
+    <rect x="${PL}" y="0" width="${W-PL-PR}" height="${H}" fill="transparent" id="eqHit"/></svg><div class="tip"></div>`;
+  const hit=el.querySelector("#eqHit"),X=el.querySelector("#eqX"),D=el.querySelector("#eqD");
+  hit.addEventListener("mousemove",ev=>{const r=el.querySelector("svg").getBoundingClientRect();const fx=ev.clientX-r.left;let i=Math.round((fx-PL)/((w-PL-PR)/(pts.length-1||1)));i=Math.max(1,Math.min(pts.length-1,i));const p=pts[i],tr=R.trades.find(t=>t.key===p.key);
+    X.setAttribute("x1",x(i));X.setAttribute("x2",x(i));X.setAttribute("opacity",".6");D.setAttribute("cx",x(i));D.setAttribute("cy",y(p.cum));D.setAttribute("opacity","1");
+    tipOn(el,`${esc(ts(p.t))}<br>${tr?`#${tr.id} ${esc(short(tr.symbol))} <span class="${cls(tr.pnl)}">${money(tr.pnl,cur)}</span><br>`:""}Total <b class="${cls(p.cum)}">${money(p.cum,cur)}</b>`,x(i),y(p.cum))});
+  hit.addEventListener("mouseleave",()=>{X.setAttribute("opacity","0");D.setAttribute("opacity","0");el.querySelector(".tip").style.display="none"});
+}
+function drawDaily(L){
+  const el=$("daily");if(!el)return;W=Math.max(280,el.clientWidth);
+  if(!L.length){el.innerHTML='<div class="empty">No closed trades yet.</div>';return}
+  L=L.slice(-30);const vs=L.map(d=>d.pnl);let min=Math.min(0,...vs),max=Math.max(0,...vs);const pad=(max-min)*.08||1;min-=pad;max+=pad;
+  const {y,svg}=frame(el,min,max),bw=(W-PL-PR)/L.length,gap=Math.min(6,bw*.25);
+  const bars=L.map((d,i)=>{const x0=PL+i*bw+gap/2,w=Math.max(2,bw-gap),y0=y(Math.max(0,d.pnl)),hh=Math.max(1,Math.abs(y(d.pnl)-y(0)));
+    return `<rect x="${x0}" y="${y0}" width="${w}" height="${hh}" rx="3" fill="${d.pnl>=0?"#00e676":"#ff5252"}" opacity=".85"/><rect class="hb" data-i="${i}" x="${PL+i*bw}" y="${PT}" width="${bw}" height="${H-PT-PB}" fill="transparent"/>`}).join("");
+  const lab=L.length<=10?L.map((d,i)=>`<text x="${PL+i*bw+bw/2}" y="${H-6}" text-anchor="middle" fill="#5b6b85" font-family="JetBrains Mono" font-size="10">${d.day.slice(8)}/${d.day.slice(5,7)}</text>`).join(""):`<text x="${PL}" y="${H-6}" fill="#5b6b85" font-family="JetBrains Mono" font-size="10">${L[0].day}</text><text x="${W-PR}" y="${H-6}" text-anchor="end" fill="#5b6b85" font-family="JetBrains Mono" font-size="10">${L[L.length-1].day}</text>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="height:${H}px">${svg}${bars}${lab}</svg><div class="tip"></div>`;
+  el.querySelectorAll(".hb").forEach(b=>{b.addEventListener("mousemove",()=>{const i=+b.dataset.i,d=L[i];tipOn(el,`${d.day}<br><b class="${cls(d.pnl)}">${money(d.pnl,cur)}</b> · ${d.trades} trades · ${d.wins} W<br>${d.r>0?"+":""}${n(d.r)}R · running ${money(d.cum,cur)}`,PL+i*bw+bw/2,y(Math.max(0,d.pnl)))});
+    b.addEventListener("mouseleave",()=>{el.querySelector(".tip").style.display="none"})});
+}
+
+let rz;addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{if(R&&R.by_currency[cur]){drawEq(R.by_currency[cur].curve);drawDaily(R.by_currency[cur].daily)}},150)});
+window.addEventListener('mm-lab-status',e=>{const q=document.getElementById('labSay');if(q)q.textContent=e.detail||''});
+segs(); load(); setInterval(()=>{if(!document.hidden)load()},30000);
+</script>
+</body>
+</html>

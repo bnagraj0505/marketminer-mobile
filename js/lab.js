@@ -19,6 +19,7 @@
   };
   const bridge = {
     fyGet: wrap((path, params) => MM.FY.get(path, params)),
+    fyUsage: wrap(async () => ({ today: MM.FY.usage ? MM.FY.usage().n : 0, per_day_cap: 5000 })),
     resolve: wrap(async (sym) => { if (!MM.deskResolve) throw new HE(503, "Contract resolver not loaded"); return MM.deskResolve(sym); }),
     deltaGet: wrap((path, params) => MM.getJ(DL + path + "?" + new URLSearchParams(params))),
     binanceKlines: wrap(async (pair, interval, limit, endMs) => {

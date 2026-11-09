@@ -27,10 +27,33 @@ class BadRequest(Exception):
 WATCH = {
     "India": ["NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX", "NSE:FINNIFTY-INDEX", "BSE:SENSEX-INDEX", "NSE:NIFTY-FUT", "NSE:BANKNIFTY-FUT",
               "NSE:RELIANCE-EQ", "NSE:HDFCBANK-EQ", "NSE:SBIN-EQ", "MCX:CRUDEOIL-FUT", "MCX:GOLD-FUT"],
-    "Crypto": ["SHARK:BTCUSDT", "SHARK:ETHUSDT", "SHARK:SOLUSDT", "DELTAF:BTCUSD", "DELTAF:ETHUSD", "BINANCE:BTCUSDT"],
+    "Crypto": ["SHARK:BTCUSDT", "SHARK:ETHUSDT", "SHARK:SOLUSDT", "SHARK:XRPUSDT", "SHARK:BNBUSDT", "SHARK:DOGEUSDT", "DELTAF:BTCUSD", "DELTAF:ETHUSD", "BINANCE:BTCUSDT"],
     "US / Global": ["YF:^GSPC", "YF:^NDX", "YF:^DJI", "YF:SPY", "YF:QQQ", "YF:AAPL", "YF:NVDA", "YF:^N225", "YF:^FTSE", "YF:GC=F", "YF:CL=F"],
     "Forex": ["YF:EURUSD=X", "YF:USDJPY=X", "YF:GBPUSD=X", "YF:USDINR=X", "YF:DX-Y.NYB"],
 }
+ALL_CRYPTO = "Crypto · all (Shark)"
+
+
+async def refresh_crypto_universe() -> int:
+    """Every live Shark USDT perpetual as its own watch-list group (for the market picker). Returns how many."""
+    from backend.markets.crypto import SHARK
+    info = await SHARK.load_info(force=True)
+    pairs = sorted(p for p, v in info.items() if str(v.get("quote", "")).upper() == "USDT")
+    if pairs:
+        WATCH[ALL_CRYPTO] = [f"SHARK:{p}" for p in pairs]
+    return len(pairs)
+
+
+async def crypto_universe_loop() -> None:
+    import asyncio
+    while True:
+        try:
+            await refresh_crypto_universe()
+        except Exception:                                 # noqa: BLE001 - the curated list still works
+            pass
+        await asyncio.sleep(3600)
+
+
 PLATFORM = {"name": "pc", "threads": True}             # the phone build sets name="mobile", threads=False
 
 

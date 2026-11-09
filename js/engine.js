@@ -115,14 +115,19 @@
     if (!t.access_token) s = { connected: false, message: "Not connected" };
     else if (Date.now() >= t.expires_at) s = { connected: false, token_present: true, locally_expired: true, message: "Login expired (FYERS tokens end at 06:30 IST). Renew with your PIN or Connect FYERS again." };
     else s = { connected: true, token_present: true, expires_at: new Date(t.expires_at).toISOString(), message: "Connected until " + fmtIst(t.expires_at) };
-    return { provider: "FYERS", configured, ...s, ...FY.refreshStatus(), rate: { last_minute: FY.calls.filter((x) => Date.now() - x < 60e3).length, per_minute_cap: 40 } };
+    return { provider: "FYERS", configured, ...s, ...FY.refreshStatus(), rate: { last_minute: FY.calls.filter((x) => Date.now() - x < 60e3).length, per_minute_cap: 40, today: FY.usage().n, per_day_cap: 5000 } };
   };
   FY.calls = [];
+  // requests today on this device (FYERS free plan: 5,000 data requests a day); a day starts at 00:00 IST
+  const istDay = () => new Date(Date.now() + 19800e3).toISOString().slice(0, 10);
+  FY.usage = () => { let u = null; try { u = JSON.parse(localStorage.getItem("fyers.usage") || "null"); } catch (e) { u = null; }
+    return u && u.day === istDay() ? u : { day: istDay(), n: 0 }; };
+  FY.countDay = () => { const u = FY.usage(); u.n += 1; try { localStorage.setItem("fyers.usage", JSON.stringify(u)); } catch (e) { /* private mode */ } };
   async function fyAcquire() {
     for (;;) {
       const now = Date.now();
       FY.calls = FY.calls.filter((x) => now - x < 60e3);
-      if (FY.calls.filter((x) => now - x < 1000).length < 3 && FY.calls.length < 40) { FY.calls.push(now); return; }
+      if (FY.calls.filter((x) => now - x < 1000).length < 3 && FY.calls.length < 40) { FY.calls.push(now); FY.countDay(); return; }
       await sleep(250);
     }
   }
@@ -656,6 +661,12 @@
     }
     if (p === "/api/health") return { ok: true, mode: "mobile" };
     if (p === "/api/nse/status") return { engine: "FYERS (phone)", paused_for_s: 0 };
+    if (p === "/api/bot/performance") {                        // paper P&L page: the bot's trade ids live in js/bot.js storage
+      if (!window.MM.lab) throw new HE(503, "The P&L page needs the Signal Lab engine (js/lab.js).");
+      let ids = {}; try { ids = (JSON.parse(localStorage.getItem("mmbot.state") || "null") || {}).trades || {}; } catch (e) { ids = {}; }
+      const qq = new URLSearchParams(q); qq.set("bot_ids", JSON.stringify(Object.fromEntries(Object.entries(ids).map(([k, v]) => [k, { name: v.name, tf: v.tf }]))));
+      return window.MM.lab("/api/lab/perf", qq, "GET", {});
+    }
     if (p.startsWith("/api/lab/")) { if (!window.MM.lab) throw new HE(503, "Open the Signal Lab page to use it."); return window.MM.lab(p, q, method, body()); }
     if (p.startsWith("/api/desk/")) { if (!window.MM.desk) throw new HE(503, "Open the Day Desk page to use it."); return window.MM.desk(p, q, method, body()); }
     if (p.startsWith("/api/ai/")) throw new HE(503, "AI analysis needs the PC server (it holds the API key).");
@@ -670,5 +681,5 @@
     catch (e) { const st = e.status || 502; return json({ detail: e.message || String(e) }, st); }
   };
 
-  window.MM = { FY, LS, HE, getJ, cached, cryptoOptions: options, version: "2026.11.01-9" };
+  window.MM = { FY, LS, HE, getJ, cached, cryptoOptions: options, version: "2026.11.09" };
 })();

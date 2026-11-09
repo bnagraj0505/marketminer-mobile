@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.01-9"></script><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script src="js/engine.js?v=2026.11.09"></script><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f"><title>MarketMiner · Connections</title>
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -86,7 +86,10 @@ $('appSecret').placeholder=a.has_secret?'Saved — leave blank to keep':'Enter s
 $('saveApp').onclick=async()=>{try{$('saveApp').disabled=true;await api('/api/fyers/app',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({app_id:$('appId').value.trim(),redirect_uri:$('appRedirect').value.trim(),secret:$('appSecret').value.trim()||null})});
 $('appSecret').value='';$('appMsg').textContent='Saved. Now click Connect FYERS.';$('appMsg').className='good';await loadApp();await status();}catch(e){$('appMsg').textContent=e.message;$('appMsg').className='badtext'}finally{$('saveApp').disabled=false}};
 
-function renewUI(s){const b=$('renewBox');if(!s||!s.can_renew){b.style.display='none';if(s&&s.renew_expired&&!s.connected)$('statusMsg').textContent+=' · The 15-day PIN renewal has run out: use Connect FYERS once.';return;}
+function usageUI(s){const r=s&&s.rate;if(!r||r.today==null)return;let el=document.getElementById('usageMsg');if(!el){el=document.createElement('p');el.id='usageMsg';el.className='muted';el.style.marginTop='6px';$('statusMsg').after(el);}
+ const pct=Math.round(100*r.today/(r.per_day_cap||5000));
+ el.innerHTML=`FYERS data requests today on this device: <b>${Number(r.today).toLocaleString('en-IN')} / ${Number(r.per_day_cap||5000).toLocaleString('en-IN')}</b> (${pct}%). Signal Lab, MM Trend and the bot share one copy of each symbol's candles and update it only after a candle closes; the free plan allows 5,000 a day.`;}
+function renewUI(s){usageUI(s);const b=$('renewBox');if(!s||!s.can_renew){b.style.display='none';if(s&&s.renew_expired&&!s.connected)$('statusMsg').textContent+=' · The 15-day PIN renewal has run out: use Connect FYERS once.';return;}
  b.style.display='';const until=new Date(s.renew_until).toLocaleDateString('en-IN',{day:'numeric',month:'short',timeZone:'Asia/Kolkata'});
  $('renewMsg').innerHTML=(s.connected?'Already connected for today. ':'<span class="badtext">Today\'s login has expired.</span> ')+`PIN renewal works until <b>${until}</b> (${s.renew_days_left} days left); after that, use Connect FYERS once.`;
  if(!s.connected)setTimeout(()=>$('pin').focus(),50);}

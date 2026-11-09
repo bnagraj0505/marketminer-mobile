@@ -13,6 +13,9 @@ Your FYERS app ID, secret key and login stay in the browser on each device. The 
 | **Day Desk** (`desk.html`) | The 7-step paper-trading desk: scan, entry timer, exit plan, Time Machine, sizing, risk check, paper orders. Covers NSE, index F&O, MCX, Binance spot and futures, Delta perpetual futures (in place of Shark) and Delta options. Paper trades and limits are kept on each device | FYERS, Binance, Delta |
 | **Signal Lab** (`lab.html`) | Chart with smart-money/ICT overlays, regime, 0–100 scored setups from 12 strategies with entry/stop/T1–T3 and size, option-chain and perpetual intelligence, 9-timeframe bias, backtests with costs and walk-forward checks, paper trades with capital protection, journal and alerts. Runs the PC's own Python code in the browser (Pyodide, about 10 MB on first open, then cached). Data, journal and paper trades stay on each device. US/global/forex symbols are PC-only (Yahoo blocks phone browsers) | FYERS, Delta, Binance |
 | **Auto bot** (Signal Lab → Auto bot tab) | Paper-trades confirmed signals (score ≥ minimum, closed candle) on the markets you tick: crypto, Indian indices, F&O, stocks, MCX. Sends Telegram alerts for setups forming, entries, skipped entries, T1/T2 hits, exit warnings, opposite-signal exits and closes with P&L. Runs while the Signal Lab page is open and the screen is on | Signal Lab paper ledger, Telegram |
+| **Paper P&L** (`perf.html`) | The Auto bot's paper results (or manual / all paper trades): net P&L, today / week / month, open P&L at the latest price, win rate, profit factor, expectancy (R), max drawdown, costs; equity curve and daily P&L; by strategy, market, exit, side, timeframe, weekday; trade list with filters and CSV. ₹ and $ kept apart | Signal Lab paper ledger on this device |
+| **AuctionFlow** (Signal Lab and MM Trend charts) | Auction-market structure: session and composite Volume Profile + TPO (POC, VAH, VAL, developing values, initial balance, poor highs/lows, single prints, naked POCs), auto-detected balance areas (intraday and multi-day), bullish/bearish imbalance, failed auctions, HVN/LVN, next-balance projections, VP+TPO confluence and a "how to trade here" card. Index volume comes from the front-month future | FYERS, Delta, Binance |
+| **S/R zones** (Signal Lab and MM Trend charts) | Support/resistance zones on weekly, daily, 4h, 1h and 15m with strength and confluence | FYERS, Delta, Binance |
 | **SmartEntry Intel** (`intel.html`) | SmartEntry Market Intelligence Engine: seven indicators in one chart (Session Range + Trend PRO, ZigZag++ HH/HL/LH/LL, Volume 20, Pin Box Zones, Wick Box Liquidity, Price/Time Cycles, Gann square-of-9) with closed-candle BUY/SELL, ATR stop/target, signal history, win rate and a group scanner. Same maths as `tools/SmartEntry_MIE_v2.pine` for TradingView | FYERS, Delta, Binance |
 | **TradingView** (`tv.html`) | Full TradingView chart, plus **Open in TradingView** to use your own account and its Paper Trading panel. Shows the bot's open trades to mirror there (TradingView has no API for a bot to trade your paper account) | TradingView |
 | **Connections** (`fyers.html`) | FYERS app details, login, daily PIN renewal, quotes and option-chain test | FYERS |
@@ -34,6 +37,10 @@ These stay on the PC version, because they need NSE's website, Moneycontrol or t
 ### iPhone / iPad login note
 
 Sometimes the FYERS login returns to Safari instead of the Home Screen app. Safari can't see the app's saved settings, so it shows a one-time code instead. Copy the code, open MarketMiner from the Home Screen, go to Connections and tap **Paste login code**.
+
+## FYERS requests (free plan: 5,000 a day)
+
+Signal Lab, MM Trend, AuctionFlow and the Auto bot share one copy of each symbol's candles (the PC's `hist.py`, running in the browser): 5-minute candles are downloaded once and 15m/30m/1h/4h are built from them; after that only the newest candles are fetched, right after a candle closes, at most every 5 minutes per symbol (longer as the day's budget is used). If FYERS refuses, the stored candles are shown. Connections shows today's count on this device.
 
 ## Daily use
 

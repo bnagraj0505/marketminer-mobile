@@ -87,6 +87,19 @@ async def _route(path: str, q: dict, method: str, body: dict):
         return SV.recorder_status()
     if p == "/recorder/run" and method == "POST":
         return await SV.recorder_run()
+    if p == "/auction":
+        from backend.lab import auction as AU
+        return await AU.compute(q.get("symbol", ""), q.get("tf", ""), int(q.get("days") or 10))
+    if p == "/sr":
+        from backend.lab import srmtf
+        return await srmtf.compute(q.get("symbol", ""))
+    if p == "/perf":                                       # paper P&L (perf.html); the bot's trade ids come from js/bot.js
+        from backend.bot import perf
+        ids = json.loads(q.get("bot_ids") or "{}")
+        return await perf.report(q.get("source") or "bot", ids)
+    if p == "/fyers_store":
+        from backend.brokers.fyers import client as FC
+        return FC.rate_status()
     raise SV.BadRequest(404, "Not available in the phone version: /api/lab" + p)
 
 
