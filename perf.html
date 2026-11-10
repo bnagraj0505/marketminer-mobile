@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.10a"></script>
-<script src="js/angel.js?v=2026.11.10a"></script>
-<script src="js/desk.js?v=2026.11.10a"></script>
-<script src="js/lab.js?v=2026.11.10a"></script>
+<script src="js/engine.js?v=2026.11.10b"></script>
+<script src="js/angel.js?v=2026.11.10b"></script>
+<script src="js/desk.js?v=2026.11.10b"></script>
+<script src="js/lab.js?v=2026.11.10b"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>📱 MarketMiner · Paper P&amp;L</title>
@@ -79,7 +79,7 @@ tr:hover td{background:var(--bg2)}
 "use strict";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const SRC=[["bot","🤖 Auto bot"],["agent","🧠 AI agent"],["manual","✋ Manual"],["all","All paper"]];
+const SRC=[["bot","🤖 Auto bot"],["agent","🧠 AI agent"],["manual","✋ Manual"],["all","All paper"],["daily","📒 Daily report"]];
 const SYM={INR:"₹",USD:"$"};
 const ls=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}};
 let source=(x=>["bot","agent","manual","all"].includes(x)?x:"bot")(new URLSearchParams(location.search).get("src")||ls("perf.src")), cur=ls("perf.cur")||"", R=null, filt={period:"all",q:"",res:"all"};
@@ -101,6 +101,7 @@ function setSrc(k){source=k;ls("perf.src",k);load()}
 function setCur(c){cur=c;ls("perf.cur",c);render()}
 
 async function load(){
+  if(source==="daily")return loadDaily();
   try{
     const r=await fetch("/api/bot/performance?source="+source);
     if(!r.ok)throw new Error((await r.json().catch(()=>({}))).detail||r.statusText);
@@ -109,6 +110,51 @@ async function load(){
     $("stamp").textContent="updated "+new Date().toLocaleTimeString("en-IN")+" · refreshes every 30 s";
     render();
   }catch(e){segs();$("body").innerHTML=`<div class="cd"><div class="empty dn">Could not load the P&amp;L: ${esc(e.message)}<br><span class="nt">The Signal Lab engine on this device could not answer. Reload the page; if it persists, open Signal Lab once.</span></div></div>`}
+}
+
+// ---------------------------------------------------------------- daily report (P&L + agent performance per IST day)
+let DAY=new URLSearchParams(location.search).get("day")||"";
+async function loadDaily(){
+  try{
+    const r=await fetch("/api/agent/daily-report"+(DAY?"?day="+DAY:""));
+    if(!r.ok)throw new Error((await r.json().catch(()=>({}))).detail||r.statusText);
+    const D=await r.json();R={currencies:[]};segs();
+    $("stamp").textContent="report built "+ts(D.generated)+(D.sent?" · sent on Telegram "+ts(D.sent):"");
+    $("body").innerHTML=renderDaily(D);
+  }catch(e){segs();$("body").innerHTML=`<div class="cd"><div class="empty dn">Could not load the daily report: ${esc(e.message)}<br><span class="nt">Restart MarketMiner with the launcher after updating.</span></div></div>`}
+}
+function setDay(d){DAY=d;loadDaily()}
+async function sendDaily(){const r=await fetch("/api/agent/daily-report/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({day:DAY||undefined})}).then(x=>x.json()).catch(e=>({ok:false,why:e.message}));alert(r.ok?"Sent on Telegram":"Not sent: "+(r.why||"error"));loadDaily()}
+async function saveDaily(){const b={enabled:$("drEn").checked,telegram:$("drTg").checked,time:$("drT").value};await fetch("/api/agent/daily-report/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});loadDaily()}
+function statRow(lbl,c,v){const t=v.today;return `<tr><td>${esc(lbl)}</td><td>${c}</td><td class="${cls(t.pnl)}">${money(t.pnl,c)}</td><td>${t.trades}</td><td>${t.trades?t.wins+"W / "+t.losses+"L ("+t.win_rate+"%)":"—"}</td>
+  <td>${t.profit_factor==null?"—":n(t.profit_factor)}</td><td class="${cls(t.total_r)}">${t.trades?(t.total_r>0?"+":"")+n(t.total_r)+"R":"—"}</td><td>${t.trades?SYM[c]+n(t.costs):"—"}</td>
+  <td class="${cls(v.week_pnl)}">${money(v.week_pnl,c)}</td><td class="${cls(v.month_pnl)}">${money(v.month_pnl,c)}</td><td class="${cls(v.all_pnl)}">${money(v.all_pnl,c)}</td>
+  <td>${v.open?`${v.open.trades} · <span class="${cls(v.open.upnl)}">${money(v.open.upnl,c)}</span>`:"—"}</td></tr>`}
+function grpTable(rows,title){if(!rows.length)return "";return `<div class="cd"><h3><span>${title}</span></h3><div class="scroll"><table><tr><th>${title.split(" ").pop()}</th><th>Trades</th><th>Win</th><th>P&amp;L</th><th>R</th></tr>
+  ${rows.map(x=>`<tr><td>${esc(short(x.key))}</td><td>${x.trades}</td><td>${x.win_rate}%</td><td>${Object.entries(x.pnl).map(([c,v])=>`<span class="${cls(v)}">${money(v,c)}</span>`).join(" ")}</td><td class="${cls(x.total_r)}">${(x.total_r>0?"+":"")+n(x.total_r)}R</td></tr>`).join("")}</table></div></div>`}
+function renderDaily(D){
+  const st=D.settings||{},A=D.agent||{},dc=A.decisions||{},days=D.days||[];
+  const opts=[...new Set([D.day,...days.map(x=>x.day)])].sort().reverse();
+  let h=`<div class="cd"><h3><span>Daily report · ${esc(new Date(D.day+"T12:00:00+05:30").toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"}))}</span>
+    <span class="nt"><select onchange="setDay(this.value)">${opts.map(d=>`<option ${d===D.day?"selected":""}>${d}</option>`).join("")}</select>
+    <input type="date" value="${D.day}" onchange="setDay(this.value)"> <button class="btn sm" onclick="sendDaily()">✈ Send on Telegram</button></span></h3>
+    <div class="kpis">${Object.entries(D.totals||{}).map(([c,v])=>kpi("Closed today · "+c,money(v.pnl,c),v.trades+" trades, all books",cls(v.pnl),true)).join("")||kpi("Closed today","—","no trades closed")}
+    ${Object.entries(A.equity||{}).map(([c,e])=>kpi("Agent equity · "+c,SYM[c]+n(e.end),`start ${SYM[c]}${n(e.start)} · drawdown ${n(e.drawdown_pct)}%`,cls(e.end-e.start))).join("")}
+    ${kpi("Agent decisions",String(dc.setups||0),`approved ${dc.approved||0} · rejected ${dc.rejected||0} · opened ${dc.opened||0}`)}
+    ${A.all_time?kpi("Agent all time",(A.all_time.expectancy_r>0?"+":"")+n(A.all_time.expectancy_r,3)+"R",`${A.all_time.trades} trades · win ${A.all_time.win_rate}% · PF ${A.all_time.profit_factor??"—"}${A.all_time.expectancy_r_ci95&&A.all_time.expectancy_r_ci95[0]!=null?` · 95%: ${n(A.all_time.expectancy_r_ci95[0])} to ${n(A.all_time.expectancy_r_ci95[1])}R`:""}`,cls(A.all_time.expectancy_r)):""}
+    </div></div>
+  <div class="cd"><h3><span>P&amp;L by book</span><span class="nt">closed after costs · open at the latest price, before exit costs</span></h3><div class="scroll"><table>
+    <tr><th>Book</th><th>Cur</th><th>Today</th><th>Trades</th><th>W / L</th><th>PF</th><th>R</th><th>Costs</th><th>Week</th><th>Month</th><th>All time</th><th>Open</th></tr>
+    ${Object.values(D.books||{}).flatMap(b=>Object.entries(b.by_currency).map(([c,v])=>statRow(b.label,c,v))).join("")||'<tr><td colspan="12" class="nt">No paper trades yet.</td></tr>'}</table></div>
+    ${Object.values(D.books||{}).flatMap(b=>Object.entries(b.by_currency).filter(([c,v])=>v.today.trades).map(([c,v])=>`<div class="nt" style="font:500 .72rem var(--mono);margin-top:4px">${esc(b.label)} ${c}: best ${esc(short(v.today.best.symbol))} <span class="up">${money(v.today.best.pnl,c)}</span> · worst ${esc(short(v.today.worst.symbol))} <span class="${cls(v.today.worst.pnl)}">${money(v.today.worst.pnl,c)}</span></div>`)).join("")}</div>
+  ${grpTable(A.today_by_strategy||[],"Agent today by strategy")}${grpTable(A.today_by_symbol||[],"Agent today by symbol")}${grpTable(A.today_by_exit||[],"Agent today by exit")}
+  <div class="cd"><h3><span>Why the agent said no today</span></h3>${(dc.top_rejections||[]).length?(dc.top_rejections.map(x=>`<div style="font:500 .78rem var(--mono)">${esc(x.check)} <b>×${x.count}</b></div>`).join("")):'<div class="nt">No rejected setups.</div>'}
+    ${(A.suspended||[]).length?`<div class="dn" style="margin-top:6px">Suspended strategies: ${A.suspended.map(s=>esc(s.strategy)+" ("+esc(s.reason)+")").join(", ")}</div>`:""}</div>
+  <div class="cd"><h3><span>Schedule</span></h3><div class="nt" style="font:500 .72rem/1.8 var(--mono)">
+    <label><input type="checkbox" id="drEn" ${st.enabled!==false?"checked":""}> build automatically every day at</label> <input id="drT" value="${esc(st.time||"23:55")}" style="width:60px"> IST ·
+    <label><input type="checkbox" id="drTg" ${st.telegram!==false?"checked":""}> send on Telegram</label> <button class="btn sm" onclick="saveDaily()">Save</button><br>
+    Saved in .lab/reports/daily/. If MarketMiner was off at that time, the missed day is built at the next start. ${esc(D.note||"")}</div></div>`;
+  return h;
 }
 
 function kpi(l,v,s,c="",hero=false){return `<div class="kpi${hero?" hero":""}"><div class="l">${l}</div><div class="v ${c}">${v}</div>${s?`<div class="s">${s}</div>`:""}</div>`}
@@ -239,7 +285,7 @@ function drawDaily(L){
 
 let rz;addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{if(R&&R.by_currency[cur]){drawEq(R.by_currency[cur].curve);drawDaily(R.by_currency[cur].daily)}},150)});
 window.addEventListener('mm-lab-status',e=>{const q=document.getElementById('labSay');if(q)q.textContent=e.detail||''});
-segs(); load(); setInterval(()=>{if(!document.hidden)load()},30000);
+segs(); load(); setInterval(()=>{const a=document.activeElement;if(!document.hidden&&!(source==="daily"&&a&&/INPUT|SELECT/.test(a.tagName)))load()},30000);
 </script>
 </body>
 </html>

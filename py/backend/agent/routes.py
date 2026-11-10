@@ -178,6 +178,40 @@ async def performance():
     return PF.summary("paper")
 
 
+@router.get("/daily-report")
+async def daily_report(day: str | None = None, fresh: bool = False):
+    """Daily P&L + agent performance for one IST day (YYYY-MM-DD, default today). Today's is rebuilt live; a past day
+    comes from the saved report unless fresh=1."""
+    from . import dailyreport as DR
+    d = day or DR.today()
+    try:
+        DR.day_bounds(d)
+    except ValueError:
+        raise HTTPException(400, "day must be YYYY-MM-DD")
+    rep = None if (fresh or d == DR.today()) else DR.saved(d)
+    if rep is None:
+        rep = await DR.make(d, save=d != DR.today() or bool(fresh))
+    return {**rep, "text": DR.text(rep), "settings": DR.settings(), "days": DR.listing()}
+
+
+@router.post("/daily-report/send")
+async def daily_report_send(req: Request, body: dict = Body(default={})):
+    _local(req)
+    from . import dailyreport as DR
+    rep = await DR.make(body.get("day") or DR.today())
+    return await DR.send(rep)
+
+
+@router.post("/daily-report/settings")
+async def daily_report_settings(req: Request, body: dict = Body(default={})):
+    _local(req)
+    from . import dailyreport as DR
+    try:
+        return DR.save_settings(body)
+    except (ValueError, TypeError):
+        raise HTTPException(400, "time must be HH:MM")
+
+
 @router.get("/learning")
 async def learning():
     reviews = _rows("SELECT * FROM agent_reviews ORDER BY id DESC LIMIT 100", (), ("answers",))
