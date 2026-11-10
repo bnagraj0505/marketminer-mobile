@@ -15,6 +15,7 @@ Symbols
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from typing import Any
 
@@ -117,8 +118,23 @@ async def _shark(pair: str, tf: str, bars: int) -> list[list]:
 
 
 def delta_perp_for(pair: str) -> str:
-    base = pair.upper().replace("USDT", "").replace("INR", "").replace("USD", "")
+    base = pair.upper().replace("-", "").replace("USDT", "").replace("INR", "").replace("USD", "")
+    if base in ("XAU", "XAUT", "PAXG"):                       # gold: Delta lists Tether Gold
+        return "XAUTUSD"
     return f"{base}USD"
+
+
+def norm_symbol(symbol: str) -> str:
+    """Upper-case; for crypto venues also drop the separators exchanges show on their sites
+    (SHARK:XAU-USDT, BINANCE:BTC/USDT -> SHARK:XAUUSDT, BINANCE:BTCUSDT). Yahoo symbols keep their case."""
+    s = symbol.strip()
+    if s.upper().startswith("YF:"):
+        return "YF:" + s.split(":", 1)[1].strip()
+    s = s.upper()
+    if ":" in s and s.split(":", 1)[0] in ("SHARK", "BINANCE", "DELTAF"):
+        head, pair = s.split(":", 1)
+        s = f"{head}:{re.sub(r'[-/ ]', '', pair)}"
+    return s
 
 
 async def _delta(symbol: str, tf: str, bars: int) -> list[list]:
@@ -235,7 +251,7 @@ async def _load(symbol: str, tf: str, bars: int) -> tuple[list[list], str]:
 async def candles(symbol: str, tf: str, bars: int = 400, fresh: bool = False, forming: bool = False) -> tuple[list[Candle], dict]:
     """Validated candles for `symbol` on `tf`, newest last, plus the quality report. Closed candles only, unless
     `forming` is set: then the candle still in progress is included (live mode; it changes until it closes)."""
-    symbol = symbol.strip().upper() if not symbol.upper().startswith("YF:") else "YF:" + symbol.split(":", 1)[1].strip()
+    symbol = norm_symbol(symbol)
     if tf not in TF_SECONDS:
         raise HTTPException(400, f"timeframe must be one of {', '.join(TF_SECONDS)}")
     m = market_of(symbol)
@@ -297,7 +313,7 @@ async def _fyers_ltp(symbol: str) -> float | None:
 
 async def live(symbol: str, tf: str) -> dict:
     """The candle still forming, with the latest price folded in (FYERS: quotes LTP), for the live chart."""
-    symbol = symbol.strip().upper() if not symbol.upper().startswith("YF:") else "YF:" + symbol.split(":", 1)[1].strip()
+    symbol = norm_symbol(symbol)
     if tf not in TF_SECONDS:
         raise HTTPException(400, f"timeframe must be one of {', '.join(TF_SECONDS)}")
     step = TF_SECONDS[tf]
