@@ -12,6 +12,11 @@ Rules (all settings, stored in the settings table under "protection"):
                        blocks revenge trading
   no averaging         a second trade in the same symbol and direction while one is open is refused
   min_score            minimum setup score for a paper trade (default 60)
+  unlimited_trades     (default ON, user rule 2026-11-10) no trade-count / lockout rules: max_open, max_correlated, daily and
+                       weekly loss limits, loss-streak lockout and cooldown are switched off. The only capacity limit is
+                       the capital allocated per day (day_capital_inr / day_capital_usd): capital in open paper trades
+                       (qty x entry) + the new trade <= that amount, so closed trades free capital and trades are unlimited.
+                       Score, risk sizing per trade and "no averaging" still apply.
 Position size = risk amount / per-unit risk (entry - stop), rounded DOWN to the lot size; if that is zero the trade
 is refused (the stop is too wide for the risk budget).
 """
@@ -23,7 +28,8 @@ import math
 from . import store
 
 DEFAULTS = {"capital_inr": 500000.0, "capital_usd": 10000.0, "risk_pct": 0.5, "daily_loss_pct": 2.0, "weekly_loss_pct": 5.0,
-            "max_open": 3, "max_correlated": 2, "loss_streak_lockout": 3, "cooldown_min": 30, "min_score": 60}
+            "max_open": 3, "max_correlated": 2, "loss_streak_lockout": 3, "cooldown_min": 30, "min_score": 60,
+            "unlimited_trades": True, "day_capital_inr": 200000.0, "day_capital_usd": 2500.0}
 GROUPS = {
     "india_index": ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX", "BANKEX", "NIFTYBANK", "NIFTY50"],
     "crypto_majors": ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "AVAX", "LINK", "LTC"],
@@ -81,7 +87,16 @@ def _day_start(now: int) -> int:
     return int(dt.datetime(d.year, d.month, d.day, tzinfo=IST).timestamp())
 
 
-def check(symbol: str, market: str, direction: str, score: float, now: int | None = None) -> dict:
+def day_capital(cur: str, c: dict | None = None) -> float:
+    c = c or settings()
+    return float(c["day_capital_inr"] if cur == "INR" else c["day_capital_usd"])
+
+
+def capital_in_use(cur: str) -> float:
+    return sum(abs((t["qty"] or 0) * (t["entry"] or 0)) for t in store.q("SELECT qty, entry FROM trades WHERE status='open' AND currency=?", (cur,)))
+
+
+def check(symbol: str, market: str, direction: str, score: float, now: int | None = None, new_capital: float = 0.0) -> dict:
     """May a new paper trade be opened? Returns {ok, blocks: [...], warnings: [...]}."""
     c = settings()
     now = now or store.now()
@@ -91,6 +106,18 @@ def check(symbol: str, market: str, direction: str, score: float, now: int | Non
     if score < c["min_score"]:
         blocks.append(f"Score {score:.0f} is below the minimum {c['min_score']}")
     open_ = store.q("SELECT * FROM trades WHERE status='open'")
+    if c.get("unlimited_trades", True):
+        if any(t["symbol"] == symbol and t["side"] == direction for t in open_):
+            blocks.append("Already in this symbol and direction: averaging is not allowed")
+        used, dc = capital_in_use(cur), day_capital(cur, c)
+        if used + new_capital > dc + 1e-6:
+            blocks.append(f"Day capital: {used:,.0f} in open trades + {new_capital:,.0f} new > {dc:,.0f} {cur} allocated per day")
+        d0 = _day_start(now)
+        w0 = d0 - dt.datetime.fromtimestamp(now, IST).weekday() * 86400
+        dl = sum(t["pnl"] or 0 for t in store.q("SELECT pnl FROM trades WHERE status='closed' AND closed_at>=? AND currency=?", (d0, cur)))
+        wl = sum(t["pnl"] or 0 for t in store.q("SELECT pnl FROM trades WHERE status='closed' AND closed_at>=? AND currency=?", (w0, cur)))
+        return {"ok": not blocks, "blocks": blocks, "daily_pnl": dl, "weekly_pnl": wl, "open": len(open_), "loss_streak": 0, "currency": cur,
+                "unlimited": True, "capital_used": used, "day_capital": dc}
     if len(open_) >= c["max_open"]:
         blocks.append(f"{len(open_)} trades already open (limit {c['max_open']})")
     if any(t["symbol"] == symbol and t["side"] == direction for t in open_):

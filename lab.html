@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/engine.js?v=2026.11.09l"></script>
-<script src="js/angel.js?v=2026.11.09l"></script>
-<script src="js/desk.js?v=2026.11.09l"></script>
-<script src="js/lab.js?v=2026.11.09l"></script>
+<script src="js/engine.js?v=2026.11.10a"></script>
+<script src="js/angel.js?v=2026.11.10a"></script>
+<script src="js/desk.js?v=2026.11.10a"></script>
+<script src="js/lab.js?v=2026.11.10a"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>MarketMiner · Signal Lab</title>
@@ -168,10 +168,10 @@ td.r,th.r{text-align:right}
 </main>
 <div class="toast" id="toast"></div>
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-<script src="js/srzones.js?v=2026.11.09l"></script>
-<script src="js/markets.js?v=2026.11.09l"></script>
-<script src="js/auction.js?v=2026.11.09l"></script>
-<script src="js/chartctl.js?v=2026.11.09l"></script>
+<script src="js/srzones.js?v=2026.11.10a"></script>
+<script src="js/markets.js?v=2026.11.10a"></script>
+<script src="js/auction.js?v=2026.11.10a"></script>
+<script src="js/chartctl.js?v=2026.11.10a"></script>
 <script>
 const TABS=[["intel","Intelligence"],["deriv","Derivatives"],["mtf","Multi-timeframe"],["bt","Backtest"],["paper","Paper & risk"],["bot","Auto bot"],["journal","Journal"],["alerts","Alerts"],["settings","Settings"]];
 const TFS=["1m","3m","5m","15m","30m","1h","4h","1d","1w"];
@@ -715,7 +715,7 @@ async function ldPaper(){
     const st=pr.status;
     $("p-paper").innerHTML=`<div class="cols">${card("Capital protection",`<div class="kv"><div>Can open now (${esc($("sym").value)})</div><div class="${st.ok?"up":"dn"}">${st.ok?"yes":"no"}</div>
       <div>Open trades</div><div>${st.open} / ${pr.settings.max_open}</div><div>Today P&L (${st.currency})</div><div class="${st.daily_pnl>=0?"up":"dn"}">${f(st.daily_pnl,0)}</div><div>Week P&L</div><div class="${st.weekly_pnl>=0?"up":"dn"}">${f(st.weekly_pnl,0)}</div><div>Losing streak</div><div>${st.loss_streak}</div></div>
-      ${st.blocks.length?`<div class="note dn">${st.blocks.map(esc).join("<br>")}</div>`:""}<div class="note">Risk ${pr.settings.risk_pct}% per trade · daily stop ${pr.settings.daily_loss_pct}% · weekly ${pr.settings.weekly_loss_pct}% · ${pr.settings.loss_streak_lockout} losses lock the day · ${pr.settings.cooldown_min} min cooldown after a loss · no averaging · max ${pr.settings.max_correlated} per correlated group.</div>`)}
+      ${st.blocks.length?`<div class="note dn">${st.blocks.map(esc).join("<br>")}</div>`:""}<div class="note">${pr.settings.unlimited_trades!==false?`<b>Unlimited trades</b> · capital per day ${f(st.currency==="INR"?pr.settings.day_capital_inr:pr.settings.day_capital_usd,0)} ${st.currency} (in use ${f(st.capital_used||0,0)}) is the only limit · risk ${pr.settings.risk_pct}% per trade · no averaging.</div><div class="note mu" style="display:none">`:""}Risk ${pr.settings.risk_pct}% per trade · daily stop ${pr.settings.daily_loss_pct}% · weekly ${pr.settings.weekly_loss_pct}% · ${pr.settings.loss_streak_lockout} losses lock the day · ${pr.settings.cooldown_min} min cooldown after a loss · no averaging · max ${pr.settings.max_correlated} per correlated group.</div>`)}
       ${card("Paper results",Object.keys(p.summary).length?Object.entries(p.summary).map(([c,s])=>`<div class="kv"><div>${c} trades · win%</div><div>${s.trades} · ${s.win_rate}%</div><div>P&L (after costs)</div><div class="${s.pnl>=0?"up":"dn"}">${f(s.pnl,2)}</div><div>Avg R · costs</div><div>${s.avg_r} · ${f(s.costs,2)}</div></div>`).join("<hr style='border-color:#1b2536;margin:6px 0'>"):'<div class="nt">No closed paper trades yet.</div>')}</div>
       <div class="cd" style="margin-top:10px"><h3>Paper trades</h3><div class="scroll"><table><tr><th>#</th><th>Opened</th><th>Symbol</th><th>Strategy</th><th>Side</th><th class="r">Qty</th><th class="r">Entry</th><th class="r">Stop now</th><th class="r">T1/T2/T3</th><th>Hit</th><th>Status</th><th class="r">Exit</th><th class="r">P&L</th><th class="r">R</th><th></th></tr>
       ${p.trades.map(t=>`<tr><td>${t.id}</td><td>${ts(t.opened_at)}</td><td>${esc(t.symbol)}</td><td>${esc(META.strategies[t.strategy]?.name||t.strategy||"")}</td><td class="${t.side==="LONG"?"up":"dn"}">${t.side}</td><td class="r">${f(t.qty,4)}</td><td class="r">${f(t.entry)}</td><td class="r">${f(t.stop_now??t.stop)}</td><td class="r">${t.targets.map(x=>f(x)).join(" / ")}</td><td>${(t.hit||[]).join(" ")||"—"}</td><td>${t.status}${t.exit_reason?" · "+esc(t.exit_reason):""}</td><td class="r">${f(t.exit)}</td><td class="r ${t.pnl>0?"up":t.pnl<0?"dn":""}">${t.pnl==null?"—":f(t.pnl,2)+" "+t.currency}</td><td class="r">${f(t.r_result,2)}</td><td>${t.status==="open"?`<button class="btn sm" onclick="paperClose(${t.id})">close</button>`:""}</td></tr>`).join("")||"<tr><td colspan=15 class=nt>No paper trades.</td></tr>"}</table></div>
@@ -749,6 +749,8 @@ async function rSettings(){
   $("p-settings").innerHTML=`<div class="cd"><h3>Capital protection (paper)</h3><div class="set">
     <label>Paper capital INR${num("s_capital_inr",p.capital_inr)}</label><label>Paper capital USD${num("s_capital_usd",p.capital_usd)}</label>
     <label>Risk per trade %${num("s_risk_pct",p.risk_pct)}</label><label>Daily loss limit %${num("s_daily_loss_pct",p.daily_loss_pct)}</label><label>Weekly loss limit %${num("s_weekly_loss_pct",p.weekly_loss_pct)}</label>
+    <label>Unlimited trades (no count / lockout rules)<select id="s_unlimited_trades"><option value="1" ${p.unlimited_trades!==false?"selected":""}>on</option><option value="0" ${p.unlimited_trades===false?"selected":""}>off</option></select></label>
+    <label>Capital per day INR${num("s_day_capital_inr",p.day_capital_inr,1000)}</label><label>Capital per day USD${num("s_day_capital_usd",p.day_capital_usd,100)}</label>
     <label>Max open trades${num("s_max_open",p.max_open,1)}</label><label>Max per correlated group${num("s_max_correlated",p.max_correlated,1)}</label>
     <label>Loss streak lockout${num("s_loss_streak_lockout",p.loss_streak_lockout,1)}</label><label>Cooldown after a loss (min)${num("s_cooldown_min",p.cooldown_min,1)}</label>
     <label>Minimum signal score${num("s_min_score",p.min_score,1)}</label></div></div>
@@ -766,7 +768,7 @@ async function rSettings(){
 }
 const csv=s=>s.split(",").map(x=>x.trim()).filter(Boolean);
 async function saveSettings(){
-  const g=id=>+$(id).value,prot={};["capital_inr","capital_usd","risk_pct","daily_loss_pct","weekly_loss_pct","max_open","max_correlated","loss_streak_lockout","cooldown_min","min_score"].forEach(k=>prot[k]=g("s_"+k));
+  const g=id=>+$(id).value,prot={};["capital_inr","capital_usd","risk_pct","daily_loss_pct","weekly_loss_pct","max_open","max_correlated","loss_streak_lockout","cooldown_min","min_score","day_capital_inr","day_capital_usd"].forEach(k=>prot[k]=g("s_"+k));prot.unlimited_trades=$("s_unlimited_trades").value==="1";
   const strat={};Object.keys(META.strategies).forEach(k=>strat[k]={enabled:$("e_"+k).checked,stop_buffer_atr:g("b_"+k),min_rr:g("r_"+k),min_avg_volume:g("v_"+k)});
   try{META=Object.assign(META,await post("/api/lab/settings",{protection:prot,strategies:strat,costs:{brokerage_inr:g("c_brokerage_inr"),crypto_fee_bps:g("c_crypto_fee_bps"),us_comm_bps:g("c_us_comm_bps")},
     recorder:{enabled:$("rc_en").value==="1",interval_min:g("rc_int"),scan_tf:$("rc_tf").value,symbols:csv($("rc_sym").value),tfs:csv($("rc_tfs").value),chains:csv($("rc_ch").value)},watch:csv($("w_list").value)}));

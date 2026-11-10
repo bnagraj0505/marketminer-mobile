@@ -498,11 +498,15 @@ def _rules_state(r: dict) -> dict:
         orisk = G.open_risk(cur)
         used = max(0.0, -bk["day_pnl"])
         closed = G.day_closed(cur, bk, r)
-        cap_used = G.capital_in_use(cur) if cur == "INR" else None
+        unl = bool(r.get("unlimited_trades", True))
+        cap_used = G.capital_in_use(cur) if (cur == "INR" or unl) else None
+        dcap = G.day_capital(cur, r)
         out[cur] = {**{k: round(v, 2) if isinstance(v, float) else v for k, v in b.items()}, "open_risk": round(orisk, 2),
                     "day_loss_used": round(used, 2), "room": round(max(0.0, b["part_budget"] - orisk - used), 2), "day_pnl": round(bk["day_pnl"], 2),
                     "losses_today": bk["losses_today"], "day_closed": closed,
                     "capital_used": round(cap_used, 2) if cap_used is not None else None,
                     "ai_factors": (ai or {}).get("factors"),
-                    "can_open": not closed and max(0.0, b["part_budget"] - orisk - used) >= b["per_trade"] - 1e-6}
+                    "unlimited": unl, "day_capital": round(dcap, 2),
+                    "can_open": (cap_used or 0) < dcap - 1e-6 if unl else
+                                not closed and max(0.0, b["part_budget"] - orisk - used) >= b["per_trade"] - 1e-6}
     return out

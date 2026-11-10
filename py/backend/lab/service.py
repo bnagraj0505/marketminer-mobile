@@ -197,7 +197,8 @@ def journal() -> dict:
 
 NUM_LIMITS = {"risk_pct": (0.05, 5), "daily_loss_pct": (0.1, 20), "weekly_loss_pct": (0.1, 40), "max_open": (1, 20), "max_correlated": (1, 20),
               "loss_streak_lockout": (1, 20), "cooldown_min": (0, 1440), "min_score": (0, 100), "capital_inr": (1000, 1e9), "capital_usd": (10, 1e8),
-              "stop_buffer_atr": (0, 2), "min_rr": (0.5, 10), "min_avg_volume": (0, 1e12), "interval_min": (5, 240)}
+              "stop_buffer_atr": (0, 2), "min_rr": (0.5, 10), "min_avg_volume": (0, 1e12), "interval_min": (5, 240),
+              "day_capital_inr": (1000, 1e9), "day_capital_usd": (10, 1e8)}
 
 
 def _clean(d: dict) -> dict:

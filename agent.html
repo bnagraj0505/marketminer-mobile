@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <script>window.MM_AGENT=true</script>
-<script src="js/engine.js?v=2026.11.09l"></script>
-<script src="js/angel.js?v=2026.11.09l"></script>
-<script src="js/desk.js?v=2026.11.09l"></script>
-<script src="js/lab.js?v=2026.11.09l"></script>
+<script src="js/engine.js?v=2026.11.10a"></script>
+<script src="js/angel.js?v=2026.11.10a"></script>
+<script src="js/desk.js?v=2026.11.10a"></script>
+<script src="js/lab.js?v=2026.11.10a"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#06080f">
 <title>📱 MarketMiner · AI Agent</title>
@@ -176,7 +176,7 @@ function renderStatus(s) {
     ${s.emergency.on ? `<button class="btn" onclick="clearEmergency()">Clear emergency stop</button>` : `<button class="btn estop" onclick="emergency()">⛔ EMERGENCY STOP</button>`}
     <span class="kv">timeframe <b>${esc(s.config.tf)}</b></span>
     <span class="kv">last cycle <b>${ago(s.loop.last_cycle)}</b></span>
-    <span class="kv">open <b>${s.open_positions}/${s.risk.max_open}</b></span>
+    <span class="kv">open <b>${s.open_positions}${s.risk.unlimited_trades !== false ? " · unlimited" : "/" + s.risk.max_open}</b></span>
     ${s.loop.last_error ? `<span class="kv dn">error: ${esc(s.loop.last_error)}</span>` : ""}
     ${s.emergency.on ? `<span class="kv dn">EMERGENCY: ${esc(s.emergency.reason)} (${tm(s.emergency.t)})</span>` : ""}
     <div class="chips" style="flex-basis:100%">${chips || '<span class="mu note">no symbols</span>'}</div>
@@ -215,6 +215,11 @@ function renderCapital(s, p) {
     const x = RU[cur]; if (!x) continue;
     const used = (x.open_risk + x.day_loss_used) / x.part_budget * 100;
     const status = x.day_closed ? `<span class="dn">· DAY CLOSED: ${esc(x.day_closed)}</span>` : x.can_open ? '<span class="up">· can open a new trade</span>' : '<span class="wa">· no room for a new trade until a runner reaches breakeven or the day recovers</span>';
+    if (x.unlimited) { const cu = (x.capital_used || 0) / (x.day_capital || 1) * 100;
+      out.push(`<div class="note" style="grid-column:1/-1"><b>${cur}: unlimited trades</b> · capital per day <b>${num(x.day_capital, 0)}</b> · in open positions ${num(x.capital_used || 0, 0)} ·
+      per trade risk <b>${num(x.per_trade, 0)}</b>${x.rule === "ai" ? " (AI-sized)" : ""} · today ${num(x.day_pnl, 0)} (${x.losses_today} losing) ·
+      ${x.can_open ? '<span class="up">capital free: can open</span>' : '<span class="wa">all of today\'s capital is in open trades: next entry when one closes</span>'}
+      <div class="bar"><i class="${cu >= 100 ? "x" : cu >= 60 ? "w" : ""}" style="width:${Math.min(100, cu)}%"></i></div></div>`); continue; }
     if (x.rule === "ai") out.push(`<div class="note" style="grid-column:1/-1"><b>INR:</b> capital ${num(r.capital_inr, 0)} · day capital <b>${num(r.inr_day_capital, 0)}</b> (fixed; in use ${num(x.capital_used || 0, 0)}) ·
       <b>AI decides</b> stop, risk and lots per trade: now <b>${num(x.per_trade, 0)}</b> for an average setup · AI day stop <b>${num(x.part_budget, 0)}</b> (losing trades today ${x.losses_today}) ·
       open risk ${num(x.open_risk, 0)} + today's loss ${num(x.day_loss_used, 0)} → room ${num(x.room, 0)} ${status}
@@ -225,6 +230,8 @@ function renderCapital(s, p) {
       open risk ${num(x.open_risk, 0)} + today's loss ${num(x.day_loss_used, 0)} → room ${num(x.room, 0)} ${status}
       <div class="bar"><i class="${used >= 100 ? "x" : used >= 60 ? "w" : ""}" style="width:${Math.min(100, used)}%"></i></div></div>`);
   }
+  if (r.unlimited_trades !== false) out.push(`<div class="note"><b>Unlimited trades (paper):</b> no limits on number of trades, open positions or per group; no daily / weekly loss stops, loss-streak lockout or cooldown.
+    Limits kept: capital per day, per-trade stop and risk sizing, no averaging into the same symbol, no unhedged option selling, drawdown halt at ${r.max_drawdown_pct}%, emergency stop.</div>`); else
   out.push(`<div class="note">Lots: as many as fit the risk and capital left; with 2+ lots half book at 1:${r.first_target_r} after costs and the rest go to breakeven and trail; a single lot moves to breakeven at 1:${r.first_target_r} and trails · concurrent positions ${s.open_positions}/${r.max_open} · max ${r.max_per_group} per correlated group · min reward:risk ${r.min_rr}R after costs ·
     ${r.loss_streak_lockout} losses in a row lock the day · risk halves after ${r.derisk_after_losses} losses · ${r.cooldown_min} min cooldown per symbol after a loss ·
     no martingale, no averaging, no unhedged option selling. Capital figures are PAPER equity.</div>`);
@@ -466,7 +473,8 @@ function renderSettings(s) {
     </div><div class="note" style="margin-top:6px">Thinks like a seller first: reads the call-writing wall, put-writing wall, fresh OI writing and PCR. Writers against your direction → no trade.
       IV low → buy ATM/ITM (only if the 1:2 target is short of the writers' wall) · IV normal → debit spread selling the strike at the wall · IV high → credit spread with the short strike at the supporting wall · writers boxing a range → iron condor at the walls. Planned loss ≤ risk budget; worst case at expiry ≤ "Long option premium x budget" × budget. Lot sizes are real (e.g. NIFTY 65, RELIANCE 500), so small paper capital fits few or no option trades.</div></div>
     <div class="cd"><h3>Risk policy <span class="note">every value is clamped to a safe range on the server · paper equity, not your real capital</span></h3><div class="set">
-      ${f("capital_inr", "Paper capital INR", 1000)}${f("inr_day_capital", "INR capital usable per day (fixed)", 1000)}
+      <label>Unlimited trades (no count / lockout rules)<select data-r="unlimited_trades"><option value="true" ${r.unlimited_trades !== false ? "selected" : ""}>on</option><option value="false" ${r.unlimited_trades === false ? "selected" : ""}>off</option></select></label>
+      ${f("capital_inr", "Paper capital INR", 1000)}${f("inr_day_capital", "INR capital usable per day (fixed)", 1000)}${f("usd_day_capital", "USD capital usable per day", 100)}
       ${f("ai_base_risk_pct", "AI: base risk % of day capital")}${f("ai_min_risk_pct", "AI: min risk %")}${f("ai_max_risk_pct", "AI: max risk %")}
       ${f("ai_day_loss_trades", "AI: day stop = N x base risk")}${f("ai_profit_lock", "AI: give back share that locks the day")}
       ${f("capital_usd", "Paper capital USD", 100)}
@@ -488,7 +496,7 @@ function renderSettings(s) {
 }
 async function saveSettings() {
   const risk = {};
-  $("settings").querySelectorAll("[data-r]").forEach(el => { const k = el.dataset.r; risk[k] = k === "require_validated" ? el.value === "true" : Number(el.value); });
+  $("settings").querySelectorAll("[data-r]").forEach(el => { const k = el.dataset.r; risk[k] = (k === "require_validated" || k === "unlimited_trades") ? el.value === "true" : Number(el.value); });
   const agent = {symbols: $("cSyms").value.split(/\s+/).filter(Boolean), tf: $("cTf").value, loop_seconds: Number($("cLoop").value),
     research_enabled: $("cRes").value === "1", research_hour_ist: Number($("cResH").value), llm_reviews: $("cLlm").value === "1",
     options: {enabled: $("oEn").value === "1", index: $("oIdx").value.split(/[\s,]+/).filter(Boolean), stocks: $("oStk").value.split(/[\s,]+/).filter(Boolean),

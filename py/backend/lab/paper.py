@@ -34,7 +34,16 @@ async def open_trade(sig: dict) -> dict:
     sz = P.size(symbol, market, px, stop)
     if not sz.get("qty"):
         return {"ok": False, "blocks": [sz.get("why", "size is zero")]}
-    state = {"left": 1.0, "realised": 0.0, "stop_now": stop, "hit": [], "exits": [], "tf": tf, "strategy": sig.get("strategy"),
+    cfg = P.settings()
+    if cfg.get("unlimited_trades", True):                 # capital per day is the only capacity limit: shrink to what is left
+        left = P.day_capital(sz["currency"], cfg) - P.capital_in_use(sz["currency"])
+        if sz["qty"] * px > left:
+            lot = sz.get("lot") or 1
+            q = (int(left / px * 1e4) / 1e4) if (lot == 1 and market in ("SHARK", "DELTAF", "DELTA", "BINANCE", "YF")) else (int(left / px / lot) * lot)
+            if q <= 0:
+                return {"ok": False, "blocks": [f"Day capital left {max(0, left):,.0f} {sz['currency']} is less than one lot"]}
+            sz["qty"], sz["risk_amount"] = q, round(q * abs(px - stop), 2)
+    state ={"left": 1.0, "realised": 0.0, "stop_now": stop, "hit": [], "exits": [], "tf": tf, "strategy": sig.get("strategy"),
              "score": sig.get("score"), "last_t": bars[-1].time + 60, "source": q.get("source")}
     tid = store.execute("INSERT INTO trades(signal_id,symbol,market,side,qty,entry,stop,targets,opened_at,status,currency,payload)"
                         " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",

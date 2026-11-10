@@ -19,6 +19,10 @@ RISK_DEFAULTS = {
     "capital_inr": 1000000.0,         # paper equity for NSE/BSE/MCX (10 lakh; raised from 5 lakh on 2026-11-04)
     "capital_usd": 10000.0,           # paper equity for crypto
     # ---- INR book (2026-11-04): ONE fixed rule, the rest is decided by the AI risk engine (airisk.py) ----
+    "unlimited_trades": True,         # 2026-11-10 user rule (paper): NO trade-count / loss-lockout rules (max open, per group,
+                                      # day / weekly loss stops, AI day stop, loss-streak lockout, cooldown, part risk budget).
+                                      # The agent trades as often as setups qualify; the capital allocated per day is the limit.
+    "usd_day_capital": 2500.0,        # USD (crypto) book: capital in open positions (notional) never exceeds this
     "inr_day_capital": 200000.0,      # FIXED: capital the agent may use per day: open INR positions' capital (premium paid,
                                       # hedged-spread margin = worst-case loss, cash notional) never exceeds this
     "ai_base_risk_pct": 2.5,          # AI model: starting per-trade risk = 2.5% of the day capital, then scaled by
@@ -78,7 +82,7 @@ RISK_DEFAULTS = {
 
 RISK_LIMITS = {                       # user-settable ranges (clamped); none of these can be loosened past the bound
     "capital_inr": (10000, 1e9), "capital_usd": (100, 1e8), "risk_pct": (0.01, 1.0),
-    "inr_day_capital": (10000, 1e8), "ai_base_risk_pct": (0.25, 10.0), "ai_min_risk_pct": (0.1, 5.0), "ai_max_risk_pct": (0.5, 20.0),
+    "inr_day_capital": (10000, 1e8), "usd_day_capital": (10, 1e8), "ai_base_risk_pct": (0.25, 10.0), "ai_min_risk_pct": (0.1, 5.0), "ai_max_risk_pct": (0.5, 20.0),
     "ai_day_loss_trades": (1.0, 10.0), "ai_profit_lock": (0.2, 1.0),
     "capital_parts": (1, 10), "part_risk_pct": (0.25, 5.0), "risk_slices": (1, 6), "lots_per_trade": (1, 1), "first_target_r": (1.0, 5.0),
     "trail_atr": (0.5, 5.0), "opt_min_stop_pct": (5.0, 40.0), "opt_sell_stop_frac": (0.2, 0.45), "opt_trail_r": (0.5, 3.0),

@@ -13,6 +13,12 @@ risk, the day stop and the lot count are decided by the AI risk engine (airisk.p
 loss + open risk + the new trade's risk must stay inside the AI's day stop.
 USD book: equity / capital_parts, part_risk_pct budget split across risk_slices trades.
 
+Unlimited mode (unlimited_trades, default ON for paper since 2026-11-10, user rule): no trade-count or loss-lockout
+rules. The only capacity limit is the capital allocated per day (inr_day_capital / usd_day_capital): capital in open
+positions + the new trade <= that amount, so freed capital is reused and the number of trades is unlimited. Still
+enforced: per-trade stop and risk sizing, data quality, no naked option selling, no averaging into the same symbol,
+the max-drawdown halt and the emergency stop.
+
 Every check is recorded with its result and numbers, whether the trade is approved or not.
 """
 from __future__ import annotations
@@ -149,8 +155,15 @@ def budgets(equity: float, r: dict, loss_streak: int = 0, cur: str = "USD", bk: 
     return {"part": part, "part_budget": part_budget, "per_trade": per_trade * (0.5 if derisk else 1.0), "derisked": derisk, "rule": "parts"}
 
 
+def day_capital(cur: str, r: dict) -> float:
+    """Capital allocated per day for one book (the capacity limit in unlimited mode)."""
+    return float(r["inr_day_capital"] if cur == "INR" else r.get("usd_day_capital", r["capital_usd"] / max(1, r["capital_parts"])))
+
+
 def day_closed(cur: str, bk: dict, r: dict) -> str | None:
-    """Reason the day is closed for new entries in this book, or None."""
+    """Reason the day is closed for new entries in this book, or None (never closed in unlimited mode)."""
+    if r.get("unlimited_trades", True):
+        return None
     if cur == "INR":
         from . import airisk as AI
         return AI.day_closed(bk, r, day_start(time.time()))
@@ -320,29 +333,35 @@ def evaluate(setup: dict, ctx: dict, now: float | None = None) -> dict:
         ok = wd < 5 and 570 <= m <= last
         chk("Session timing", ok, f"IST {m // 60:02d}:{m % 60:02d}; entries 09:30 to {last // 60:02d}:{last % 60:02d}")
     cap = bk["equity"]
-    if cur == "INR":
-        from . import airisk as AI
-        why_closed = AI.day_closed(bk, r, day_start(now))
-        chk("AI day stop", not why_closed, why_closed or f"today {bk['day_pnl']:,.0f} INR vs AI day stop -{AI.day_limit(r):,.0f}; "
-            f"{bk['losses_today']} losing trade(s) today")
-    else:
-        dlim = bk["capital"] * r["daily_loss_pct"] / 100
-        chk("Daily loss limit", bk["day_pnl"] > -dlim, f"today {bk['day_pnl']:,.2f} {cur} vs limit -{dlim:,.2f}")
-    chk("Weekly loss limit", bk["week_pnl"] > -bk["capital"] * r["weekly_loss_pct"] / 100,
-        f"this week {bk['week_pnl']:,.2f} {cur} vs limit -{bk['capital'] * r['weekly_loss_pct'] / 100:,.2f}")
-    chk("Max drawdown", bk["drawdown_pct"] < r["max_drawdown_pct"], f"{bk['drawdown_pct']:.2f}% below peak vs limit {r['max_drawdown_pct']}%")
-    chk("Loss-streak lockout", bk["loss_streak_today"] < r["loss_streak_lockout"],
-        f"{bk['loss_streak_today']} consecutive losses today (lockout at {r['loss_streak_lockout']})")
-    last_loss = next((t for t in bk["recent"] if t["symbol"] == sym and (t["pnl"] or 0) < 0), None)
-    cool_ok = not last_loss or now - (last_loss["closed_at"] or 0) >= r["cooldown_min"] * 60
-    chk("Revenge-trade cooldown", cool_ok, "no recent loss on this symbol" if not last_loss else
-        f"last {sym} loss {int((now - (last_loss['closed_at'] or 0)) / 60)} min ago (cooldown {r['cooldown_min']} min)")
+    unl = bool(r.get("unlimited_trades", True))
     all_open = db.q("SELECT * FROM agent_trades WHERE status='open' AND mode=?", (mode if mode != "intelligence" else "paper",))
-    chk("Concurrent positions", len(all_open) < r["max_open"], f"{len(all_open)} open (max {r['max_open']})")
-    g = LP.group_of(sym)
-    same_g = [t for t in all_open if LP.group_of(t["symbol"]) == g]
-    chk("Correlated exposure", g.startswith("single:") or len(same_g) < r["max_per_group"],
-        f"group {g}: {len(same_g)} open (max {r['max_per_group']})")
+    if unl:
+        chk("Trade-count limits", True, f"off (unlimited trades): {len(all_open)} open, {bk['losses_today']} losing trade(s) today; "
+            f"capital per day {day_capital(cur, r):,.0f} {cur} is the limit", hard=False)
+    else:
+        if cur == "INR":
+            from . import airisk as AI
+            why_closed = AI.day_closed(bk, r, day_start(now))
+            chk("AI day stop", not why_closed, why_closed or f"today {bk['day_pnl']:,.0f} INR vs AI day stop -{AI.day_limit(r):,.0f}; "
+                f"{bk['losses_today']} losing trade(s) today")
+        else:
+            dlim = bk["capital"] * r["daily_loss_pct"] / 100
+            chk("Daily loss limit", bk["day_pnl"] > -dlim, f"today {bk['day_pnl']:,.2f} {cur} vs limit -{dlim:,.2f}")
+        chk("Weekly loss limit", bk["week_pnl"] > -bk["capital"] * r["weekly_loss_pct"] / 100,
+            f"this week {bk['week_pnl']:,.2f} {cur} vs limit -{bk['capital'] * r['weekly_loss_pct'] / 100:,.2f}")
+    chk("Max drawdown", bk["drawdown_pct"] < r["max_drawdown_pct"], f"{bk['drawdown_pct']:.2f}% below peak vs limit {r['max_drawdown_pct']}%")
+    if not unl:
+        chk("Loss-streak lockout", bk["loss_streak_today"] < r["loss_streak_lockout"],
+            f"{bk['loss_streak_today']} consecutive losses today (lockout at {r['loss_streak_lockout']})")
+        last_loss = next((t for t in bk["recent"] if t["symbol"] == sym and (t["pnl"] or 0) < 0), None)
+        cool_ok = not last_loss or now - (last_loss["closed_at"] or 0) >= r["cooldown_min"] * 60
+        chk("Revenge-trade cooldown", cool_ok, "no recent loss on this symbol" if not last_loss else
+            f"last {sym} loss {int((now - (last_loss['closed_at'] or 0)) / 60)} min ago (cooldown {r['cooldown_min']} min)")
+        chk("Concurrent positions", len(all_open) < r["max_open"], f"{len(all_open)} open (max {r['max_open']})")
+        g = LP.group_of(sym)
+        same_g = [t for t in all_open if LP.group_of(t["symbol"]) == g]
+        chk("Correlated exposure", g.startswith("single:") or len(same_g) < r["max_per_group"],
+            f"group {g}: {len(same_g)} open (max {r['max_per_group']})")
     same = [t for t in all_open if t["symbol"] == sym]
     chk("No averaging / stacking", not same, "no open position in this symbol" if not same else f"already {same[0]['side']} {sym} (#{same[0]['id']})")
     bud = budgets(cap, r, bk["loss_streak"], cur, bk, setup, ctx)
@@ -353,10 +372,19 @@ def evaluate(setup: dict, ctx: dict, now: float | None = None) -> dict:
     orisk = open_risk(cur)
     used_loss = max(0.0, -bk["day_pnl"])
 
-    ml_mult, ml_note = _ml_checks(chk, ctx, bud, orisk, used_loss, sym, bool(op))
+    ml_mult, ml_note = _ml_checks(chk, ctx, bud, orisk, used_loss, sym, bool(op), unl)
+    cap_left = max(0.0, day_capital(cur, r) - capital_in_use(cur)) if (unl or cur == "INR") else None
 
     def part_check(new_risk: float, sz: dict | None = None):
         tot = orisk + new_risk + used_loss
+        if unl:
+            used_cap = capital_in_use(cur)
+            new_cap = new_trade_capital(sz or {}, bool(op))
+            dc = day_capital(cur, r)
+            chk("Day capital", used_cap + new_cap <= dc + 1e-6,
+                f"capital in open positions {used_cap:,.0f} + this trade {new_cap:,.0f} = {used_cap + new_cap:,.0f} {cur} vs {dc:,.0f} allocated per day "
+                f"(closed trades free their capital, so the number of trades is not limited)")
+            return
         if cur == "INR":
             chk("Part risk budget", tot <= bud["part_budget"] + 1e-6,
                 f"AI day stop {bud['part_budget']:,.0f} INR: open risk {orisk:,.0f} + this trade {new_risk:,.0f} + today's realised loss "
@@ -370,8 +398,7 @@ def evaluate(setup: dict, ctx: dict, now: float | None = None) -> dict:
             f"trading part {bud['part']:,.0f} {cur} (equity / {r['capital_parts']}), budget {r['part_risk_pct']}% = {bud['part_budget']:,.0f}: "
             f"open risk {orisk:,.0f} + this trade {new_risk:,.0f} + today's realised loss {used_loss:,.0f} = {tot:,.0f}")
     if op:
-        sz = _options_checks(chk, op, setup, ctx, cap, risk_pct, r, now,
-                             max_capital=max(0.0, r["inr_day_capital"] - capital_in_use(cur)) if cur == "INR" else None)
+        sz = _options_checks(chk, op, setup, ctx, cap, risk_pct, r, now, max_capital=cap_left)
         sz["risk_pct_used"], sz["derisked"] = risk_pct, bud["derisked"]
         sz["ml"] = ml_note
         sz["ai_risk"] = ai
@@ -382,7 +409,6 @@ def evaluate(setup: dict, ctx: dict, now: float | None = None) -> dict:
         return {"verdict": verdict, "checks": checks, "sizing": sz, "failed": [c["check"] for c in hard_fail], "book": {
             k: (round(v, 2) if isinstance(v, float) else v) for k, v in bk.items() if k not in ("open", "recent")}}
     risk_used = risk_pct * min(1.0, ml_mult)               # the model can only LOWER the risk, never raise it
-    cap_left = max(0.0, r["inr_day_capital"] - capital_in_use(cur)) if cur == "INR" else None
     sz = size(sym, market, setup["entry"], setup["stop"], setup["targets"], setup.get("atr") or 0, cap, risk_used, r,
               max_notional=cap_left) if stop_ok else {"qty": 0, "why": "no valid stop"}
     sz["risk_pct_used"] = risk_used
@@ -418,7 +444,8 @@ def evaluate(setup: dict, ctx: dict, now: float | None = None) -> dict:
         k: (round(v, 2) if isinstance(v, float) else v) for k, v in bk.items() if k not in ("open", "recent")}}
 
 
-def _ml_checks(chk, ctx: dict, bud: dict, orisk: float, used_loss: float, sym: str, is_options: bool) -> tuple[float, dict | None]:
+def _ml_checks(chk, ctx: dict, bud: dict, orisk: float, used_loss: float, sym: str, is_options: bool,
+               unlimited: bool = False) -> tuple[float, dict | None]:
     """ML layer (ml.py), ACTIVE mode only. It can add a failing check or halve the risk - never anything else."""
     mlp = ctx.get("ml")
     if not mlp or mlp.get("mode") != "active":
@@ -427,7 +454,7 @@ def _ml_checks(chk, ctx: dict, bud: dict, orisk: float, used_loss: float, sym: s
     chk("ML filter", a != "skip", f"model #{mlp.get('model_id')}: {p * 100:.0f}% chance of 1:2 before the stop (base rate {mlp.get('base_rate', 0) * 100:.0f}%); "
         f"skip below {th.get('skip_below', 0) * 100:.0f}%, full size from {th.get('full_from', 0) * 100:.0f}% -> {a.upper()}")
     room = bud["part_budget"] - orisk - used_loss
-    last = room < 2 * bud["per_trade"]
+    last = room < 2 * bud["per_trade"] and not unlimited          # unlimited mode: no slot rationing
     chk("ML budget priority", not (last and a != "full"),
         (f"room for one more trade ({room:,.0f}): kept for a FULL-confidence setup, this one is {a}" if last and a != "full" else
          f"room {room:,.0f} = {room / (bud['per_trade'] or 1):.1f} trades: no rationing needed" if not last else "full-confidence setup: may use the last slot"))
