@@ -114,7 +114,7 @@ def strategy_agent(a: dict, reg: dict) -> tuple[list[dict], list[dict]]:
 def setup_agent(s: dict, a: dict, pic: dict, reg: dict) -> dict:
     """The full proposal. Position size is filled in by the Risk Guardian (it alone decides size)."""
     sym, market = a["symbol"], a["market"]
-    ev = intel.evidence(a.get("score") or {}, s["direction"], sym, a["tf"])
+    ev = intel.evidence(a.get("score") or {}, s["direction"], sym, a["tf"], a.get("msb"))
     e, st, tg = s["entry"], s["stop"], s["targets"]
     d = 1 if s["direction"] == "LONG" else -1
     est_cost_unit = abs(C.slip_price(e, d, market) - e) * 2

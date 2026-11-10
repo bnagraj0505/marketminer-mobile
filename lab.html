@@ -143,7 +143,7 @@ td.r,th.r{text-align:right}
     <div class="cd">
       <h3><span>Chart · <span id="chTitle">—</span></span><span><span id="liveTag" class="live off">LIVE —</span> <span id="regTag"></span> <button class="btn sm" id="thBtn" onclick="toggleTheme()">☾ Dark chart</button> <button class="btn sm" id="tvBtn" onclick="toggleTV()">TradingView</button></span></h3>
       <div id="tvWrap" style="display:none"><div id="tvBox" style="height:580px"></div><div class="note" id="tvNote"></div></div><div id="chartBox" data-theme="light"><div id="chart"></div><canvas id="posCv"></canvas><div id="sigWm"></div><div id="legend"></div><div id="rsiP"></div></div>
-      <div class="layers" id="layers"></div><div class="layers" id="srBar" style="margin-top:4px"></div><div class="layers" id="afBar" style="margin-top:4px"></div><div id="afRead"></div>
+      <div class="layers" id="layers"></div><div class="layers" id="srBar" style="margin-top:4px"></div><div class="layers" id="mbBar" style="margin-top:4px"></div><div class="layers" id="afBar" style="margin-top:4px"></div><div id="afRead"></div>
     </div>
     <div>
       <div class="cd" style="margin-bottom:10px">
@@ -157,6 +157,7 @@ td.r,th.r{text-align:right}
 
   <div class="tabs" id="tabs"></div>
   <section class="pane" id="p-intel"></section>
+  <section class="pane" id="p-msb"></section>
   <section class="pane" id="p-deriv"></section>
   <section class="pane" id="p-mtf"></section>
   <section class="pane" id="p-bt"></section>
@@ -169,11 +170,12 @@ td.r,th.r{text-align:right}
 <div class="toast" id="toast"></div>
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <script src="js/srzones.js?v=2026.11.10b"></script>
+<script src="js/msbob.js?v=2026.11.10c"></script>
 <script src="js/markets.js?v=2026.11.10b"></script>
 <script src="js/auction.js?v=2026.11.10b"></script>
 <script src="js/chartctl.js?v=2026.11.10b"></script>
 <script>
-const TABS=[["intel","Intelligence"],["deriv","Derivatives"],["mtf","Multi-timeframe"],["bt","Backtest"],["paper","Paper & risk"],["bot","Auto bot"],["journal","Journal"],["alerts","Alerts"],["settings","Settings"]];
+const TABS=[["intel","Intelligence"],["msb","MSB / OB"],["deriv","Derivatives"],["mtf","Multi-timeframe"],["bt","Backtest"],["paper","Paper & risk"],["bot","Auto bot"],["journal","Journal"],["alerts","Alerts"],["settings","Settings"]];
 const TFS=["1m","3m","5m","15m","30m","1h","4h","1d","1w"];
 let META=null,CUR=null,TF="15m",chart,cs,rsiC,rsiS,lines={},plines=[],SEL=0,autoT=null;
 const $=id=>document.getElementById(id);
@@ -194,7 +196,7 @@ function goBot(){tab("bot");BOTJUMP=Date.now();const j=()=>$("tabs").scrollIntoV
   if(window.ResizeObserver&&!goBot.ro){goBot.ro=new ResizeObserver(()=>{if(Date.now()-BOTJUMP<8000)j()});goBot.ro.observe(document.body)}}
 function tab(k){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.k===k));document.querySelectorAll(".pane").forEach(p=>p.classList.toggle("on",p.id==="p-"+k));
   try{localStorage.setItem("lab.tab",k)}catch(e){}
-  if(k==="mtf")ldMTF();if(k==="bt")rBT();if(k==="paper")ldPaper();if(k==="journal")ldJournal();if(k==="alerts")ldAlerts();if(k==="settings")rSettings();if(k==="bot"&&window.MMBOT)MMBOT.render();if(k==="deriv"&&CUR)rDeriv(CUR.derivatives)}
+  if(k==="mtf")ldMTF();if(k==="bt")rBT();if(k==="paper")ldPaper();if(k==="journal")ldJournal();if(k==="alerts")ldAlerts();if(k==="settings")rSettings();if(k==="bot"&&window.MMBOT)MMBOT.render();if(k==="deriv"&&CUR)rDeriv(CUR.derivatives);if(k==="msb"&&window.MMMSB)MMMSB.render()}
 
 async function init(){
   $("tabs").innerHTML=TABS.map(([k,l])=>`<button data-k="${k}" onclick="tab('${k}')">${l}</button>`).join("");
@@ -202,8 +204,9 @@ async function init(){
   META=await api("/api/lab/meta");
   const groups={...MMK.GROUPS,...Object.fromEntries(Object.entries(META.watch||{}).filter(([k])=>/^(US|Forex)/.test(k)))};   // js/markets.js: India = FYERS, gold + crypto + options = Delta Exchangeif(META.user_watch.length)groups["My watch-list"]=META.user_watch;
   $("grp").innerHTML=Object.keys(groups).map(g=>`<option>${esc(g)}</option>`).join("");META._groups=groups;
-  MMK.loadDelta().then(o=>{Object.assign(META._groups,o);const g=$("grp").value;$("grp").innerHTML=Object.keys(META._groups).map(k=>`<option ${k===g?"selected":""}>${esc(k)}</option>`).join("");syncPicker()});
+  MMK.loadDelta().then(o=>{Object.assign(META._groups,o);const g=$("grp").value;$("grp").innerHTML=Object.keys(META._groups).map(k=>`<option ${k===g?"selected":""}>${esc(k)}</option>`).join("");syncPicker();if(window.MMMSB)MMMSB.render()});
   let s=null,t=null,tb="intel";try{s=localStorage.getItem("lab.sym");t=localStorage.getItem("lab.tf");tb=localStorage.getItem("lab.tab")||"intel"}catch(e){}
+  try{MMMSB.pane($("p-msb"),{groups:()=>META._groups,open:(sy,t)=>{$("sym").value=sy;syncPicker();setTF(t);window.scrollTo({top:0,behavior:"smooth"})}})}catch(e){console.warn("MSB scanner",e)}
   fillWatch();$("sym").value=s||"NSE:NIFTY50-INDEX";setTF(t||"15m",true);tab(location.hash==="#bot"?"bot":tb);if(location.hash==="#bot")setTimeout(goBot,600);
   $("minS").textContent=`signal ≥ ${META.protection.min_score}`;
   $("sym").addEventListener("keydown",e=>{if(e.key==="Enter")run()});
@@ -346,6 +349,7 @@ function mkChart(){
   applyTheme();
   const tzf=()=>CUR&&["NSE","FNO","MCX"].includes(CUR.market)?19800:0;
   try{window.SRH=MMSR.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("srBar"),symbol:()=>CUR&&CUR.symbol,tz:tzf})}catch(e){}
+  try{window.MBH=MMMSB.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("mbBar"),symbol:()=>CUR&&CUR.symbol,tf:()=>CUR&&CUR.tf,tz:tzf})}catch(e){}
   try{window.AFH=MMAF.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("afBar"),read:$("afRead"),symbol:()=>CUR&&CUR.symbol,tz:tzf,page:"lab",defaults:{master:false}})}catch(e){}
   try{if(window.CTL)CTL.detach();window.CTL=MMCTL.attach(chart,{box:$("chartBox"),plot:$("chart"),last:()=>CUR&&CUR.candles&&CUR.candles.length?{time:CUR.candles[CUR.candles.length-1].time,tf:CUR.tf,market:CUR.market}:null,also:[rsiC],fsOffset:112,pos:"mid"})}catch(e){}
 }
@@ -780,6 +784,6 @@ init().catch(e=>{$("qual").innerHTML=`<span class="dn">Signal Lab engine could n
 </script>
 <script>window.addEventListener('mm-lab-status',e=>{const q=document.getElementById('qual');if(q&&e.detail)q.innerHTML='<span class="spin"></span> '+e.detail});</script>
 <script src="js/position.js?v=2026.11.01-15"></script>
-<script src="js/bot.js?v=2026.11.01-15"></script>
+<script src="js/bot.js?v=2026.11.10c"></script>
 </body>
 </html>

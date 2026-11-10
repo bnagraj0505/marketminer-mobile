@@ -65,7 +65,7 @@ th{color:var(--t3);font-size:.64rem;text-transform:uppercase}tr.row{cursor:point
     <label class="nt" style="font:600 .7rem var(--mono)">× <input id="mul" type="number" min="1" max="6" step="0.1" style="width:60px"></label>
     <span id="busy"></span>
   </div>
-  <div id="srBar" style="margin:6px 0"></div><div id="afBar" style="margin:6px 0"></div>
+  <div id="srBar" style="margin:6px 0"></div><div id="mbBar" style="margin:6px 0"></div><div id="afBar" style="margin:6px 0"></div>
   <div id="chartBox"><div id="chart"></div><div id="title"></div></div>
   <div id="afRead"></div>
   <div class="stats" id="stats"></div>
@@ -78,6 +78,7 @@ th{color:var(--t3);font-size:.64rem;text-transform:uppercase}tr.row{cursor:point
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <script src="js/mmtrend.js?v=2026.11.01-16"></script>
 <script src="js/srzones.js?v=2026.11.10b"></script>
+<script src="js/msbob.js?v=2026.11.10c"></script>
 <script src="js/markets.js?v=2026.11.10b"></script>
 <script src="js/auction.js?v=2026.11.10b"></script>
 <script src="js/chartctl.js?v=2026.11.10b"></script>
@@ -101,6 +102,7 @@ function mkChart(){
   new ResizeObserver(()=>chart.applyOptions({width:$("chart").clientWidth})).observe($("chart"));
   const tzf=()=>LAST&&["NSE","FNO","MCX"].includes(LAST.market)?19800:0;
   try{window.SRH=MMSR.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("srBar"),symbol:()=>LAST&&LAST.symbol,tz:tzf})}catch(e){}
+  try{window.MBH=MMMSB.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("mbBar"),symbol:()=>LAST&&LAST.symbol,tf:()=>LAST&&LAST.tf,tz:tzf})}catch(e){}
   try{window.AFH=MMAF.attach(chart,cs,{box:$("chartBox"),plot:$("chart"),bar:$("afBar"),read:$("afRead"),symbol:()=>LAST&&LAST.symbol,tz:tzf,page:"trend",defaults:{master:false}})}catch(e){}
   try{if(window.CTL)CTL.detach();window.CTL=MMCTL.attach(chart,{box:$("chartBox"),plot:$("chart"),last:()=>LAST&&LAST.candles&&LAST.candles.length?{time:LAST.candles[LAST.candles.length-1].time,tf:LAST.tf,market:LAST.market}:null})}catch(e){}
 }

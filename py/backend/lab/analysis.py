@@ -10,6 +10,7 @@ from .candle import TF_SECONDS
 from . import data as D
 from . import ind as I
 from . import ict as ICT
+from . import msb as MSB
 from . import pa as PA
 from . import options as O
 from . import store
@@ -184,6 +185,11 @@ async def analyze(symbol: str, tf: str, bars: int = 600, fresh: bool = False, li
     ext, intl, obs = ictr.pop("_reports")
     traps = [asdict(t) for t in ext.traps]
     par = PA.analyze(main, E.F.disp, traps)
+    try:                                              # MSB / order blocks (msb.py): structure + zone location for the agent
+        _m = MSB.analyze(main)
+        msbr = {k: _m[k] for k in ("structure", "last_msb", "nearest_demand", "nearest_supply", "in_zone", "retest_now", "vote", "summary", "active")}
+    except Exception as exc:                          # noqa: BLE001 - never break analysis
+        msbr = {"error": str(exc)[:160]}
     ctx = res["ctx"]
     ctx.pop("options", None)
     reg = ctx.pop("regime_full")
@@ -201,7 +207,7 @@ async def analyze(symbol: str, tf: str, bars: int = 600, fresh: bool = False, li
         _alerts(symbol, tf, E, res, prot)
     return {"symbol": symbol, "tf": tf, "market": market, "quality": q, "candles": candles_out, "overlays": _overlays(E, 400),
             "indicators": _indicators(E), "regime": reg, "score": res["score"], "setups": shown[:8], "locked_history": recent_locked, "signal_marks": marks,
-            "rejected": res["rejected"][:20], "context": ctx, "mtf": mtf, "ict": ictr, "price_action": par, "derivatives": der,
+            "rejected": res["rejected"][:20], "context": ctx, "mtf": mtf, "ict": ictr, "msb": msbr, "price_action": par, "derivatives": der,
             "levels": liq, "validation": val.get("summary"), "elapsed_ms": int((time.time() - t0) * 1000),
             "disclaimer": "Analysis and paper trading only. Scores rank setups; they are not probabilities of profit."}
 

@@ -46,6 +46,7 @@
 "backend/lab/ict.py",
 "backend/lab/ind.py",
 "backend/lab/mlfeat.py",
+"backend/lab/msb.py",
 "backend/lab/options.py",
 "backend/lab/pa.py",
 "backend/lab/paper.py",

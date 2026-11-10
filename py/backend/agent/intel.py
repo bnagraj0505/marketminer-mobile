@@ -14,6 +14,8 @@ structure and the EMA stack all measure trend. They are grouped into families an
   participation  vwap, volume (OBV)
   liquidity      liquidity (sweeps / MSS), zone (premium / discount)
   options        options (OI flow)
+  zones          MSB order blocks (lab/msb.py): +1 when price is at / just rejected from an active BU-OB/BB/MB in
+                 bullish structure, -1 at a BE-OB/BB/MB in bearish structure, no vote away from a zone
 A family's vote is the sign of its members' weighted sum. If research.factor_correlation has measured the factors
 on this symbol/timeframe, any factor whose measured |correlation| with another family's factor is >= 0.6 is moved
 into that family (measured evidence beats the default grouping).
@@ -46,7 +48,7 @@ def families_for(symbol: str, tf: str) -> dict:
     return {k: v for k, v in fam.items() if v}
 
 
-def evidence(score: dict, direction: str, symbol: str = "", tf: str = "") -> dict:
+def evidence(score: dict, direction: str, symbol: str = "", tf: str = "", msb: dict | None = None) -> dict:
     d = 1 if direction == "LONG" else -1
     votes = {f["key"]: f["vote"] for f in score.get("factors", [])}
     out, agree, oppose, unavailable = {}, [], [], []
@@ -63,6 +65,16 @@ def evidence(score: dict, direction: str, symbol: str = "", tf: str = "") -> dic
             agree.append(fam)
         elif vote == -d:
             oppose.append(fam)
+    if msb is not None and not msb.get("error"):           # location at an MSB order block (one extra family)
+        v = msb.get("vote")
+        kinds = sorted({z.get("kind") for z in (msb.get("in_zone") or []) + (msb.get("retest_now") or []) if z})
+        out["zones"] = {"vote": v, "members": ["msb"], "detail": {"structure": msb.get("structure"), "zones": kinds}}
+        if v is None:
+            unavailable.append("zones")
+        elif v == d:
+            agree.append("zones")
+        elif v == -d:
+            oppose.append("zones")
     return {"families": out, "agree": agree, "oppose": oppose, "unavailable": unavailable,
             "independent_confirmations": len(agree), "independent_conflicts": len(oppose)}
 
@@ -121,6 +133,7 @@ def picture(a: dict) -> dict:
                               "bandwidth_pct": (ind.get("bollinger") or {}).get("bandwidth_pct"), "squeeze": ind.get("squeeze")},
         "vwap": ind.get("vwap"),
         "levels": a.get("levels"),
+        "msb": {k: (a.get("msb") or {}).get(k) for k in ("structure", "last_msb", "nearest_demand", "nearest_supply", "in_zone", "vote", "summary")} if a.get("msb") else None,
         "ict": {k: ictr.get(k) for k in ("dealing_range", "premium_discount", "kill_zone", "amd", "prev_levels", "equal_levels") if k in ictr},
         "price_action": {k: pa.get(k) for k in ("zones", "range", "volatility_state") if k in pa},
         "options": opts, "perp": crypto,

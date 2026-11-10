@@ -104,6 +104,13 @@ async def _route(path: str, q: dict, method: str, body: dict):
     if p == "/auction":
         from backend.lab import auction as AU
         return await AU.compute(q.get("symbol", ""), q.get("tf", ""), int(q.get("days") or 10))
+    if p == "/msb":                                        # MSB / BU-OB / BU-MB / BE-OB / BE-MB (backend/lab/msb.py)
+        from backend.lab import msb
+        return await msb.compute(q.get("symbol", ""), q.get("tf") or "5m", int(q.get("bars") or 600))
+    if p == "/msb/scan":
+        from backend.lab import msb
+        syms = body.get("symbols") if method == "POST" else (q.get("symbols") or "").split(",")
+        return await msb.scan([s.strip() for s in syms or [] if s and s.strip()], (body.get("tf") if method == "POST" else q.get("tf")) or "5m")
     if p == "/sr":
         from backend.lab import srmtf
         return await srmtf.compute(q.get("symbol", ""))

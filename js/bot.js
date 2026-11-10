@@ -323,7 +323,7 @@
   }
 
   window.MMBOT = {
-    setOn, render: rBot, tick, onView, snap, cfg: () => cfg, state: () => st,
+    setOn, render: rBot, tick, onView, snap, tg, tgEsc, cfg: () => cfg, state: () => st,
     set(k, v) {
       const combo = k === "tgToken" && /^\s*(\d+:[\w-]+)\s*[|,\s]\s*(-?\d+)\s*$/.exec(v || "");   // setup code "token|chatId"
       if (combo) { cfg.tgToken = combo[1]; cfg.tgChat = combo[2]; }
