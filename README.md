@@ -8,6 +8,7 @@ Your FYERS app ID, secret key and login stay in the browser on each device. The 
 
 | Page | What it shows | Data |
 |---|---|---|
+| **Market Pulse** (`pulse.html`) | Tredye-style tools: market mood, index expected ranges, India VIX, sector map and money rotation; Option Pulse (max pain, PCR, IV smile, OI by strike, writers' range); OI Flow; Liquidity map; Strength boards; Screeners (futures basis, RSI 15m/1h/1D); Stock Radar; Calm Zone; News; Journal; F&O Academy. Answered on the phone by `js/pulse_engine.js` from FYERS alone (OI spurts and NSE sector data stay on the PC; Calm Zone uses 60-day realised volatility of the 40 most traded F&O stocks) | FYERS, news via rss2json |
 | **Dashboard** (`index.html`) | NIFTY/BANK/VIX and sector indices, MCX commodities, options-chain heatmap with OI change in each bar, option greeks and gamma-blast picks, OI support/resistance, OI change tracker, CPR and intraday range, confluence / liquidity sweeps / time decay, India and global news | FYERS, news via rss2json |
 | **AI Agent** (`agent.html`) | The PC's risk-first AI agent, running in the browser: options desk (index + stock options, buying and hedged selling) and crypto through Delta perpetuals, the Risk Guardian, paper execution, performance, learning centre, "where it's failing" diagnosis with learned filters, ML (scikit-learn, downloaded once) and the strategy workbench. PAPER ONLY. It runs **while the AI Agent page is open and the screen is on**; its paper book is separate from the PC's. The observe-only market sweep and the all-F&O scan are off by default on the phone (they would use most of the FYERS daily limit) | FYERS, Delta |
 | **Dashboard blocks from the PC** (`index.html`) | Retracement or reversal for every options-desk index (Fibonacci of today's leg, 15m swing + 5m timing), profit booking vs fresh selling (price depth + option writers' OI since today's extreme), and the straddle monitor (ATM straddle, centre and how both shift). They run the PC's own Python (`backend/agent/retrace.py`, `pbook.py`, `straddle.py`) in the browser; straddle snapshots are taken while the dashboard is open, at a pace that respects the FYERS daily limit. Every block can be folded to its title (▾) | FYERS |
@@ -24,6 +25,10 @@ Your FYERS app ID, secret key and login stay in the browser on each device. The 
 | **Connections** (`fyers.html`) | FYERS app details, login, daily PIN renewal, quotes and option-chain test | FYERS |
 
 These stay on the PC version, because they need NSE's website, Moneycontrol or the PC server: pre-open, FII/DII, large deals, OI spurts, volume shockers, events, seasonal and broker picks, the screener and holdings tabs, Shark Exchange (the phone uses Delta Exchange perpetuals instead), and AI analysis.
+
+## Look and navigation
+
+Every page uses the same light theme as the PC (dark theme with the sun/moon button), with rolling numbers, animated gauges and charts, and loading shimmers. On phones a bottom tab bar (Pulse, Options, Radar, Dashboard, More) replaces the top menu; More opens every page. The theme and navigation are `css/mm-tredye.css` and `js/mmshell.js`, copied from the PC by `tools/build_mobile.py`.
 
 ## One-time setup
 

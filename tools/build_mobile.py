@@ -162,6 +162,26 @@ def build_lab(src: str) -> str:
     return html
 
 
+def build_pulse(src: str) -> str:
+    """Market Pulse (Tredye-style tools): the PC page; its /api/pulse/* requests are answered on the phone by
+    js/pulse_engine.js (FYERS only, no NSE website)."""
+    html = common(src)
+    eng = ENGINE.replace("__V__", VERSION)
+    html = html.replace(eng, eng + f'\n<script src="js/pulse_engine.js?v={VERSION}"></script>', 1)
+    html = html.replace("<title>MarketMiner", "<title>📱 MarketMiner", 1)
+    html = html.replace("Data: NSE public website (PC) and your own FYERS login.",
+                        "Data: your own FYERS login on this device (the PC version also reads NSE's website).")
+    return html
+
+
+def copy_shell(src: Path, out: Path) -> None:
+    """Shared look (Tredye-style theme, navigation, animations) and the Pulse page script."""
+    (out / "css").mkdir(exist_ok=True)
+    shutil.copy(src / "css" / "mm-tredye.css", out / "css" / "mm-tredye.css")
+    for js in ("mmshell.js", "pulse.js"):
+        shutil.copy(src / "js" / js, out / "js" / js)
+
+
 def copy_lab_python(lab_src: Path, out: Path) -> list[str]:
     """Copy the PC's backend/lab/*.py (everything except the FastAPI routes) next to the phone shims; list all files."""
     dst = out / "py" / "backend" / "lab"
@@ -186,6 +206,10 @@ def main() -> None:
     (out / "desk.html").write_text(build_desk((SRC / "desk.html").read_text(encoding="utf-8")), encoding="utf-8")
     (out / "lab.html").write_text(build_lab((SRC / "lab.html").read_text(encoding="utf-8")), encoding="utf-8")
     print("lab: python files", len(copy_lab_python(SRC.parent / "backend" / "lab", out)))
+    if (SRC / "pulse.html").exists():
+        (out / "pulse.html").write_text(build_pulse((SRC / "pulse.html").read_text(encoding="utf-8")), encoding="utf-8")
+        copy_shell(SRC, out)
+        print("pulse: page, theme and navigation copied")
     for icon in ("icon-192.png", "icon-512.png", "apple-touch-icon.png"):
         if (SRC / "icons" / icon).exists():
             shutil.copy(SRC / "icons" / icon, out / "icons" / icon)
