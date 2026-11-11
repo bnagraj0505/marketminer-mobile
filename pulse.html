@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en" data-mm-native>
+<head>
+<meta charset="utf-8">
+<script src="js/engine.js?v=2026.11.10b"></script>
+<script src="js/pulse_engine.js?v=2026.11.12"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>📱 MarketMiner · Market Pulse</title>
+<meta name="theme-color" content="#f6f6f8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script src="js/mmshell.js?v=2026.11.12"></script>
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;color:var(--tb-fg)}
+a{color:var(--tb-brand)}
+.wrap{max-width:1280px;margin:0 auto;padding:22px 20px 60px}
+.view{display:none}.view.on{display:block}
+.kick{display:inline-flex;align-items:center;gap:8px;color:var(--tb-mut);font-size:14px;margin-bottom:8px}
+.kick i{width:26px;height:26px;border-radius:8px;background:var(--tb-brand-soft);display:grid;place-items:center;color:var(--tb-brand);font-style:normal}
+.kick i svg{width:15px;height:15px}
+h1{font-size:26px;line-height:1.25;font-weight:600;letter-spacing:-.02em;margin:0 0 18px}
+h1 em{font-style:normal;color:var(--tb-brand)}
+h2{font-size:15px;font-weight:600;margin:0;display:flex;align-items:center;gap:8px}
+h2 svg{width:16px;height:16px;color:var(--tb-mut)}
+.sub{color:var(--tb-mut);font-size:13.5px;margin:-10px 0 18px}
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g-mood{grid-template-columns:1.25fr .9fr .9fr .9fr}.g-sec{grid-template-columns:2.6fr 1fr}.g-opt{grid-template-columns:1.8fr 1fr}
+.c{background:var(--tb-card);border-radius:20px;box-shadow:var(--tb-shadow-sm);padding:18px;min-width:0;position:relative}
+.c.big{box-shadow:var(--tb-shadow)}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:3px 10px;border-radius:99px;background:var(--tb-soft);color:var(--tb-mut);white-space:nowrap}
+.pill.up{background:var(--tb-up-soft);color:var(--tb-up)}.pill.dn{background:var(--tb-dn-soft);color:var(--tb-dn)}
+.pill.brand{background:var(--tb-brand-soft);color:var(--tb-brand)}.pill.sim{background:var(--tb-sim-soft);color:var(--tb-sim)}
+.pill.warn{background:var(--tb-warn-soft);color:var(--tb-warn)}
+.up{color:var(--tb-up)}.dn{color:var(--tb-dn)}.mut{color:var(--tb-mut)}.mut2{color:var(--tb-mut2)}
+.big-n{font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.mid-n{font-size:22px;font-weight:600;letter-spacing:-.01em}
+.lbl{font-size:12.5px;color:var(--tb-mut);display:flex;align-items:center;gap:6px}
+.seg{display:inline-flex;background:var(--tb-soft);border-radius:13px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;color:var(--tb-mut);font:500 13px 'Outfit',sans-serif;padding:6px 12px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--tb-card);color:var(--tb-fg);box-shadow:var(--tb-shadow-sm)}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.sym-in{border:1px solid var(--tb-line2);background:var(--tb-card);border-radius:12px;padding:7px 12px;font:500 13px 'Outfit';color:var(--tb-fg);width:150px;text-transform:uppercase}
+.btn2{border:0;background:var(--tb-brand);color:#fff;font:600 13px 'Outfit';padding:8px 14px;border-radius:11px;cursor:pointer}
+.btn2.ghost{background:var(--tb-card);color:var(--tb-fg);border:1px solid var(--tb-line2)}
+.btn2:disabled{opacity:.5;cursor:default}
+.bar{height:8px;border-radius:9px;background:var(--tb-soft);overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:9px;background:var(--tb-brand)}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;padding:5px 0}
+.kv b{font-weight:600}
+.note{font-size:12.5px;color:var(--tb-mut);line-height:1.5}
+.err{background:var(--tb-dn-soft);color:var(--tb-dn);padding:10px 14px;border-radius:12px;font-size:13.5px;margin-bottom:14px}
+.loading{color:var(--tb-mut);font-size:13.5px;padding:24px 4px}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+table.t th{text-align:left;font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--tb-mut2);padding:8px 8px;border-bottom:1px solid var(--tb-line);position:sticky;top:0;background:var(--tb-card);cursor:pointer;white-space:nowrap}
+table.t td{padding:8px;border-bottom:1px solid var(--tb-line);white-space:nowrap}
+table.t td.r,table.t th.r{text-align:right}
+table.t tr:hover td{background:var(--tb-soft)}
+.tw{max-height:520px;overflow:auto;border-radius:12px}
+.rank{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--tb-line);font-size:13.5px}
+.rank .n{color:var(--tb-mut2);font-size:12px}
+.rank .s{font-weight:600}
+.rank small{display:block;color:var(--tb-mut);font-weight:400;font-size:12px}
+.rank .sc{font-weight:600;text-align:right}
+.sbar{height:4px;border-radius:4px;margin-top:5px;background:var(--tb-soft);overflow:hidden}.sbar i{display:block;height:100%}
+svg text{font-family:'Outfit',sans-serif}
+.tm-cell{position:absolute;overflow:hidden;border-radius:4px;font-size:11px;line-height:1.2;padding:3px 4px;color:#0b0b10;border:1px solid var(--tb-card)}
+.tm-cell b{display:block;font-weight:600}
+.tm-sec{position:absolute;font-size:12px;font-weight:600;color:var(--tb-fg);padding:2px 4px;white-space:nowrap;overflow:hidden}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--tb-mut)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.flowrow{display:grid;grid-template-columns:1fr 92px 1fr;align-items:center;gap:8px;font-size:12.5px;padding:3px 0}
+.flowrow .l{display:flex;justify-content:flex-end}.flowrow .m{text-align:center;color:var(--tb-mut)}
+.flowrow .b{height:12px;border-radius:6px}
+.lesson{border-radius:16px;background:var(--tb-card);box-shadow:var(--tb-shadow-sm);margin-bottom:12px;overflow:hidden}
+.lesson summary{cursor:pointer;padding:16px 18px;font-weight:600;font-size:16px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.lesson summary::-webkit-details-marker{display:none}
+.lesson summary small{color:var(--tb-mut);font-weight:400;font-size:13px}
+.lesson .body{padding:0 18px 18px;font-size:14.5px;line-height:1.65;color:var(--tb-fg)}
+.lesson .body p{margin:.5em 0}.lesson .body ul{margin:.4em 0 .4em 1.2em;padding:0}
+.lesson .body .ex{background:var(--tb-soft);border-radius:12px;padding:10px 14px;margin:10px 0;font-size:13.5px}
+.form{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.form label{font-size:12px;color:var(--tb-mut);display:flex;flex-direction:column;gap:4px}
+.form input,.form select,.form textarea{padding:8px 10px;font-size:13.5px}
+.form .w2{grid-column:span 2}.form .w3{grid-column:span 3}.form .w6{grid-column:span 6}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips label{flex-direction:row;align-items:center;gap:5px;background:var(--tb-soft);padding:4px 10px;border-radius:99px;font-size:12.5px;color:var(--tb-fg);cursor:pointer}
+.lwc{height:420px;border-radius:12px;overflow:hidden}
+.prof{display:flex;flex-direction:column;justify-content:space-between;height:420px}
+.news{display:flex;flex-direction:column;gap:6px;text-decoration:none;color:var(--tb-fg)}.news:hover h3{color:var(--tb-brand)}.news h3{font-size:15px;font-weight:600;line-height:1.35;margin:0}.news p{margin:0;font-size:13px;color:var(--tb-mut);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.helpbtn{border:1px solid var(--tb-line2);background:var(--tb-card);color:var(--tb-fg);font:500 12.5px Outfit,sans-serif;border-radius:99px;padding:3px 11px;cursor:pointer;margin-left:auto}
+.helpbox{display:none;background:var(--tb-brand-soft);border-radius:16px;padding:14px 18px;margin:-6px 0 18px;font-size:14px;line-height:1.6}.helpbox.on{display:block}.helpbox ul{margin:6px 0 0 18px;padding:0}
+.kick{width:100%}
+.foot{margin-top:28px;color:var(--tb-mut2);font-size:12px;line-height:1.6}
+@media(max-width:1100px){.g-mood{grid-template-columns:1fr 1fr}.g4{grid-template-columns:1fr 1fr}.g-sec,.g-opt{grid-template-columns:1fr}}
+@media(max-width:700px){.flowrow{grid-template-columns:1fr 54px 1fr;font-size:11.5px}#pMood{grid-template-columns:1fr!important;justify-items:center}.g4,.g3,.g2,.g-mood{grid-template-columns:1fr}.wrap{padding:16px 14px 50px}h1{font-size:21px}.form{grid-template-columns:1fr 1fr}.form .w3,.form .w6{grid-column:span 2}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ======================= PULSE ======================= -->
+<section class="view" id="v-pulse">
+  <div class="kick"><i data-ic="pulse"></i>Market Pulse <span class="pill" id="pAsOf">—</span></div>
+  <h1 id="pHead">Reading the market…</h1>
+  <div class="toolbar"><div class="seg" id="pSeg"><button class="on" data-v="ov">Overview</button><button data-v="mf">Money flow</button><button data-v="of">Order flow</button></div>
+    <span class="pill" id="pSrc"></span></div>
+  <div id="pErr"></div>
+  <div id="p-ov">
+    <div class="c big" style="margin-bottom:16px">
+      <div class="ch"><h2><span data-ic="screen"></span>Money rotation <span class="legend"><span><i style="background:var(--tb-dn)"></i>Leaving</span><span><i style="background:var(--tb-brand)"></i>Net flow</span><span><i style="background:var(--tb-up)"></i>Arriving</span></span></h2>
+        <span class="pill sim">Estimated</span></div>
+      <div id="pRot"></div>
+      <div class="note" id="pRotN" style="margin-top:8px"></div>
+    </div>
+    <div class="grid g-mood" style="margin-bottom:16px">
+      <div class="c"><div class="ch"><h2><span data-ic="calm"></span>Market mood</h2><span class="pill brand">Live blend</span></div>
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:14px;align-items:center" id="pMood"></div>
+        <div class="note" id="pBreadth" style="margin-top:10px"></div></div>
+      <div class="c" id="pIdx0"></div><div class="c" id="pIdx1"></div><div class="c" id="pIdx2"></div>
+    </div>
+    <div class="grid g-sec">
+      <div class="c"><div class="ch"><h2><span data-ic="dash"></span>Sector map <span class="mut2" style="font-weight:400;font-size:12px">size = turnover · colour −4% … +4%</span></h2></div>
+        <div id="pMap" style="position:relative;height:430px"></div>
+        <div class="note" id="pLead" style="margin-top:10px"></div></div>
+      <div class="c"><div class="ch"><h2><span data-ic="radar"></span>India VIX</h2></div><div id="pVix"></div></div>
+    </div>
+  </div>
+  <div id="p-mf" style="display:none">
+    <div class="c"><div class="ch"><h2>Money flow by sector</h2><span class="pill sim">Estimated</span></div><div class="tw"><table class="t" id="pMfT"></table></div></div>
+  </div>
+  <div id="p-of" style="display:none">
+    <div class="grid g2"><div class="c"><div class="ch"><h2>Most active F&amp;O stocks</h2></div><div class="tw"><table class="t" id="pOfT"></table></div></div>
+    <div class="c"><div class="ch"><h2>OI spurts (NSE)</h2></div><div class="tw"><table class="t" id="pSpT"></table></div></div></div>
+  </div>
+</section>
+
+<!-- ======================= OPTIONS ======================= -->
+<section class="view" id="v-options">
+  <div class="kick"><i data-ic="options"></i>Option Pulse <span class="pill" id="oAsOf">—</span></div>
+  <h1 id="oHead">Reading the option chain…</h1>
+  <div class="toolbar"><div class="seg sym-seg" data-for="options"></div><input class="sym-in" placeholder="Symbol" data-for="options"><span class="pill" id="oExp"></span></div>
+  <div id="oErr"></div>
+  <div class="grid g4" style="margin-bottom:16px">
+    <div class="c"><div class="lbl" id="oSpotL">Spot</div><div class="big-n" id="oSpot">—</div><div class="note" id="oLot"></div></div>
+    <div class="c"><div class="lbl">Max pain</div><div class="big-n" id="oPain">—</div><div class="note" id="oPainN"></div></div>
+    <div class="c"><div class="lbl">ATM implied vol</div><div class="big-n" id="oIV">—</div><div class="note" id="oStr"></div></div>
+    <div class="c"><div class="lbl">Writers' bias</div><div class="big-n" id="oBias">—</div><div class="note">Conviction <b id="oConvN"></b></div><div class="bar" style="margin-top:6px"><i id="oConv" style="width:0"></i></div></div>
+  </div>
+  <div class="grid g-opt">
+    <div class="c"><div class="ch"><h2>Open interest by strike</h2><span class="legend"><span><i style="background:var(--tb-up)"></i>Put OI · support</span><span><i style="background:var(--tb-dn)"></i>Call OI · resistance</span><span><i style="background:var(--tb-brand)"></i>Added today</span></span></div>
+      <div id="oOI"></div></div>
+    <div class="grid" style="align-content:start">
+      <div class="c"><div class="ch"><h2>Put-call ratio</h2></div><div id="oPCR"></div></div>
+      <div class="c"><div class="ch"><h2>IV smile</h2><span class="legend"><span><i style="background:var(--tb-up)"></i>put IV</span><span><i style="background:var(--tb-dn)"></i>call IV</span></span></div><div id="oSmile"></div></div>
+      <div class="c"><div class="ch"><h2>Writers' range</h2></div><div id="oRange"></div></div>
+      <div class="c"><div class="ch"><h2>What the chain says</h2></div><ul class="note" id="oNotes" style="margin:0;padding-left:18px"></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= OI FLOW ======================= -->
+<section class="view" id="v-oiflow">
+  <div class="kick"><i data-ic="oi"></i>OI Flow <span class="pill" id="fAsOf">—</span></div>
+  <h1 id="fHead">Reading the option chain…</h1>
+  <div class="toolbar"><div class="seg sym-seg" data-for="oiflow"></div><input class="sym-in" placeholder="Symbol" data-for="oiflow"><span class="pill brand">Refreshes every minute while open</span></div>
+  <div id="fErr"></div>
+  <div class="grid g-opt">
+    <div class="c"><div class="ch"><h2>OI flow by strike</h2><span class="legend"><span><i style="background:#16a34a"></i>Long buildup</span><span><i style="background:#dc2626"></i>Short buildup</span><span><i style="background:#0d9488"></i>Short covering</span><span><i style="background:#ea580c"></i>Long unwinding</span></span></div>
+      <div id="fFlow"></div>
+      <div style="margin-top:14px"><div class="lbl">Today's snapshots <span id="fSnapN"></span></div><div id="fTL"></div></div></div>
+    <div class="grid" style="align-content:start">
+      <div class="c"><div class="ch"><h2>Momentum &amp; speed</h2></div><div id="fMom"></div></div>
+      <div class="c"><div class="ch"><h2>What's next</h2></div><div id="fNext"></div></div>
+      <div class="c"><div class="ch"><h2>Hot strikes · biggest OI change</h2></div><div id="fHot"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= LIQUIDITY ======================= -->
+<section class="view" id="v-liquidity">
+  <div class="kick"><i data-ic="liquidity"></i>Liquidity Map <span class="pill" id="lAsOf"></span></div>
+  <h1 id="lHead">Where the big money sits…</h1>
+  <div class="toolbar"><div class="seg sym-seg" data-for="liquidity"></div><input class="sym-in" placeholder="Symbol" data-for="liquidity">
+    <div class="seg" id="lRes"><button data-r="5" class="on">5m</button><button data-r="15">15m</button><button data-r="60">1h</button><button data-r="D">1D</button></div></div>
+  <div id="lErr"></div>
+  <div class="grid g3" style="margin-bottom:16px" id="lScores"></div>
+  <div class="c"><div class="ch"><h2>Price · where the big money sits</h2><span class="legend"><span><i style="background:#16a34a"></i>Put wall</span><span><i style="background:#dc2626"></i>Call wall</span><span><i style="background:#7c3aed"></i>Max pain</span><span><i style="background:#2563eb"></i>VWAP</span><span><i style="background:#d97706"></i>POC / value area</span><span><i style="background:#94a3b8"></i>IV ±1σ</span></span></div>
+    <div style="display:grid;grid-template-columns:1fr 120px;gap:10px"><div class="lwc" id="lChart"></div><div id="lProf" class="prof"></div></div>
+    <div class="note" id="lNote" style="margin-top:8px"></div></div>
+</section>
+
+<!-- ======================= STRENGTH ======================= -->
+<section class="view" id="v-strength">
+  <div class="kick"><i data-ic="strength"></i>Strength Boards <span class="pill" id="sAsOf"></span></div>
+  <h1>Ranking every F&amp;O stock by intraday strength</h1>
+  <div id="sErr"></div>
+  <div class="c" style="margin-bottom:16px"><div class="ch"><h2>Market picture</h2></div><div id="sPic" class="grid g4"></div></div>
+  <div class="grid g2"><div class="c"><div class="ch"><h2><span class="up">▲</span> Bullish board</h2><span class="pill up" id="sBn"></span></div><div id="sBull"></div></div>
+    <div class="c"><div class="ch"><h2><span class="dn">▼</span> Bearish board</h2><span class="pill dn" id="sRn"></span></div><div id="sBear"></div></div></div>
+  <div class="note" id="sMeth" style="margin-top:12px"></div>
+</section>
+
+<!-- ======================= SCREENERS ======================= -->
+<section class="view" id="v-screeners">
+  <div class="kick"><i data-ic="screen"></i>Screeners</div>
+  <h1 id="scHead">Futures basis across the F&amp;O universe</h1>
+  <div class="toolbar"><div class="seg" id="scSeg"><button class="on" data-v="basis">Futures basis</button><button data-v="spurts">OI spurts</button><button data-v="rsi">RSI multi-timeframe</button></div>
+    <div class="seg" id="scSer"><button class="on" data-s="near">Current series</button><button data-s="next">Next series</button></div></div>
+  <div id="scErr"></div>
+  <div id="sc-basis">
+    <div class="grid g-sec" style="margin-bottom:16px"><div class="c"><div class="ch"><h2>Basis map</h2><span class="legend"><span><i style="background:var(--tb-dn)"></i>Discount</span><span><i style="background:var(--tb-mut2)"></i>At par</span><span><i style="background:var(--tb-up)"></i>Premium</span></span></div><div id="scMap"></div><div class="note" id="scNote"></div></div>
+      <div class="c"><div class="ch"><h2>Buckets</h2></div><div id="scBk"></div></div></div>
+    <div class="c"><div class="ch"><h2>All contracts</h2><input class="sym-in" id="scFilter" placeholder="Filter"></div><div class="tw"><table class="t" id="scT"></table></div></div>
+  </div>
+  <div id="sc-spurts" style="display:none"><div class="c"><div class="tw"><table class="t" id="scSp"></table></div></div></div>
+  <div id="sc-rsi" style="display:none"><div class="c"><div class="ch"><h2>RSI(14) on 15m · 1h · 1D</h2><button class="btn2" id="scRun">Run scan</button></div>
+    <div class="note" id="scRsiN">Uses one 15-minute FYERS download per stock (about 32 requests, cached for 15 minutes). Press Run scan.</div><div class="tw"><table class="t" id="scRsi"></table></div></div></div>
+</section>
+
+<!-- ======================= RADAR ======================= -->
+<section class="view" id="v-radar">
+  <div class="kick"><i data-ic="radar"></i>Stock Radar <span class="pill" id="rAsOf"></span></div>
+  <h1 id="rHead">Reading signals…</h1>
+  <div class="toolbar"><div class="seg sym-seg" data-for="radar"></div><input class="sym-in" placeholder="Symbol" data-for="radar"></div>
+  <div id="rErr"></div>
+  <div class="grid g3" style="margin-bottom:16px">
+    <div class="c"><div class="lbl" id="rSpotL">Spot</div><div class="big-n" id="rSpot">—</div><div class="note" id="rVwap"></div></div>
+    <div class="c"><div class="lbl">Expected range</div><div class="big-n" id="rExp">—</div><div class="note" id="rExpN"></div><div class="bar" style="margin-top:6px"><i id="rConv" style="width:0"></i></div></div>
+    <div class="c"><div class="lbl">Typical daily move (ATR)</div><div class="big-n" id="rAtr">—</div><div class="note" id="rAtrN"></div></div>
+  </div>
+  <div class="grid g2" style="margin-bottom:16px">
+    <div class="c"><div class="ch"><h2>Signal radar</h2><span class="pill" id="rVerd"></span></div><div id="rRadar"></div><div class="note">50 is neutral; further out is more supportive for longs.</div></div>
+    <div class="c"><div class="ch"><h2>Score &amp; signals</h2></div><div id="rScore"></div><div id="rSigs"></div></div>
+  </div>
+  <div class="c"><div class="ch"><h2>Price · key levels (5m)</h2></div><div class="lwc" id="rChart" style="height:360px"></div></div>
+</section>
+
+<!-- ======================= CALM ======================= -->
+<section class="view" id="v-calm">
+  <div class="kick"><i data-ic="calm"></i>Calm Zone</div>
+  <h1 id="cHead">Finding the calmest F&amp;O stocks…</h1>
+  <div class="toolbar"><span class="lbl">EXPIRY</span><div class="seg" id="cSer"><button class="on" data-s="0">This month</button><button data-s="1">Next month</button><button data-s="2">Far month</button></div><span class="pill" id="cFile"></span></div>
+  <div id="cErr"></div>
+  <div class="grid g-sec" style="margin-bottom:16px">
+    <div class="c"><div class="ch"><h2>Strangle finder</h2><span class="mut2" style="font-size:12px">x = annualised volatility · y = calm score</span></div><div id="cMap"></div></div>
+    <div class="c"><div class="ch"><h2>Top picks</h2><span class="pill brand" id="cDays"></span></div><div id="cTop"></div></div>
+  </div>
+  <div class="c"><div class="ch"><h2>All F&amp;O stocks, ranked</h2><span class="pill" id="cN"></span></div><div class="tw"><table class="t" id="cT"></table></div><div class="note" id="cNote" style="margin-top:10px"></div></div>
+</section>
+
+<!-- ======================= NEWS ======================= -->
+<section class="view" id="v-news">
+  <div class="kick"><i data-ic="news"></i>Market News <span class="pill" id="nAsOf"></span></div>
+  <h1 id="nHead">Latest market headlines</h1>
+  <div class="toolbar"><div class="seg" id="nSeg"><button class="on" data-v="in">India markets</button><button data-v="gl">Global</button><button data-v="fx">FX &amp; commodities</button></div>
+    <input class="sym-in" id="nFilter" placeholder="Filter" style="text-transform:none"><button class="btn2 ghost" id="nRef">Refresh</button></div>
+  <div id="nErr"></div>
+  <div class="grid g3" id="nList"><div class="loading">Loading headlines…</div></div>
+  <p class="note" style="margin-top:14px">Headlines and links from each publisher's public RSS feed. Open a headline to read it on the publisher's site.</p>
+</section>
+
+<!-- ======================= JOURNAL ======================= -->
+<section class="view" id="v-journal">
+  <div class="kick"><i data-ic="journal"></i>Journal <span class="pill">Saved in this browser only</span></div>
+  <h1>Your private trade log</h1>
+  <div class="grid g4" style="margin-bottom:16px" id="jStats"></div>
+  <div class="c" style="margin-bottom:16px"><div class="ch"><h2>Add a trade</h2></div>
+    <form class="form" id="jForm" onsubmit="return false">
+      <label>Date<input type="date" name="date" required></label>
+      <label>Symbol<input name="sym" required placeholder="NIFTY 24500 CE"></label>
+      <label>Side<select name="side"><option>Long</option><option>Short</option></select></label>
+      <label>Qty<input type="number" name="qty" step="any" required></label>
+      <label>Entry<input type="number" name="entry" step="any" required></label>
+      <label>Exit<input type="number" name="exit" step="any"></label>
+      <label>Stop<input type="number" name="stop" step="any"></label>
+      <label>Charges ₹<input type="number" name="fees" step="any" value="0"></label>
+      <label class="w2">Setup<input name="setup" placeholder="ORB, VWAP reclaim, short straddle…" list="jSetups"></label>
+      <label class="w2">Market<select name="mkt"><option>Index options</option><option>Stock options</option><option>Futures</option><option>Equity</option><option>Crypto</option></select></label>
+      <div class="w6"><div class="lbl" style="margin-bottom:5px">Mistakes</div><div class="chips" id="jMist"></div></div>
+      <label class="w6">Notes<textarea name="notes" rows="2" placeholder="What did you see? What would you do differently?"></textarea></label>
+      <div class="w6" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn2" id="jAdd">Save trade</button><button class="btn2 ghost" id="jExp" type="button">Export CSV</button>
+        <label class="btn2 ghost" style="flex-direction:row;color:var(--tb-fg)">Import CSV<input type="file" id="jImp" accept=".csv" style="display:none"></label></div>
+    </form><datalist id="jSetups"></datalist></div>
+  <div class="grid g2" style="margin-bottom:16px"><div class="c"><div class="ch"><h2>Equity curve</h2></div><div id="jCurve"></div></div>
+    <div class="c"><div class="ch"><h2>By setup &amp; mistakes</h2></div><div id="jBy"></div></div></div>
+  <div class="c"><div class="ch"><h2>Trades</h2></div><div class="tw"><table class="t" id="jT"></table></div></div>
+</section>
+
+<!-- ======================= ACADEMY ======================= -->
+<section class="view" id="v-academy">
+  <div class="kick"><i data-ic="academy"></i>F&amp;O Academy</div>
+  <h1>Learn the ideas behind every chart here</h1>
+  <p class="sub">Short lessons, each tied to a MarketMiner page. Educational only, not advice.</p>
+  <div id="aList"></div>
+</section>
+
+<div class="foot">Data: your own FYERS login on this device (the PC version also reads NSE's website). Estimates are labelled. Educational analytics, not investment advice.
+  Charts by TradingView Lightweight Charts™.</div>
+</div>
+<script src="js/pulse.js?v=2026.11.12"></script>
+</body>
+</html>
