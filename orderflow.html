@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/engine.js?v=2026.11.10b"></script>
+<script src="js/mmshell.js?v=2026.11.12"></script>
+<script src="js/angel.js?v=2026.11.12"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06080f">
+<title>MarketMiner · Order Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg0:#06080f;--bg1:#0d1117;--bg2:#131a27;--bdr:#1b2536;--bdr2:#263450;--t1:#e2e8f0;--t2:#8b9ab5;--t3:#5b6b85;--g:#00e676;--r:#ff5252;--a:#ffab00;--cy:#18ffff;--gd:#FFD700;--bl:#60a5fa;--pl:#ff9100;--mono:'JetBrains Mono',ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:13px}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg0);color:var(--t1);min-height:100vh;overflow-x:hidden}
+.header{position:sticky;top:0;z-index:50;background:rgba(6,8,15,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);padding:8px 16px;padding-top:max(8px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-family:var(--mono);font-weight:800;font-size:1.3rem;letter-spacing:-.5px;text-decoration:none}.logo .m{color:var(--cy)}.logo .s{color:var(--gd)}.logo small{font:600 .7rem var(--mono);color:var(--t3);margin-left:8px;letter-spacing:.5px}
+.hr{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--bg2);border:1px solid var(--bdr2);color:var(--t2);padding:6px 11px;border-radius:6px;cursor:pointer;font:600 .74rem var(--mono);text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--cy);color:var(--cy)}
+.paper{font:700 .6rem var(--mono);color:var(--a);border:1px solid rgba(255,171,0,.4);background:rgba(255,171,0,.08);padding:3px 7px;border-radius:4px}
+main{padding:12px 16px 60px;max-width:1600px;margin:0 auto}
+.disc{font:500 .7rem var(--mono);color:var(--t3);border-bottom:1px solid var(--bdr);padding:0 0 8px;margin-bottom:10px}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.ctl select,.ctl input{background:var(--bg1);border:1px solid var(--bdr2);color:var(--t1);padding:7px 9px;border-radius:6px;font:600 .8rem var(--mono);max-width:100%}
+.seg{display:inline-flex;border:1px solid var(--bdr2);border-radius:7px;overflow:hidden}
+.seg button{background:var(--bg1);border:0;border-right:1px solid var(--bdr2);color:var(--t2);padding:7px 9px;font:700 .72rem var(--mono);cursor:pointer}
+.seg button:last-child{border-right:0}.seg button.on{background:rgba(255,215,0,.12);color:var(--gd)}
+.lbl{font:700 .6rem var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
+details.how{background:var(--bg1);border:1px solid var(--bdr);border-radius:9px;padding:10px 12px;margin-bottom:12px}
+details.how summary{cursor:pointer;font:700 .76rem var(--mono);color:var(--t2)}
+details.how div{font:500 .74rem/1.65 Inter,sans-serif;color:var(--t2);margin-top:8px}
+details.how b{color:var(--t1)}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:10px}
+@media(max-width:980px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.cards{gap:8px}.cd .v{font-size:1.15rem}.cd .s{font-size:.62rem}.cd{padding:10px}}
+.cd{background:var(--bg1);border:1px solid var(--bdr);border-radius:9px;padding:12px;min-width:0}
+.cd .k{font:600 .7rem var(--mono);color:var(--t3);margin-bottom:6px}
+.cd .v{font:800 1.6rem var(--mono);letter-spacing:-.5px;line-height:1.15}
+.cd .s{font:500 .7rem/1.5 var(--mono);color:var(--t3);margin-top:4px}
+.bar{height:6px;border-radius:3px;overflow:hidden;display:flex;background:var(--bdr);margin:2px 0 4px}
+.bar i{display:block;height:100%;transition:width .4s}
+.barl{display:flex;justify-content:space-between;font:600 .66rem var(--mono);color:var(--t3);margin-bottom:12px}
+.main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,560px);gap:12px;align-items:start}
+@media(max-width:1100px){.main{grid-template-columns:minmax(0,1fr)}}
+#chartBox{position:relative;border:1px solid var(--bdr);border-radius:9px;overflow:hidden;background:#0d1117}
+#chart{height:620px}
+@media(max-width:1100px){#chart{height:360px}}
+#title{position:absolute;left:10px;top:8px;z-index:3;font:700 .74rem var(--mono);color:var(--t2);pointer-events:none}
+.lh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.lh h3{font:800 .76rem var(--mono);color:var(--t1)}
+.leg{display:flex;gap:10px;flex-wrap:wrap;font:600 .64rem var(--mono);color:var(--t2)}
+.leg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:0}
+#ladder{font:600 .7rem var(--mono)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 62px minmax(0,1fr) minmax(0,150px);align-items:center;height:22px;gap:4px}
+@media(max-width:520px){.row{grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr) minmax(0,112px);height:21px}#ladder{font-size:.64rem}}
+.row .px{text-align:center;color:var(--t2)}
+.row.cur{background:rgba(255,215,0,.07);border-radius:4px}
+.row.cur .px{color:var(--gd);font-weight:800}
+.cell{position:relative;height:16px}
+.cell .b{position:absolute;top:0;bottom:0;border-radius:2px}
+.cell.l .b{right:0;background:linear-gradient(90deg,rgba(0,230,118,.25),rgba(0,230,118,.75))}
+.cell.r .b{left:0;background:linear-gradient(270deg,rgba(255,82,82,.25),rgba(255,82,82,.75))}
+.cell .b.seen{background:repeating-linear-gradient(45deg,rgba(148,163,184,.22) 0 3px,transparent 3px 6px)!important;border:1px dashed rgba(148,163,184,.45)}
+.cell .n{position:absolute;top:0;line-height:16px;font-size:.92em;color:var(--t1);z-index:1;white-space:nowrap}
+.cell.l .n{right:4px}.cell.r .n{left:4px}
+.cell .n.out{color:var(--t3)}
+.cell.l .n.far{right:auto;left:0}.cell.r .n.far{left:auto;right:0}
+.cell .dot{position:absolute;top:50%;border-radius:50%;background:var(--pl);opacity:.85;transform:translate(-50%,-50%);z-index:2}
+.big .b{box-shadow:0 0 0 1px rgba(255,215,0,.75) inset}
+.act{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.92em}
+.act .up{color:var(--g)}.act .dn{color:var(--r)}.act .pl{color:var(--pl)}.act .bb{color:var(--g);font-weight:800}.act .bs{color:var(--r);font-weight:800}
+.up{color:var(--g)}.dn{color:var(--r)}.am{color:var(--a)}.nt{color:var(--t3)}.pl{color:var(--pl)}.cy{color:var(--cy)}
+.stat{font:500 .7rem var(--mono);color:var(--t3);margin-top:8px;line-height:1.6}
+.warn{border:1px solid rgba(255,171,0,.35);background:rgba(255,171,0,.06);color:var(--a);border-radius:8px;padding:8px 10px;font:500 .72rem/1.5 var(--mono);margin-bottom:10px}
+.empty{padding:28px 10px;text-align:center;color:var(--t3);font:500 .76rem var(--mono)}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="hr"><a href="index.html" class="logo"><span class="m">MARKET</span><span class="s">MINER</span><small>ORDER FLOW</small></a><span class="paper">ANALYSIS ONLY</span></div>
+  <div class="hr">
+    <a class="btn" href="index.html">⌂ Dashboard</a>
+    <a class="btn" href="auction.html">▥ AuctionFlow</a>
+    <a class="btn" href="lab.html">◎ Signal Lab</a>
+  </div>
+</div>
+<main>
+  <div class="disc">For educational purposes only, not a trade recommendation. Do your own research before any investment or trading decision.</div>
+  <div class="ctl">
+    <select id="mkt" onchange="pick(this.value)"></select>
+    <input id="sym" placeholder="or a futures symbol, e.g. NSE:RELIANCE26NOVFUT" style="width:290px" onkeydown="if(event.key==='Enter')pick(this.value)">
+    <span class="lbl">Bucket</span><span class="seg" id="steps"></span>
+    <span class="lbl">Activity</span><span class="seg" id="wins"></span>
+    <span class="seg" id="units"></span>
+  </div>
+  <div id="warn"></div>
+  <details class="how" id="how"><summary>How to read this page</summary><div>
+    <b>Top cards.</b> The future's live price, with spot and the <b>basis</b> (future minus spot). <b class="up">Nearest Big Buyers</b> is the closest price bucket below the price where an unusually large number of buy orders are waiting (at least 2.5× the typical bucket, held for 15 seconds or more). <b class="dn">Nearest Big Sellers</b> is the same above the price. The spot figure in brackets is the same level translated to the index (level minus basis).<br>
+    <b>Green / red bar.</b> The share of all waiting buy vs sell orders (for India the exchange's total buy and sell quantity; for crypto the 20 visible levels each side).<br>
+    <b>Ladder.</b> Orders waiting, grouped per bucket (5 points for NIFTY). <span class="up">Green</span> = buyers waiting, <span class="dn">red</span> = sellers waiting, the yellow row is where the price is now. <span class="nt">Hatched</span> bars are levels seen earlier that are now outside the visible depth (shown until the price trades through them or for 10 minutes).<br>
+    <b>Right column.</b> What happened at each bucket in the chosen activity window: <span class="up">bought</span> = buyers took sellers' orders there, <span class="dn">sold</span> = sellers hit buyers' orders there, <span class="pl">pulled</span> = orders cancelled before they were filled (the orange dots, bigger = more). A wall with a lot pulled and little traded is probably not real support or resistance: spoofing, or algorithms moving their quotes.<br>
+    <b>Depth.</b> Indian futures: the exchange shows the best 5 prices each side (Angel One live stream, several updates a second; FYERS every 15 s when Angel One is not connected). Crypto: Binance USDⓈ-M futures, 20 prices each side every 100 ms and every trade, so bought/sold there is exact. Big walls further away than the visible depth cannot be seen.
+  </div></details>
+  <div class="cards">
+    <div class="cd"><div class="k" id="cFk">Future</div><div class="v" id="cF">—</div><div class="s" id="cFs"></div></div>
+    <div class="cd"><div class="k">Nearest Big Buyers</div><div class="v up" id="cB">—</div><div class="s" id="cBs"></div></div>
+    <div class="cd"><div class="k">Nearest Big Sellers</div><div class="v dn" id="cS">—</div><div class="s" id="cSs"></div></div>
+    <div class="cd"><div class="k">Walls: traded or pulled?</div><div class="v" id="cP">—</div><div class="s" id="cPs"></div></div>
+  </div>
+  <div class="bar"><i id="bG" style="width:50%;background:var(--g)"></i><i id="bR" style="width:50%;background:var(--r)"></i></div>
+  <div class="barl"><span id="bGl">buyers —</span><span id="bRl">sellers —</span></div>
+  <div class="main">
+    <div id="chartBox"><div id="chart"></div><div id="title"></div></div>
+    <div class="cd">
+      <div class="lh"><h3>Live chart and order book <span class="nt" id="unitT">(lots waiting, per 5 points)</span></h3><span class="nt" id="form" style="font:600 .66rem var(--mono)"></span></div>
+      <div class="leg" style="margin-bottom:8px"><span><i style="background:var(--g)"></i>buyers waiting · bought</span><span><i style="background:var(--r)"></i>sellers waiting · sold</span><span><i style="background:var(--pl)"></i>pulled (cancelled)</span></div>
+      <div id="ladder"><div class="empty">Connecting…</div></div>
+      <div class="stat" id="stat"></div>
+    </div>
+  </div>
+</main>
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+<script src="js/orderflow.js?v=2026.11.12"></script>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const LS={get:(k,d)=>{try{const v=localStorage.getItem("mmof."+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem("mmof."+k,JSON.stringify(v))}catch(e){}}};
+const IST=19800e3,MON=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+// India: front-month future of each index (exchange, spot symbol, bucket, fallback lot size if the instrument list is not loaded)
+const INDIA={NIFTY:["NSE","NSE:NIFTY50-INDEX",5,65],BANKNIFTY:["NSE","NSE:NIFTYBANK-INDEX",20,30],FINNIFTY:["NSE","NSE:FINNIFTY-INDEX",5,60],
+  MIDCPNIFTY:["NSE","NSE:MIDCPNIFTY-INDEX",5,120],SENSEX:["BSE","BSE:SENSEX-INDEX",20,20],BANKEX:["BSE","BSE:BANKEX-INDEX",20,30]};
+const CRYPTO={BTCUSDT:10,ETHUSDT:1,SOLUSDT:0.05,XAUUSDT:0.5,BNBUSDT:0.5,XRPUSDT:0.001};
+const WINS=[[1,"1m"],[5,"5m"],[15,"15m"],[0,"All"]],MULTS=[0.5,1,2,5];
+let KEY=LS.get("key","NIFTY"),WIN=LS.get("win",5),MULT=LS.get("mult",1),UNIT=LS.get("unit","lots");
+let M=null,OF=null,chart=null,cs=null,lines={},CAND=[],feedStop=()=>{},drawT=0,SPOT=null,MARK=null,STATUS="",SRC="",LOT=1,lastSide="buy",lastBest={b:null,a:null,ltp:null,vol:null},gen=0;
+const dp=p=>p>=1000?2:p>=100?2:p>=1?3:5;
+const fmt=(x,d)=>x==null||isNaN(x)?"—":Number(x).toLocaleString(M&&M.crypto?"en-US":"en-IN",{minimumFractionDigits:d??0,maximumFractionDigits:d??dp(Math.abs(x))});
+const pxf=x=>fmt(x,M&&M.crypto?Math.min(dp(x),M.step<1?(String(M.step).split(".")[1]||"").length+1:1):2);
+const dec=s=>{const t=String(+(+s).toFixed(8));return t.includes(".")?t.split(".")[1].length:0};
+const pxs=x=>fmt(x,M?dec(M.step):0);
+function qty(q){if(q==null)return"—";if(M&&!M.crypto&&UNIT==="lots")return fmt(Math.round(q/LOT),0);
+  const a=Math.abs(q);return a>=1e7?fmt(q/1e7,1)+"Cr":a>=1e5?fmt(q/1e5,1)+"L":a>=1e4?fmt(q/1e3,1)+"k":a>=100?fmt(q,0):fmt(q,a>=1?1:3)}
+const istDay=()=>new Date(Date.now()+IST).toISOString().slice(0,10);
+const indiaOpen=()=>{const d=new Date(Date.now()+IST),w=d.getUTCDay(),m=d.getUTCHours()*60+d.getUTCMinutes();return w>0&&w<6&&m>=555&&m<930};
+
+// ------------------------------------------------------------------ controls
+function controls(){
+  $("mkt").innerHTML=`<optgroup label="India · index futures">${Object.keys(INDIA).map(k=>`<option ${k===KEY?"selected":""} value="${k}">${k} future</option>`).join("")}</optgroup>`+
+    `<optgroup label="Crypto + gold · Binance futures">${Object.keys(CRYPTO).map(k=>`<option ${k===KEY?"selected":""} value="${k}">${k.replace("USDT","")} perpetual</option>`).join("")}</optgroup>`+
+    (!INDIA[KEY]&&!CRYPTO[KEY]?`<option selected value="${esc(KEY)}">${esc(KEY)}</option>`:"");
+  $("steps").innerHTML=MULTS.map(m=>`<button class="${m===MULT?"on":""}" onclick="setMult(${m})">${M&&M.base!=null?+(M.base*m).toFixed(6):m+"×"}</button>`).join("");
+  $("wins").innerHTML=WINS.map(([w,l])=>`<button class="${w===WIN?"on":""}" onclick="setWin(${w})">${l}</button>`).join("");
+  $("units").innerHTML=M&&!M.crypto?["lots","qty"].map(u=>`<button class="${u===UNIT?"on":""}" onclick="setUnit('${u}')">${u}</button>`).join(""):"";
+  $("units").style.display=M&&!M.crypto?"":"none";
+}
+function pick(v){v=String(v||"").trim().toUpperCase();if(!v)return;KEY=v;LS.set("key",v);$("sym").value="";start()}
+function setMult(m){MULT=m;LS.set("mult",m);if(OF&&M){M.step=M.base*m;OF.setStep(M.step)}controls();draw(true)}
+function setWin(w){WIN=w;LS.set("win",w);controls();draw(true)}
+function setUnit(u){UNIT=u;LS.set("unit",u);controls();draw(true)}
+
+// ------------------------------------------------------------------ instrument
+function lastWeekday(y,m,wd){const d=new Date(Date.UTC(y,m+1,0));while(d.getUTCDay()!==wd)d.setUTCDate(d.getUTCDate()-1);return d}
+function guessFut(name,ex){   // without Angel One's instrument list: NSE monthly expiry = last Tuesday, BSE = last Thursday
+  const n=new Date(Date.now()+IST);let y=n.getUTCFullYear(),m=n.getUTCMonth();
+  let e=lastWeekday(y,m,ex==="BSE"?4:2);if(n.toISOString().slice(0,10)>e.toISOString().slice(0,10)){m++;if(m>11){m=0;y++}e=lastWeekday(y,m,ex==="BSE"?4:2)}
+  return{fy:`${ex}:${name}${String(y).slice(2)}${MON[m]}FUT`,expiry:e.toISOString().slice(0,10),lot:null,guessed:true}}
+async function resolve(key){
+  if(CRYPTO[key]!=null||/USDT$/.test(key))return{crypto:true,sym:key,label:key.replace("USDT","")+" perpetual",base:CRYPTO[key]||null,spot:null,expiry:"perpetual"};
+  if(INDIA[key]){const [ex,spot,step,lot]=INDIA[key];let f=null;
+    try{if(window.MM&&MM.angel&&MM.angel.publicCfg().configured){const l=await MM.angel.futures(key,ex);f=l[0]||null}}catch(e){}
+    f=f||guessFut(key,ex);return{crypto:false,sym:f.fy,label:key+" future",base:step,spot,expiry:f.expiry,lot:f.lot||lot,lotGuess:!f.lot,guessed:f.guessed}}
+  // any FYERS futures symbol (stock futures etc.)
+  const x=key.match(/^(NSE|BSE|MCX):([A-Z&-]+?)\d{2}[A-Z]{3}FUT$/);
+  if(!x)throw new Error("Use a futures symbol like NSE:RELIANCE26NOVFUT, or pick from the list");
+  const lot=(window.MM&&MM.angel&&MM.angel.lotOf(key))||null;
+  return{crypto:false,sym:key,label:key.split(":")[1],base:null,spot:x[1]==="MCX"?null:`${x[1]}:${x[2]}-EQ`,expiry:"",lot:lot||1,lotGuess:!lot}}
+function autoStep(p){const want=p*0.0004,r=[0.05,0.1,0.25,0.5,1,2,5,10,20,25,50,100,250,500,1000];return r.find(s=>s>=want)||1000}
+
+// ------------------------------------------------------------------ chart
+function mkChart(){
+  if(chart)return;
+  if(!window.LightweightCharts){$("chart").innerHTML='<div class="empty">Chart library did not load (offline?). The order book below still works.</div>';return}
+  chart=LightweightCharts.createChart($("chart"),{layout:{background:{color:"#0d1117"},textColor:"#94a3b8",fontFamily:"JetBrains Mono"},
+    grid:{vertLines:{color:"#141b29"},horzLines:{color:"#141b29"}},rightPriceScale:{borderColor:"#263450"},
+    timeScale:{borderColor:"#263450",timeVisible:true,secondsVisible:false,rightOffset:8},crosshair:{mode:0}});
+  cs=chart.addCandlestickSeries({upColor:"#26a69a",downColor:"#ef5350",wickUpColor:"#26a69a",wickDownColor:"#ef5350",borderVisible:false,priceLineStyle:2,priceLineColor:"#60a5fa"});
+  new ResizeObserver(()=>chart.applyOptions({width:$("chart").clientWidth,height:$("chart").clientHeight})).observe($("chart"));
+}
+const tz=()=>M&&!M.crypto?19800:0;
+function setCandles(c){CAND=c;if(!cs)return;cs.setData(c.map(x=>({time:x.time+tz(),open:x.open,high:x.high,low:x.low,close:x.close})));chart.timeScale().scrollToRealTime()}
+function onPrice(p,tms){
+  if(!cs||!(p>0))return;const t=Math.floor(tms/60000)*60;let last=CAND[CAND.length-1];
+  if(!last||t>last.time){last={time:t,open:p,high:p,low:p,close:p};CAND.push(last);if(CAND.length>1500)CAND.shift()}
+  else if(t===last.time){last.high=Math.max(last.high,p);last.low=Math.min(last.low,p);last.close=p}else return;
+  cs.update({time:last.time+tz(),open:last.open,high:last.high,low:last.low,close:last.close});
+}
+function wallLine(k,price,color,title){
+  if(lines[k]&&(price==null||lines[k].p!==price)){cs.removePriceLine(lines[k].l);delete lines[k]}
+  if(price!=null&&!lines[k])lines[k]={p:price,l:cs.createPriceLine({price,color,lineWidth:2,lineStyle:0,axisLabelVisible:true,title})};
+}
+
+// ------------------------------------------------------------------ feeds
+async function seedIndia(g){
+  try{const d=istDay(),r=await MM.FY.history({symbol:M.sym,resolution:"1",date_format:"1",range_from:d,range_to:d,cont_flag:"1"});
+    if(g!==gen)return;const c=((r&&r.candles)||[]).map(x=>({time:+x[0],open:+x[1],high:+x[2],low:+x[3],close:+x[4]}));
+    if(c.length)setCandles(c.concat(CAND.filter(x=>x.time>c[c.length-1].time)))}
+  catch(e){STATUS=`Chart history: ${e.message}`}
+}
+function feedIndia(g){
+  let timers=[],angelSeen=0,fyBusy=false;
+  const onDepth=e=>{const x=e.detail;if(g!==gen||x.symbol!==M.sym)return;angelSeen=Date.now();SRC="Angel One live · best 5 each side";
+    if(lastBest.vol!=null&&x.volume>lastBest.vol)OF.trade({t:x.t,price:x.ltp,qty:x.volume-lastBest.vol,side:(lastSide=MMOF.sideOf(x.ltp,lastBest.b,lastBest.a,lastBest.ltp,lastSide))});
+    lastBest={b:x.bids.length?x.bids[0][0]:null,a:x.asks.length?x.asks[0][0]:null,ltp:x.ltp,vol:x.volume};
+    OF.book({t:x.t,bids:x.bids,asks:x.asks,ltp:x.ltp,tbq:x.tbq,tsq:x.tsq,levels:5});onPrice(x.ltp,Date.now());draw()};
+  window.addEventListener("mm-angel-depth",onDepth);
+  const keep=()=>{if(window.MM&&MM.angel){const r=MM.angel.depth(M.sym,true);if(!r.ok)STATUS=r.reason}};keep();timers.push(setInterval(keep,60e3));
+  // FYERS market depth when Angel One is not streaming (every 15 s while open, every 5 min while closed: FYERS free plan is 5,000 requests a day)
+  async function fy(){
+    if(g!==gen||fyBusy||document.visibilityState==="hidden"||Date.now()-angelSeen<20e3)return;
+    if(!MM.FY.connected()){STATUS="Connect Angel One or FYERS on the Connections page to see the order book.";draw(true);return}
+    fyBusy=true;
+    try{const r=await MM.FY.get("/depth",{symbol:M.sym,ohlcv_flag:1});if(g!==gen)return;const d=(r.d||{})[M.sym]||Object.values(r.d||{})[0];
+      if(d){const bid=(d.bids||[]).map(x=>[+x.price,+x.volume]),ask=(d.ask||d.asks||[]).map(x=>[+x.price,+x.volume]),ltp=+d.ltp,vol=+d.v||+d.volume||null;
+        if(lastBest.vol!=null&&vol>lastBest.vol)OF.trade({t:Date.now(),price:ltp,qty:vol-lastBest.vol,side:(lastSide=MMOF.sideOf(ltp,lastBest.b,lastBest.a,lastBest.ltp,lastSide))});
+        lastBest={b:bid.length?bid[0][0]:null,a:ask.length?ask[0][0]:null,ltp,vol};
+        OF.book({t:Date.now(),bids:bid,asks:ask,ltp,tbq:+d.totalbuyqty,tsq:+d.totalsellqty,levels:5});onPrice(ltp,Date.now());
+        SRC=`FYERS market depth · best 5 each side · every ${indiaOpen()?15:300} s`+(indiaOpen()?"":" (market closed)");draw(true)}}
+    catch(e){STATUS="FYERS depth: "+e.message;draw(true)}finally{fyBusy=false}
+  }
+  setTimeout(fy,indiaOpen()?4000:500);timers.push(setInterval(fy,indiaOpen()?15e3:300e3));
+  // spot (Angel One answers this for free while it streams)
+  async function spot(){if(g!==gen||!M.spot||document.visibilityState==="hidden"||!MM.FY.connected()&&!(MM.angel&&MM.angel.active()))return;
+    try{const r=await MM.FY.get("/quotes",{symbols:M.spot});const v=((r.d||[])[0]||{}).v||{};if(v.lp)SPOT=+v.lp}catch(e){}}
+  spot();timers.push(setInterval(spot,indiaOpen()?5e3:120e3));
+  seedIndia(g);
+  return()=>{timers.forEach(clearInterval);window.removeEventListener("mm-angel-depth",onDepth);try{MM.angel&&MM.angel.depth(M.sym,false)}catch(e){}};
+}
+function feedCrypto(g){
+  const s=M.sym.toLowerCase();let ws=null,closed=false,retry=null;
+  fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${M.sym}&interval=1m&limit=360`).then(r=>r.json()).then(k=>{if(g!==gen||!Array.isArray(k))return;
+    setCandles(k.map(x=>({time:Math.floor(x[0]/1000),open:+x[1],high:+x[2],low:+x[3],close:+x[4]})))}).catch(e=>{STATUS="Binance candles: "+e.message});
+  function open(){
+    ws=new WebSocket(`wss://fstream.binance.com/stream?streams=${s}@depth20@100ms/${s}@aggTrade/${s}@markPrice@1s`);
+    ws.onopen=()=>{SRC="Binance USDⓈ-M futures · 20 levels each side every 100 ms · every trade";STATUS=""};
+    ws.onmessage=e=>{if(g!==gen)return;let m;try{m=JSON.parse(e.data)}catch(x){return}const d=m.data||m,st=String(m.stream||"");
+      if(st.endsWith("@aggTrade")){OF.trade({t:d.T,price:+d.p,qty:+d.q,side:d.m?"sell":"buy"});onPrice(+d.p,d.T)}
+      else if(st.includes("@depth")){const b=(d.b||d.bids||[]).map(x=>[+x[0],+x[1]]),a=(d.a||d.asks||[]).map(x=>[+x[0],+x[1]]);
+        if(M.base==null&&b.length){M.base=autoStep(b[0][0]);M.step=M.base*MULT;OF.setStep(M.step);controls()}
+        OF.book({t:d.E||Date.now(),bids:b,asks:a,levels:20});draw()}
+      else if(st.includes("@markPrice")){MARK={mark:+d.p,index:+d.i,funding:+d.r,next:+d.T}}};
+    ws.onclose=()=>{if(closed||g!==gen)return;STATUS="Binance stream closed, reconnecting…";draw(true);retry=setTimeout(open,3000)};
+    ws.onerror=()=>{STATUS="Binance stream refused this browser (some networks block it)";};
+  }
+  open();
+  return()=>{closed=true;clearTimeout(retry);try{ws&&ws.close()}catch(e){}};
+}
+
+// ------------------------------------------------------------------ render
+function draw(now){
+  if(!now){if(drawT)return;drawT=setTimeout(()=>{drawT=0;draw(true)},200);return}
+  if(!OF||!M)return;
+  const v=OF.view(WIN,window.innerWidth<520?10:13),ltp=v.ltp;
+  // cards
+  if(M.crypto){
+    $("cFk").textContent=M.label;$("cF").textContent=ltp?pxf(ltp):"—";
+    $("cFs").innerHTML=MARK?`index ${pxf(MARK.index)} · basis ${(ltp-MARK.index>=0?"+":"")+fmt(ltp-MARK.index,2)} · funding ${fmt(MARK.funding*100,4)}%`:"perpetual · waiting for index price";
+  }else{
+    $("cFk").textContent=M.label.replace(" future","")+" future";$("cF").textContent=ltp?fmt(ltp,2):"—";
+    const ex=M.expiry?new Date(M.expiry+"T00:00:00Z").toLocaleDateString("en-IN",{day:"numeric",month:"short",timeZone:"UTC"}):"";
+    $("cFs").innerHTML=(SPOT&&ltp?`spot ${fmt(SPOT,2)} · basis ${(ltp-SPOT>=0?"+":"")+fmt(ltp-SPOT,2)}`:M.spot?"spot —":"")+(ex?` · expires ${ex}`:"");
+  }
+  const basis=M.crypto?(MARK&&ltp?ltp-MARK.index:null):(SPOT&&ltp?ltp-SPOT:null),spotW=M.crypto?"index":"spot";
+  const levelsTxt=`${Math.max(v.visibleLevels.bid,v.visibleLevels.ask)} visible levels`;
+  if(v.bigBuy){const lo=v.bigBuy.price,hi=lo+v.step;$("cB").textContent=`${pxs(lo)}–${pxs(hi)}`;
+    $("cBs").innerHTML=`${fmt(Math.max(0,ltp-hi),M.crypto?2:1)} pts below · ${qty(v.bigBuy.bid)} waiting${basis!=null?` · ${spotW} ≈ ${pxs(hi-basis)}`:""}`}
+  else{$("cB").textContent="—";$("cBs").textContent=`no big buyers below in the ${levelsTxt}`}
+  if(v.bigSell){const lo=v.bigSell.price,hi=lo+v.step;$("cS").textContent=`${pxs(lo)}–${pxs(hi)}`;
+    $("cSs").innerHTML=`${fmt(Math.max(0,lo-ltp),M.crypto?2:1)} pts above · ${qty(v.bigSell.ask)} waiting${basis!=null?` · ${spotW} ≈ ${pxs(lo-basis)}`:""}`}
+  else{$("cS").textContent="—";$("cSs").textContent=`no big sellers above in the ${levelsTxt}`}
+  if(v.pullShare!=null){const p=Math.round(v.pullShare*100);$("cP").innerHTML=`<span class="${p>=70?"pl":p>=40?"am":"up"}">${p}% pulled</span>`;
+    $("cPs").innerHTML=`${qty(v.pulled)} pulled vs ${qty(v.filled)} traded (${WIN?WIN+" min":"all"}). ${p>=70?"Most visible orders are cancelled before trading: treat walls with caution.":p>=40?"Mixed: check a wall holds before trusting it.":"Orders are mostly getting filled: walls are more genuine."}`}
+  else{$("cP").textContent="—";$("cPs").textContent="collecting…"}
+  // strength bar
+  if(v.strength!=null){const g=Math.round(v.strength*100);$("bG").style.width=g+"%";$("bR").style.width=(100-g)+"%";
+    $("bGl").innerHTML=`<span class="up">buyers ${g}%</span> · ${qty(v.totals.buy)} waiting`;$("bRl").innerHTML=`${qty(v.totals.sell)} waiting · <span class="dn">sellers ${100-g}%</span>`}
+  // ladder
+  $("unitT").textContent=`(${M.crypto?M.sym.replace("USDT","")+" waiting":UNIT==="lots"?"lots waiting":"qty waiting"}, per ${pxs(v.step)} points)`;
+  const rows=v.rows;
+  if(!rows.length||ltp==null){$("ladder").innerHTML=`<div class="empty">${esc(STATUS||"Waiting for the order book…")}</div>`}
+  else{
+    const max=Math.max(1,...rows.map(r=>Math.max(r.bid+r.bidSeen,r.ask+r.askSeen))),maxP=Math.max(1,...rows.map(r=>r.pulledA+r.pulledB));
+    const W=x=>Math.min(100,Math.max(x>0?3:0,100*x/max));
+    $("ladder").innerHTML=rows.map(r=>{
+      const cur=r.price===v.mid,b=r.bid||r.bidSeen,a=r.ask||r.askSeen,pl=r.pulledA+r.pulledB,dot=pl>0?Math.round(5+9*Math.sqrt(pl/maxP)):0;
+      const cell=(side,q,seen,big,pulled)=>{if(!q&&!pulled)return`<div class="cell ${side}"></div>`;const w=W(q),npos=w<28?(side==="l"?`right:calc(${w}% + 4px)`:`left:calc(${w}% + 4px)`):"";
+        const dpos=side==="l"?`left:${100-w}%`:`left:${w}%`;
+        return`<div class="cell ${side}${big?" big":""}">${q?`<div class="b${seen?" seen":""}" style="width:${w}%"></div><span class="n${seen?" out":""}" style="${npos}">${qty(q)}</span>`:""}${pulled?`<span class="dot" style="${dpos};width:${dot}px;height:${dot}px"></span>`:""}</div>`};
+      const act=[];
+      if(r.bidBig)act.push(`<span class="bb">Big Buyers</span>`);if(r.askBig)act.push(`<span class="bs">Big Sellers</span>`);
+      if(r.bought)act.push(`<span class="up">${qty(r.bought)} bought</span>`);if(r.sold)act.push(`<span class="dn">${qty(r.sold)} sold</span>`);
+      if(pl)act.push(`<span class="pl">${qty(pl)} pulled</span>`);
+      return`<div class="row${cur?" cur":""}">${cell("l",b,!r.bid&&r.bidSeen,r.bidBig,r.pulledB)}<div class="px">${pxs(r.price)}${cur?" ◀":""}</div>${cell("r",a,!r.ask&&r.askSeen,r.askBig,r.pulledA)}<div class="act">${act.join(" ")}</div></div>`}).join("");
+  }
+  const sec=Math.floor((Date.now()%60000)/1000);$("form").textContent=`forming candle · ${sec}s into the minute`;
+  $("stat").innerHTML=`${esc(SRC||"—")}${!M.crypto?` · lot ${fmt(LOT,0)}${M.lotGuess?" (assumed)":""}`:""} · ${v.updates} book updates · ${v.trades} trades${STATUS?`<br><span class="am">${esc(STATUS)}</span>`:""}`;
+  $("title").textContent=`${M.sym} · 1m · ${ltp?pxf(ltp):"—"}`;
+  if(cs){wallLine("b",v.bigBuy?v.bigBuy.price+v.step:null,"#00e676","Big Buyers");wallLine("s",v.bigSell?v.bigSell.price:null,"#ff5252","Big Sellers")}
+  warn();
+}
+function warn(){
+  let w="";
+  if(M&&!M.crypto){
+    const a=window.MM&&MM.angel&&MM.angel.publicCfg();
+    if(!a||!a.configured)w="Angel One is not set up, so the order book comes from FYERS every 15 seconds (uses about 4 FYERS requests a minute). Set up Angel One on the Connections page for a live book several times a second.";
+    else if(indiaOpen()&&!MM.angel.active())w="Angel One live stream not running yet ("+esc(MM.angel.status().state)+"). Using FYERS every 15 s meanwhile.";
+    if(M.guessed)w+=(w?"<br>":"")+`Expiry worked out from the calendar (${M.sym}); the Angel One instrument list gives the exact contract.`;
+  }
+  $("warn").innerHTML=w?`<div class="warn">${w}</div>`:"";
+}
+
+// ------------------------------------------------------------------ start / switch
+async function start(){
+  feedStop();feedStop=()=>{};const g=++gen;SPOT=null;MARK=null;STATUS="";SRC="";lastBest={b:null,a:null,ltp:null,vol:null};CAND=[];
+  if(cs)for(const k in lines){try{cs.removePriceLine(lines[k].l)}catch(e){}}lines={};
+  $("ladder").innerHTML=`<div class="empty">Connecting…</div>`;
+  mkChart();if(cs)cs.setData([]);
+  try{M=await resolve(KEY)}catch(e){$("ladder").innerHTML=`<div class="empty dn">${esc(e.message)}</div>`;return}
+  if(g!==gen)return;
+  LOT=M.lot||1;M.step=M.base!=null?M.base*MULT:1;
+  OF=MMOF.create({step:M.step});controls();
+  if(!M.crypto&&M.base==null){   // stock future: bucket from price once known
+    const once=e=>{if(e.detail.symbol===M.sym&&M.base==null){M.base=autoStep(e.detail.ltp);M.step=M.base*MULT;OF.setStep(M.step);controls()}};
+    window.addEventListener("mm-angel-depth",once,{once:false});const f0=feedIndia(g);
+    feedStop=()=>{window.removeEventListener("mm-angel-depth",once);f0()};
+    setTimeout(()=>{if(M.base==null&&OF.state.ltp){M.base=autoStep(OF.state.ltp);M.step=M.base*MULT;OF.setStep(M.step);controls()}},8000);
+  }else feedStop=M.crypto?feedCrypto(g):feedIndia(g);
+  draw(true);
+}
+setInterval(()=>draw(true),1000);   // candle timer and "last seen" ageing even when the book is quiet
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")draw(true)});
+controls();start();
+</script>
+</body>
+</html>

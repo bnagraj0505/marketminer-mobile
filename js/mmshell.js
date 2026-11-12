@@ -183,7 +183,7 @@
     pulse: 'M3 12h4l3-8 4 16 3-8h4', news: 'M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M8 9h5M8 13h5',
     options: 'M12 3 3 8l9 5 9-5zM3 13l9 5 9-5', radar: 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0M12 12l6-6',
     calm: 'M5 19c8 0 14-6 14-14C11 5 5 11 5 19zM5 19l7-7', crypto: 'M9 7h5a2.5 2.5 0 0 1 0 5H9zM9 12h6a2.5 2.5 0 0 1 0 5H9zM9 7v10M11 5v2M11 17v2',
-    liquidity: 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z', more: 'M6 9l6 6 6-6',
+    liquidity: 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z', flow: 'M11 5H4M11 9H6M11 13H3M13 11h6M13 15h8M13 19h4M12 3v18', more: 'M6 9l6 6 6-6',
     oi: 'M4 19V9M10 19V5M16 19v-7M22 19H2', strength: 'M4 18l5-6 4 3 7-9M15 6h5v5', screen: 'M4 5h16M7 12h10M10 19h4',
     journal: 'M6 3h11a1 1 0 0 1 1 1v16l-3-2-3 2-3-2-3 2V4a1 1 0 0 1 1-1zM9 8h6M9 12h6', academy: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5',
     dash: 'M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z', desk: 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v5l3 2',
@@ -199,7 +199,7 @@
   var MAIN = [
     ['pulse', 'Pulse', 'pulse.html#pulse'], ['news', 'News', 'pulse.html#news'], ['options', 'Options', 'pulse.html#options'],
     ['radar', 'Radar', 'pulse.html#radar'], ['calm', 'Calm', 'pulse.html#calm'], ['crypto', 'Crypto', 'crypto.html'],
-    ['liquidity', 'Liquidity', 'pulse.html#liquidity']
+    ['liquidity', 'Liquidity', 'pulse.html#liquidity'], ['flow', 'Order Flow', 'orderflow.html']
   ];
   var MORE = [
     ['lbl', 'Market tools'], ['oi', 'OI Flow', 'pulse.html#oiflow'], ['strength', 'Strength', 'pulse.html#strength'],
