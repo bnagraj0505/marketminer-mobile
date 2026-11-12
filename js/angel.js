@@ -119,7 +119,7 @@
   // ------------------------------------------------------------ scrip master -> compact map (kept in IndexedDB for the day)
   let MAP = null, mapP = null;
   function buildMap(rows) {
-    const m = { day: istDay(), count: rows.length, cash: {}, names: {}, deriv: {} };
+    const m = { v: 2, day: istDay(), count: rows.length, cash: {}, names: {}, deriv: {} };
     for (const r of rows) {
       const seg = r.exch_seg, tok = r.token, sym = String(r.symbol || ""), it = String(r.instrumenttype || "");
       if (!tok) continue;
@@ -130,16 +130,16 @@
         const e = String(r.expiry || ""), mm = e.match(/^(\d{2})([A-Z]{3})(\d{4})$/); if (!mm) continue;
         const kind = it.startsWith("FUT") ? "FUT" : sym.endsWith("CE") ? "CE" : sym.endsWith("PE") ? "PE" : ""; if (!kind) continue;
         const k = kind === "FUT" ? 0 : Math.round(+r.strike || 0), key = [seg, String(r.name || "").toUpperCase(), kind, k].join("|");
-        (m.deriv[key] = m.deriv[key] || []).push([`${mm[3]}-${String(MON.indexOf(mm[2]) + 1).padStart(2, "0")}-${mm[1]}`, tok]);
+        (m.deriv[key] = m.deriv[key] || []).push([`${mm[3]}-${String(MON.indexOf(mm[2]) + 1).padStart(2, "0")}-${mm[1]}`, tok, +r.lotsize || 0]);
       }
     }
     return m;
   }
   function loadMap() {
-    if (MAP && MAP.day === istDay()) return Promise.resolve(MAP);
+    if (MAP && MAP.day === istDay() && MAP.v === 2) return Promise.resolve(MAP);
     return mapP || (mapP = (async () => {
       const saved = await kv("get", "map").catch(() => null);
-      if (saved && saved.day === istDay()) return (MAP = saved);
+      if (saved && saved.day === istDay() && saved.v === 2) return (MAP = saved);
       let rows;
       try { rows = await (await fetch(MASTER_URL)).json(); }
       catch (e) { throw new Error("Could not download Angel One's instrument list in this browser"); }
@@ -161,11 +161,26 @@
     return tok ? [EXCH[seg], tok] : null;
   }
 
+  // front-month and next futures of an index or stock, from the instrument list: [{fy, expiry, token, exch, lot}]
+  async function futures(name, ex = "NSE") {
+    await loadMap();
+    const seg = { NSE: "NFO", BSE: "BFO", MCX: "MCX" }[ex], today = istDay();
+    return (MAP.deriv[[seg, String(name).toUpperCase(), "FUT", 0].join("|")] || []).filter((e) => e[0] >= today).sort()
+      .map(([d, tok, lot]) => ({ fy: `${ex}:${String(name).toUpperCase()}${d.slice(2, 4)}${MON[+d.slice(5, 7) - 1]}FUT`, expiry: d, token: tok, exch: EXCH[seg], lot: lot || null }));
+  }
+  function lotOf(fy) {
+    const s = String(fy).toUpperCase(), x = s.match(DERIV_RE); if (!x || !MAP) return null;
+    const seg = { NSE: "NFO", BSE: "BFO", MCX: "MCX" }[x[1]], kind = x[7] ? "FUT" : x[9], k = kind === "FUT" ? 0 : Math.round(+x[8] * 100);
+    const c = MAP.deriv[[seg, x[2], kind, k].join("|")] || []; const e = c.find((y) => y[2]); return e ? e[2] : null;
+  }
+
   // ------------------------------------------------------------ live stream
   const Q = new Map();           // FYERS symbol -> {t, row}  (fresh Angel quotes)
   const ASKED = new Map();       // FYERS symbol -> last time /quotes asked for it
   const ST = { state: "off", connected: false, subscribed: 0, ticks: 0, last_tick: null, errors: [], unmapped: [] };
   const err = (m) => { ST.errors = ST.errors.concat(new Date().toLocaleTimeString("en-IN") + " " + String(m).slice(0, 200)).slice(-10); };
+  const DEPTH = new Map();       // FYERS symbol -> last time a page asked for its market depth (mode 3, best five)
+  let subs3 = new Map();
   let ws = null, subs = new Map(), cumvol = new Map(), pingT = null, loopT = null;
   function parse(buf) {
     if (!(buf instanceof ArrayBuffer) || buf.byteLength < 51) return null;
@@ -174,6 +189,18 @@
     const q = (o) => Number(v.getBigInt64(o, true));
     const out = { mode, exch, token, t: q(35) / 1000, ltp: q(43) / 100 };
     if ((mode === 2 || mode === 3) && buf.byteLength >= 123) Object.assign(out, { volume: q(67), open: q(91) / 100, high: q(99) / 100, low: q(107) / 100, close: q(115) / 100 });
+    if (mode === 3 && buf.byteLength >= 347) {
+      // SnapQuote: totals (doubles) at 75/83, OI at 131, best five buy + sell at 147..347 (10 x 20 bytes: flag, qty, price, orders)
+      Object.assign(out, { ltq: q(51), tbq: v.getFloat64(75, true), tsq: v.getFloat64(83, true), ltt: q(123), oi: q(131) });
+      const lv = [];
+      for (let i = 0; i < 10; i++) { const o = 147 + i * 20; lv.push({ flag: v.getUint16(o, true), qty: q(o + 2), price: q(o + 10) / 100, orders: v.getUint16(o + 18, true) }); }
+      // the flag's meaning is not documented consistently, so the side is taken from price: the lower five are the bids
+      const g0 = lv.filter((x) => x.flag === 0 && x.price > 0), g1 = lv.filter((x) => x.flag !== 0 && x.price > 0);
+      const avg = (a) => a.length ? a.reduce((s, x) => s + x.price, 0) / a.length : 0;
+      let bids = g0, asks = g1; if (g0.length && g1.length && avg(g0) > avg(g1)) { bids = g1; asks = g0; }
+      out.bids = bids.sort((a, b) => b.price - a.price).map((x) => [x.price, x.qty, x.orders]);
+      out.asks = asks.sort((a, b) => a.price - b.price).map((x) => [x.price, x.qty, x.orders]);
+    }
     return out;
   }
   function toQuote(sym, p) {
@@ -182,10 +209,10 @@
       if (pc) Object.assign(v, { ch: +(lp - pc).toFixed(2), chp: +((lp - pc) / pc * 100).toFixed(2) }); }
     return { n: sym, s: "ok", v };
   }
-  function send(action, keys) {
+  function send(action, keys, mode = 2) {
     const by = {}; keys.forEach(([ex, tok]) => (by[ex] = by[ex] || []).push(tok));
     for (const [ex, toks] of Object.entries(by)) for (let i = 0; i < toks.length; i += 500)
-      ws.send(JSON.stringify({ correlationID: "mm" + (Date.now() % 1e5), action, params: { mode: 2, tokenList: [{ exchangeType: +ex, tokens: toks.slice(i, i + 500) }] } }));
+      ws.send(JSON.stringify({ correlationID: "mm" + (Date.now() % 1e5), action, params: { mode, tokenList: [{ exchangeType: +ex, tokens: toks.slice(i, i + 500) }] } }));
   }
   function connect(s) {
     return new Promise((res, rej) => {
@@ -194,7 +221,7 @@
       const to = setTimeout(() => { if (!done) { done = true; try { w.close(); } catch (e) { /* ignore */ } rej(new Error("Angel One's live stream did not accept this browser within 15 s")); } }, 15e3);
       w.onopen = () => { if (done) return; done = true; clearTimeout(to); ST.connected = true; ST.state = "connected"; res(w); };
       w.onerror = () => { if (!done) { done = true; clearTimeout(to); rej(new Error("Angel One's live stream refused this browser")); } };
-      w.onclose = (e) => { ST.connected = false; ST.state = "disconnected"; if (ws === w) { ws = null; subs = new Map(); } err(`stream closed (${e.code})`); };
+      w.onclose = (e) => { ST.connected = false; ST.state = "disconnected"; if (ws === w) { ws = null; subs = new Map(); subs3 = new Map(); } err(`stream closed (${e.code})`); };
       w.onmessage = (e) => {
         if (typeof e.data === "string") { if (e.data !== "pong") err(e.data); return; }
         const p = parse(e.data); if (!p || p.ltp <= 0) return;
@@ -202,6 +229,7 @@
         ST.ticks++; ST.last_tick = Date.now();
         Q.set(sym, { t: Date.now(), row: toQuote(sym, p) });
         if ("volume" in p) cumvol.set(sym, p.volume);
+        if (p.bids) window.dispatchEvent(new CustomEvent("mm-angel-depth", { detail: { symbol: sym, ...p, t: Date.now() } }));
         window.dispatchEvent(new CustomEvent("mm-angel-tick", { detail: { symbol: sym, price: p.ltp, t: p.t } }));
       };
     });
@@ -211,6 +239,7 @@
     clearTimeout(loopT);
     try {
       const c = cfg(), now = Date.now();
+      for (const [s, t] of DEPTH) if (now - t > 3 * 60e3) DEPTH.delete(s);
       const want = [...ASKED].filter(([, t]) => now - t < 30 * 60e3).sort((a, b) => b[1] - a[1]).map(([s]) => s).filter((s) => /^(NSE|BSE|MCX):/.test(s));
       if (!configured(c) || c.enabled === false || !indiaOpen() || !want.length || document.visibilityState === "hidden") {
         ST.state = !configured(c) ? "off (not set up)" : c.enabled === false ? "off (switched off)" : !indiaOpen() ? "waiting: market closed" : document.visibilityState === "hidden" ? "paused (page hidden)" : "waiting: no Indian symbols in use";
@@ -218,18 +247,24 @@
       } else {
         const s = await login(); await loadMap();
         if (!ws) { ws = await connect(s); clearInterval(pingT); pingT = setInterval(() => { try { ws && ws.send("ping"); } catch (e) { /* ignore */ } }, 10e3); }
-        const target = new Map(), unmapped = [];
-        for (const sym of want) { const k = tokenOf(sym); if (k) { if (target.size < MAX_SYMBOLS) target.set(k[0] + "|" + k[1], sym); } else unmapped.push(sym); }
+        const target = new Map(), unmapped = [], deep = new Map();
+        for (const sym of DEPTH.keys()) { const k = tokenOf(sym); if (k) deep.set(k[0] + "|" + k[1], sym); else unmapped.push(sym); }
+        for (const sym of want) { if (DEPTH.has(sym)) continue; const k = tokenOf(sym); if (k) { if (target.size < MAX_SYMBOLS) target.set(k[0] + "|" + k[1], sym); } else unmapped.push(sym); }
+        const add3 = [...deep.keys()].filter((k) => !subs3.has(k)), drop3 = [...subs3.keys()].filter((k) => !deep.has(k));
+        if (drop3.length) { send(0, drop3.map((k) => k.split("|")), 3); drop3.forEach((k) => { subs3.delete(k); if (!target.has(k)) subs.delete(k); }); }
+        if (add3.length) { add3.forEach((k) => { subs3.set(k, deep.get(k)); subs.set(k, deep.get(k)); }); send(1, add3.map((k) => k.split("|")), 3); }
+        deep.forEach((v, k) => target.set(k, v));
         ST.unmapped = unmapped.slice(0, 20);
         const add = [...target.keys()].filter((k) => !subs.has(k)), drop = [...subs.keys()].filter((k) => !target.has(k));
         if (drop.length) { send(0, drop.map((k) => k.split("|"))); drop.forEach((k) => subs.delete(k)); }
-        if (add.length) { add.forEach((k) => subs.set(k, target.get(k))); send(1, add.map((k) => k.split("|"))); }
+        const add2 = add.filter((k) => !subs3.has(k));
+        if (add2.length) { add2.forEach((k) => subs.set(k, target.get(k))); send(1, add2.map((k) => k.split("|"))); }
         ST.subscribed = subs.size;
       }
     } catch (e) { err(e.message || e); ST.state = "error: " + String(e.message || e).slice(0, 120); if (/login|refused|token/i.test(String(e.message))) LS.set("sess", null); stop(); loopT = setTimeout(tick, 120e3); return; }
     loopT = setTimeout(tick, ws ? 30e3 : 20e3);
   }
-  function stop() { clearInterval(pingT); if (ws) { try { ws.close(); } catch (e) { /* ignore */ } } ws = null; subs = new Map(); ST.connected = false; ST.subscribed = 0; }
+  function stop() { clearInterval(pingT); if (ws) { try { ws.close(); } catch (e) { /* ignore */ } } ws = null; subs = new Map(); subs3 = new Map(); ST.connected = false; ST.subscribed = 0; }
   const active = () => !!(ST.connected && ST.last_tick && Date.now() - ST.last_tick < 60e3);
 
   // ------------------------------------------------------------ FYERS /quotes: answer from Angel while fresh
@@ -262,6 +297,16 @@
     return out;
   }
 
-  MM.angel = { publicCfg, saveCfg, forget, test, status: () => ({ ...ST, active: active(), config: publicCfg(), last_tick_age_s: ST.last_tick ? Math.round((Date.now() - ST.last_tick) / 100) / 10 : null }), active, totp, tokenOf, buildMap, parse, toQuote, _setMap: (m) => (MAP = m) };
+  // a page asks for live market depth of one symbol; call again at least every 2 minutes to keep it, with on=false to stop
+  function depth(sym, on = true) {
+    sym = String(sym).toUpperCase();
+    if (!on) { DEPTH.delete(sym); return { ok: true }; }
+    const c = cfg(); if (!configured(c)) return { ok: false, reason: "Angel One is not set up (Connections page)" };
+    if (c.enabled === false) return { ok: false, reason: "Angel One is switched off (Connections page)" };
+    const fresh = !DEPTH.has(sym); DEPTH.set(sym, Date.now()); ASKED.set(sym, Date.now());
+    if (fresh || !ws) { clearTimeout(loopT); loopT = setTimeout(tick, 300); }
+    return { ok: true, state: ST.state };
+  }
+  MM.angel = { depth, futures, lotOf, publicCfg, saveCfg, forget, test, status: () => ({ ...ST, active: active(), config: publicCfg(), last_tick_age_s: ST.last_tick ? Math.round((Date.now() - ST.last_tick) / 100) / 10 : null }), active, totp, tokenOf, buildMap, parse, toQuote, _setMap: (m) => (MAP = m) };
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && configured()) { clearTimeout(loopT); loopT = setTimeout(tick, 1000); } });
 })();
