@@ -17,7 +17,11 @@
   const MM = window.MM; if (!MM || !MM.FY) return;
   const API = "https://apiconnect.angelone.in", LOGIN = "/rest/auth/angelbroking/user/v1/loginByPassword";
   const WS = "wss://smartapisocket.angelone.in/smart-stream";
-  const MASTER_URL = "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json";
+  const MASTER_URLS = ["https://margincalculator.angelone.in/OpenAPI_File/files/OpenAPIScripMaster.json",
+    "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json"];
+  const SEARCH = "/rest/secure/angelbroking/order/v1/searchScrip";
+  // instruments looked up one name at a time when the full list cannot be downloaded in this browser
+  const QUICK = [["NFO", "NIFTY"], ["NFO", "BANKNIFTY"], ["NFO", "FINNIFTY"], ["NFO", "MIDCPNIFTY"], ["BFO", "SENSEX"], ["BFO", "BANKEX"]];
   const EXCH = { NSE: 1, NFO: 2, BSE: 3, BFO: 4, MCX: 5 };
   const INDEX = { "NSE:NIFTY50-INDEX": ["Nifty 50", "99926000"], "NSE:NIFTYBANK-INDEX": ["Nifty Bank", "99926009"],
     "NSE:FINNIFTY-INDEX": ["Nifty Fin Service", "99926037"], "NSE:MIDCPNIFTY-INDEX": ["NIFTY MID SELECT", "99926074"],
@@ -140,12 +144,44 @@
     return mapP || (mapP = (async () => {
       const saved = await kv("get", "map").catch(() => null);
       if (saved && saved.day === istDay() && saved.v === 2) return (MAP = saved);
-      let rows;
-      try { rows = await (await fetch(MASTER_URL)).json(); }
-      catch (e) { throw new Error("Could not download Angel One's instrument list in this browser"); }
-      MAP = buildMap(rows); kv("put", "map", MAP).catch(() => {});
+      let rows = null;
+      for (const u of MASTER_URLS) { try { rows = await (await fetch(u)).json(); if (Array.isArray(rows) && rows.length) break; rows = null; } catch (e) { rows = null; } }
+      if (rows) { MAP = buildMap(rows); kv("put", "map", MAP).catch(() => {}); return MAP; }
+      // Angel One's file server does not let web pages download the list: look up the index futures through the API
+      // (same server as the login, which this browser can reach). Indices themselves use their fixed tokens.
+      const m = { v: 2, day: istDay(), count: 0, cash: {}, names: {}, deriv: {}, quick: true };
+      const got = await Promise.allSettled(QUICK.map(([seg, name]) => searchInto(m, seg, name)));
+      if (!got.some((g) => g.status === "fulfilled" && g.value > 0)) {
+        const why = got.map((g) => g.reason && g.reason.message).filter(Boolean)[0];
+        throw new Error("Could not get Angel One's instrument list in this browser" + (why ? " (" + why + ")" : ""));
+      }
+      MAP = m; kv("put", "map", MAP).catch(() => {});
       return MAP;
     })().finally(() => { mapP = null; }));
+  }
+  // Angel One scrip search: adds the futures (and cash share) of one name to the map; returns how many were added
+  async function searchInto(m, seg, name) {
+    const s = await login(), c = cfg();
+    const r = await fetch(API + SEARCH, { method: "POST", headers: headers(c.api_key, s.jwt), body: JSON.stringify({ exchange: seg, searchscrip: name }) });
+    const j = await r.json().catch(() => ({})); if (!j.status) throw new Error(j.message || "search refused " + r.status);
+    let n = 0;
+    for (const x of j.data || []) {
+      const ts = String(x.tradingsymbol || "").toUpperCase(), tok = String(x.symboltoken || "");
+      let k = ts.match(/^([A-Z&-]+?)(\d{2})([A-Z]{3})(\d{2})FUT$/);
+      if (k && k[1] === name.toUpperCase() && (seg === "NFO" || seg === "BFO" || seg === "MCX")) {
+        const key = [seg, k[1], "FUT", 0].join("|"), d = `20${k[4]}-${String(MON.indexOf(k[3]) + 1).padStart(2, "0")}-${k[2]}`;
+        const l = (m.deriv[key] = m.deriv[key] || []); if (!l.find((e) => e[1] === tok)) { l.push([d, tok, 0]); n++; }
+      } else if ((seg === "NSE" || seg === "BSE") && /-(EQ|BE)$/.test(ts)) { m.cash[seg + "|" + ts] = tok; n++; }
+    }
+    m.count += n; return n;
+  }
+  // for a symbol the quick list does not have (a stock future), look it up once
+  async function ensure(fy) {
+    if (tokenOf(fy)) return true; if (!MAP || !MAP.quick) return false;
+    const s = String(fy).toUpperCase(), x = s.match(DERIV_RE) || s.match(/^(NSE|BSE):([A-Z0-9&_.-]+)-(EQ|BE)$/); if (!x) return false;
+    const seg = x.length > 4 ? { NSE: "NFO", BSE: "BFO", MCX: "MCX" }[x[1]] : x[1];
+    try { await searchInto(MAP, seg, x[2]); kv("put", "map", MAP).catch(() => {}); } catch (e) { err(e.message); }
+    return !!tokenOf(fy);
   }
   function tokenOf(fy) {
     const s = String(fy).toUpperCase(), m = MAP; if (!m) return null;
@@ -248,7 +284,7 @@
         const s = await login(); await loadMap();
         if (!ws) { ws = await connect(s); clearInterval(pingT); pingT = setInterval(() => { try { ws && ws.send("ping"); } catch (e) { /* ignore */ } }, 10e3); }
         const target = new Map(), unmapped = [], deep = new Map();
-        for (const sym of DEPTH.keys()) { const k = tokenOf(sym); if (k) deep.set(k[0] + "|" + k[1], sym); else unmapped.push(sym); }
+        for (const sym of DEPTH.keys()) { let k = tokenOf(sym); if (!k && await ensure(sym)) k = tokenOf(sym); if (k) deep.set(k[0] + "|" + k[1], sym); else unmapped.push(sym); }
         for (const sym of want) { if (DEPTH.has(sym)) continue; const k = tokenOf(sym); if (k) { if (target.size < MAX_SYMBOLS) target.set(k[0] + "|" + k[1], sym); } else unmapped.push(sym); }
         const add3 = [...deep.keys()].filter((k) => !subs3.has(k)), drop3 = [...subs3.keys()].filter((k) => !deep.has(k));
         if (drop3.length) { send(0, drop3.map((k) => k.split("|")), 3); drop3.forEach((k) => { subs3.delete(k); if (!target.has(k)) subs.delete(k); }); }
@@ -287,7 +323,7 @@
     const out = { login: null, master: null, nifty_token: null, stream: null, ok: false };
     try {
       const s = await login(true); out.login = "ok at " + s.at;
-      await loadMap(); out.master = MAP.count + " instruments"; out.nifty_token = tokenOf("NSE:NIFTY50-INDEX");
+      await loadMap(); out.master = MAP.quick ? `quick list (${MAP.count} index futures looked up; full list blocked in this browser)` : MAP.count + " instruments"; out.nifty_token = tokenOf("NSE:NIFTY50-INDEX");
       const w = ws || await connect(s); const before = ST.ticks; if (!ws) { ws = w; }
       subs.set("1|99926000", "NSE:NIFTY50-INDEX"); send(1, [[1, "99926000"]]);
       await new Promise((r) => setTimeout(r, 4000));
